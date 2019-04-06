@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<?import javafx.scene.text.Text?>
+<VBox spacing="10" xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml">
+    <RadioButton id="builtinFrame" text="Built-in framework"/>
+    <RadioButton id="customFrame" text="Custom framework"/>
+    <HBox id="framePathBox" spacing="10">
+        <TextField id="-p" />
+        <Button id="customFramePathSelector" text="Select"/>
+    </HBox>
+    <HBox alignment="CENTER_LEFT" spacing="10">
+        <Text text="File name: "/>
+        <TextField promptText="File name" id="fileName" />
+    </HBox>
+    <HBox alignment="CENTER_LEFT" spacing="10">
+        <Text text="Path to file: "/>
+        <TextField text="Path to folder" id="path" />
+        <Button id="pathSelector" text="Select"/>
+    </HBox>
+    <CheckBox id="-f" text="Do not search changes" />
+</VBox>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<?import javafx.scene.text.Text?>
+<AnchorPane fx:id="pane" id="pane" xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            >
+
+    <VBox alignment="CENTER_LEFT">
+        <Text fx:id="projectName" id="projectName" text="test"/>
+        <Text fx:id="projectLocation" id="projectLocation" text="test2"/>
+    </VBox>
+    <Button fx:id="removeButton" text="Rem" AnchorPane.rightAnchor="0" AnchorPane.bottomAnchor="0" AnchorPane.topAnchor="0" />
+</AnchorPane>

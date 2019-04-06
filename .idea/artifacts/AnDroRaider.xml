@@ -1,0 +1,20 @@
+<component name="ArtifactManager">
+  <artifact type="javafx" name="AnDroRaider">
+    <output-path>$PROJECT_DIR$/out/artifacts/AnDroRaider</output-path>
+    <properties id="javafx-properties">
+      <options>
+        <option name="appClass" value="ru.art2000.androraider.Launcher" />
+        <option name="description" value="" />
+        <option name="htmlPlaceholderId" value="" />
+        <option name="title" value="AnDroRaider" />
+        <option name="vendor" value="" />
+        <option name="version" value="" />
+      </options>
+    </properties>
+    <root id="root">
+      <element id="archive" name="AnDroRaider.jar">
+        <element id="module-output" name="AnDroRaider" />
+      </element>
+    </root>
+  </artifact>
+</component>

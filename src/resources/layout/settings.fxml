@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<?import javafx.scene.text.Text?>
+<?import javafx.geometry.Insets?>
+<VBox spacing="10" xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      prefHeight="400.0" prefWidth="600.0">
+    <padding>
+        <Insets topRightBottomLeft="20"/>
+    </padding>
+    <Text text="General apktool options"/>
+    <HBox>
+        <TextField promptText="apktool path" fx:id="apktoolPath"/>
+        <Button text="Select" fx:id="apktoolPathSelectButton"/>
+    </HBox>
+    <Text text="Framework"/>
+    <VBox spacing="10">
+        <RadioButton text="Static framework file" fx:id="frameworkFileRB"/>
+        <HBox>
+            <TextField promptText="framework path" fx:id="frameworkFilePath"/>
+            <Button text="Select" fx:id="frameworkFilePathSelectButton"/>
+        </HBox>
+        <RadioButton text="Framework in folder" fx:id="frameworkFolderRB"/>
+        <VBox spacing="10">
+            <VBox.margin>
+                <Insets left="50"/>
+            </VBox.margin>
+            <RadioButton text="Autoselect (search in project parent folder)" fx:id="frameworkSmartFolderRB"/>
+            <RadioButton text="Static folder" fx:id="frameworkStaticFolderRB"/>
+            <HBox>
+                <TextField promptText="framework path" fx:id="frameworkFolderPath"/>
+                <Button text="Select" fx:id="frameworkFolderPathSelectButton"/>
+            </HBox>
+        </VBox>
+    </VBox>
+    <Text text="Decompile options"/>
+    <HBox>
+        <TextField promptText="apktool path"/>
+        <Button text="Select"/>
+    </HBox>
+    <Text text="Recompile options"/>
+    <HBox>
+        <TextField promptText="apktool path"/>
+        <Button text="Select" />
+    </HBox>
+</VBox>

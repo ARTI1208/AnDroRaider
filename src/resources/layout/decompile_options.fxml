@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.text.Text?>
+<VBox spacing="10" xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml">
+    <HBox spacing="10">
+        <CheckBox id="-s" text="Do not decompile code" />
+        <CheckBox id="-r" text="Do not decompile res" />
+    </HBox>
+    <RadioButton id="builtinFrame" text="Built-in framework"/>
+    <RadioButton id="customFrame" text="Custom framework"/>
+    <HBox id="framePathBox" spacing="10">
+        <TextField id="-p" />
+        <Button id="customFramePathSelector" text="Select"/>
+    </HBox>
+    <HBox alignment="CENTER_LEFT" spacing="10">
+        <Text text="Folder: "/>
+        <TextField promptText="Folder name" id="folderName" />
+    </HBox>
+    <HBox alignment="CENTER_LEFT" spacing="10">
+        <Text text="Path to folder: "/>
+        <TextField text="Path to folder" id="path" />
+        <Button id="pathSelector" text="Select"/>
+    </HBox>
+    <CheckBox id="-f" text="Override if folder already exists" />
+    <!--<HBox spacing="10">-->
+        <!--<padding>-->
+            <!--<Insets top="30"/>-->
+        <!--</padding>-->
+        <!--<CheckBox id="saveChoice" text="Save choice" />-->
+        <!--<CheckBox id="doNotAskAgain" text="Do not ask again" />-->
+    <!--</HBox>-->
+</VBox>
