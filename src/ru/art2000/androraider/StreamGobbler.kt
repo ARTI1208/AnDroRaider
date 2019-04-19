@@ -4,18 +4,18 @@ import javafx.application.Platform
 import javafx.scene.text.Text
 import java.io.*
 
-class StreamGobbler(private val process : Process, private val text: Text) : Thread() {
+class StreamGobbler(private val process: Process, private val text: Text) : Thread() {
 
     private val builder = StringBuilder(text.text)
 
-    private fun Text.appendText(s : String){
+    private fun Text.appendText(s: String) {
         this.text = builder.append("\n").append(s).toString()
     }
 
     override fun run() {
         val pOut = process.inputStream
         val pErr = process.errorStream
-        Thread{
+        Thread {
             try {
                 BufferedReader(InputStreamReader(pOut)).use { r ->
                     r.lineSequence().forEach {
@@ -29,7 +29,7 @@ class StreamGobbler(private val process : Process, private val text: Text) : Thr
             }
         }.start()
 
-        Thread{
+        Thread {
             try {
                 BufferedReader(InputStreamReader(pErr)).use { r ->
                     r.lineSequence().forEach {

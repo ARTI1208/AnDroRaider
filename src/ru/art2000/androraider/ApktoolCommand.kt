@@ -1,6 +1,6 @@
 package ru.art2000.androraider
 
-class ApktoolCommand(val tag: String, val value: String? = null){
+class ApktoolCommand(val tag: String, val value: String? = null) {
     class General {
         companion object {
             @JvmStatic

@@ -43,7 +43,7 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
         }
         try {
             prefWidthProperty().bind(listView.widthProperty().subtract(20))
-        } catch (e : java.lang.Exception){
+        } catch (e: java.lang.Exception) {
 //            throw java.lang.Exception("Cannot bind ListView width")
             System.out.println("Cannot bind ListView width")
         }

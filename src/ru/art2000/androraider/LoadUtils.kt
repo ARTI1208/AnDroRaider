@@ -13,12 +13,12 @@ class LoadUtils {
         private val LAYOUT_PATH = "/resources/layout/"
 
         @JvmStatic
-        fun getDrawable(_name : String): Image {
+        fun getDrawable(_name: String): Image {
             return Image(DRAWABLE_PATH + _name)
         }
 
         @JvmStatic
-        fun getLayout(_name : String): String {
+        fun getLayout(_name: String): String {
             return LAYOUT_PATH + _name
         }
 

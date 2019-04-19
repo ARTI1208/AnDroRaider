@@ -17,7 +17,7 @@ import javafx.stage.Window
 import java.lang.StringBuilder
 import java.util.prefs.Preferences
 
-class Settings(owner : Window) : Window() {
+class Settings(owner: Window) : Window() {
 
     companion object {
 
@@ -25,12 +25,12 @@ class Settings(owner : Window) : Window() {
         private val prefs = Preferences.userNodeForPackage(this::class.java)
 
         @JvmStatic
-        fun getString(key: String, default: String? = null): String?{
+        fun getString(key: String, default: String? = null): String? {
             return prefs.get(key, default)
         }
 
         @JvmStatic
-        fun putString(key : String, value: String){
+        fun putString(key: String, value: String) {
             prefs.put(key, value)
         }
 
@@ -46,7 +46,7 @@ class Settings(owner : Window) : Window() {
         }
 
         @JvmStatic
-        fun getStringArray(key: String, defaultArray: ObservableList<String>) : ObservableList<String> {
+        fun getStringArray(key: String, defaultArray: ObservableList<String>): ObservableList<String> {
             val array = prefs.get(key, "")
             return if (array != "") FXCollections.observableArrayList(array.split("|")) else defaultArray
         }
@@ -72,35 +72,35 @@ class Settings(owner : Window) : Window() {
     inner class Controller {
 
         @FXML
-        private lateinit var apktoolPathSelectButton : Button
+        private lateinit var apktoolPathSelectButton: Button
         @FXML
-        private lateinit var frameworkFilePathSelectButton : Button
+        private lateinit var frameworkFilePathSelectButton: Button
         @FXML
-        private lateinit var frameworkFolderPathSelectButton : Button
+        private lateinit var frameworkFolderPathSelectButton: Button
 
         @FXML
-        private lateinit var clearDataButton : Button
+        private lateinit var clearDataButton: Button
 
         @FXML
-        private lateinit var apktoolPath : TextField
+        private lateinit var apktoolPath: TextField
         @FXML
-        private lateinit var frameworkFolderPath : TextField
+        private lateinit var frameworkFolderPath: TextField
         @FXML
-        private lateinit var frameworkFilePath : TextField
+        private lateinit var frameworkFilePath: TextField
         @FXML
-        private lateinit var frameworkFileRB : RadioButton
+        private lateinit var frameworkFileRB: RadioButton
         @FXML
-        private lateinit var frameworkFolderRB : RadioButton
+        private lateinit var frameworkFolderRB: RadioButton
         @FXML
-        private lateinit var frameworkSmartFolderRB : RadioButton
+        private lateinit var frameworkSmartFolderRB: RadioButton
         @FXML
-        private lateinit var frameworkStaticFolderRB : RadioButton
+        private lateinit var frameworkStaticFolderRB: RadioButton
 
         private var frameworkTypeGroup = ToggleGroup()
         private var frameworkFolderTypeGroup = ToggleGroup()
 
         @Suppress("unused")
-        fun initialize(){
+        fun initialize() {
 
             frameworkFileRB.toggleGroup = frameworkTypeGroup
             frameworkFolderRB.toggleGroup = frameworkTypeGroup
@@ -138,7 +138,7 @@ class Settings(owner : Window) : Window() {
                 putString("apktool_path", apktoolPath.text)
             }
 
-            clearDataButton.onAction = EventHandler{
+            clearDataButton.onAction = EventHandler {
                 prefs.remove(Launcher.RECENTS_TAG)
             }
 

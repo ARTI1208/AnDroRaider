@@ -1,6 +1,5 @@
 package ru.art2000.androraider
 
-import javafx.beans.value.ChangeListener
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
@@ -26,9 +25,6 @@ constructor(project: File) : Window() {
     companion object {
         @JvmStatic
         lateinit var baseFolder: File
-
-//        @JvmStatic
-//        var editorStage = Stage()
     }
 
     var editorStage = Stage()
@@ -41,8 +37,6 @@ constructor(project: File) : Window() {
         editorStage.icons.add(LoadUtils.getDrawable("logo.png"))
         editorStage.title = "${baseFolder.name} - Project Editor"
         editorStage.scene = Scene(root, 900.0, 600.0)
-//        editorStage.isMaximized = true
-//        editorStage.show()
     }
 
     public override fun show() {
@@ -66,8 +60,15 @@ constructor(project: File) : Window() {
         lateinit var home: MenuItem
         @FXML
         lateinit var settings: MenuItem
+
         private var currentFolder = baseFolder
+
         private var currentEditingFile: File? = null
+            set(value) {
+                isFileChanged = true
+                field = value
+            }
+
         private var isFileChanged = false
 
         @Suppress("unused")
@@ -169,7 +170,6 @@ constructor(project: File) : Window() {
                     } else {
                         if (TypeDetector.isTextFile(newFile.name)) {
                             currentEditingFile = newFile
-                            isFileChanged = true
                             editorArea.text = String(Files.readAllBytes(newFile.toPath()))
                         }
                     }
@@ -184,7 +184,6 @@ constructor(project: File) : Window() {
                     } else {
                         if (TypeDetector.isTextFile(newFile.name)) {
                             currentEditingFile = newFile
-                            isFileChanged = true
                             editorArea.text = String(Files.readAllBytes(newFile.toPath()))
                         }
                     }
@@ -195,18 +194,11 @@ constructor(project: File) : Window() {
                 }
             }
             editorArea.textProperty().addListener { _, oldValue, newValue ->
-                if (isFileChanged){
+                if (isFileChanged) {
                     isFileChanged = false
                     return@addListener
                 }
                 if (currentEditingFile != null && oldValue.isNotEmpty()) {
-
-                    System.out.println("Old value:")
-                    System.out.println(oldValue)
-                    System.out.println("-----------------------")
-                    System.out.println("New value:")
-                    System.out.println(newValue)
-
                     Files.write(currentEditingFile?.toPath(), newValue.toByteArray())
                 }
             }
@@ -216,7 +208,7 @@ constructor(project: File) : Window() {
             filesList.items.clear()
             for (f in file.listFiles().filter { item -> item.isDirectory && !item.isHidden })
                 filesList.items.add(f.name)
-            for (f in file.listFiles().filter { item -> item.isFile && !item.isHidden  })
+            for (f in file.listFiles().filter { item -> item.isFile && !item.isHidden })
                 filesList.items.add(f.name)
             currentFolder = file
             filesList.selectionModel.select(0)

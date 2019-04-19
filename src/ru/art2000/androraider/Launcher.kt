@@ -62,7 +62,6 @@ class Launcher : Application() {
                 items.remove(path)
                 Settings.putStringArray(RECENTS_TAG, items)
             } else {
-
                 for (s in items)
                     System.out.println(s)
             }
@@ -273,7 +272,7 @@ class Launcher : Application() {
             var dir: File? = null
             while (dir == null) {
                 val chooser = DirectoryChooser()
-                val chosen = chooser.showDialog(root.scene.window)
+                val chosen = chooser.showDialog(root.scene.window) ?: return null
                 val contains = Objects.requireNonNull(chosen.list { _, name1 -> name1 == "apktool.yml" }).isNotEmpty()
                 if (contains)
                     dir = chosen
