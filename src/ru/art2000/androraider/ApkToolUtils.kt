@@ -58,7 +58,7 @@ class ApkToolUtils {
             }
             cmds.add(apk.absolutePath)
             wind.show()
-            val t = Thread{
+            val t = Thread {
                 val process = ProcessBuilder(cmds).start()
                 val gobbler = StreamGobbler(process, message)
                 gobbler.start()
@@ -88,7 +88,7 @@ class ApkToolUtils {
             pane.content = message
             pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
             dialog.dialogPane = pane
-            var apk : File? = null
+            var apk: File? = null
             val cmds = ArrayList<String>(Arrays.asList("java", "-jar", apktool.absolutePath,
                     ApktoolCommand.Compiler.TAG))
             for (apkCommand in options) {

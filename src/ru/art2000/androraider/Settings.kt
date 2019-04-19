@@ -1,5 +1,7 @@
 package ru.art2000.androraider
 
+import javafx.collections.FXCollections
+import javafx.collections.ObservableList
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
@@ -12,6 +14,7 @@ import javafx.scene.control.ToggleGroup
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import javafx.stage.Window
+import java.lang.StringBuilder
 import java.util.prefs.Preferences
 
 class Settings(owner : Window) : Window() {
@@ -26,13 +29,31 @@ class Settings(owner : Window) : Window() {
             return prefs.get(key, default)
         }
 
+        @JvmStatic
         fun putString(key : String, value: String){
             prefs.put(key, value)
         }
 
+        @JvmStatic
+        fun putStringArray(key: String, array: ObservableList<String>) {
+            val stringBuilder = StringBuilder()
+            for ((i, s) in array.withIndex()) {
+                stringBuilder.append(s)
+                if (i != array.size - 1)
+                    stringBuilder.append("|")
+            }
+            prefs.put(key, stringBuilder.toString())
+        }
+
+        @JvmStatic
+        fun getStringArray(key: String, defaultArray: ObservableList<String>) : ObservableList<String> {
+            val array = prefs.get(key, "")
+            return if (array != "") FXCollections.observableArrayList(array.split("|")) else defaultArray
+        }
+
     }
 
-    public var settingsStage = Stage()
+    var settingsStage = Stage()
 
     init {
         val loader = FXMLLoader(javaClass.getResource(LoadUtils.getLayout("settings.fxml")))
@@ -56,6 +77,10 @@ class Settings(owner : Window) : Window() {
         private lateinit var frameworkFilePathSelectButton : Button
         @FXML
         private lateinit var frameworkFolderPathSelectButton : Button
+
+        @FXML
+        private lateinit var clearDataButton : Button
+
         @FXML
         private lateinit var apktoolPath : TextField
         @FXML
@@ -104,7 +129,7 @@ class Settings(owner : Window) : Window() {
             }
             frameworkFileRB.isSelected = true
 
-            apktoolPath.text = Settings.getString("apktool_path") ?: ""
+            apktoolPath.text = getString("apktool_path") ?: ""
             apktoolPathSelectButton.onAction = EventHandler {
                 val chooser = FileChooser()
                 chooser.extensionFilters.add(FileChooser.ExtensionFilter("Executable JAR", "*.jar"))
@@ -112,6 +137,11 @@ class Settings(owner : Window) : Window() {
                 apktoolPath.text = jar.absolutePath
                 putString("apktool_path", apktoolPath.text)
             }
+
+            clearDataButton.onAction = EventHandler{
+                prefs.remove(Launcher.RECENTS_TAG)
+            }
+
         }
     }
 }

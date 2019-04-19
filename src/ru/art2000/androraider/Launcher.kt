@@ -2,7 +2,6 @@ package ru.art2000.androraider
 
 import javafx.application.Application
 import javafx.collections.FXCollections
-import javafx.collections.ObservableList
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
@@ -10,23 +9,20 @@ import javafx.geometry.Insets
 import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.*
-import javafx.scene.control.Button
-import javafx.scene.control.Dialog
 import javafx.scene.image.ImageView
+import javafx.scene.input.KeyCode
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Pane
 import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.scene.text.Text
-import javafx.stage.*
-import java.io.*
-import java.lang.StringBuilder
+import javafx.stage.DirectoryChooser
+import javafx.stage.FileChooser
+import javafx.stage.Stage
+import java.io.File
 import java.util.*
-import java.util.prefs.Preferences
 import kotlin.collections.ArrayList
-import kotlin.reflect.jvm.internal.impl.metadata.ProtoBuf
-import kotlin.reflect.jvm.internal.impl.serialization.deserialization.ProtoContainer
 
 class Launcher : Application() {
 
@@ -34,32 +30,25 @@ class Launcher : Application() {
         const val APP_VERSION = "0.1"
         const val APP_NAME = "AnDroRaider"
         const val RELEASE_TYPE = "BETA"
-        private const val RECENTS_TAG = "recent_projects"
-//        public val settings = Settings.settingsStage
-
+        const val RECENTS_TAG = "recent_projects"
 
         private var items = FXCollections.observableArrayList<String>()
 
         fun addToRecents(path: String) {
-
             items.apply {
-                add("fff")
                 addAll()
             }
-
             if (items.contains(path)) {
                 items.remove(path)
                 items.add(0, path)
-//                recentsListView.items.setAll(RecentProject.getArray(items))
-                saveStringArray(items)
+                Settings.putStringArray(RECENTS_TAG, items)
             } else {
                 items.add(0, path)
                 System.out.println("Addingg")
                 items.forEach {
                     System.out.println(it)
                 }
-                saveStringArray(items)
-//                recentsListView.items.add(0, RecentProject(path))
+                Settings.putStringArray(RECENTS_TAG, items)
             }
         }
 
@@ -68,10 +57,10 @@ class Launcher : Application() {
 //            saveStringArray(items)
 //        }
 
-        fun removeFromRecents(path: String){
+        fun removeFromRecents(path: String) {
             if (items.contains(File(path).absolutePath)) {
                 items.remove(path)
-                saveStringArray(items)
+                Settings.putStringArray(RECENTS_TAG, items)
             } else {
 
                 for (s in items)
@@ -79,25 +68,8 @@ class Launcher : Application() {
             }
         }
 
-        private val prefs : Preferences = Preferences.userNodeForPackage(this::class.java)
-
-        fun saveStringArray(array : ObservableList<String>){
-            val stringBuilder = StringBuilder()
-            for ((i, s) in array.withIndex()){
-                stringBuilder.append(s)
-                if (i != array.size - 1)
-                    stringBuilder.append("|")
-            }
-            prefs.put(RECENTS_TAG, stringBuilder.toString())
-        }
-
-        fun getRecentsList() : ObservableList<String>?{
-            val array = prefs.get(RECENTS_TAG, "")
-            return if (array != "") FXCollections.observableArrayList(array.split("|")) else null
-        }
-
         fun main(args: Array<String>) {
-            Application.launch(Launcher::class.java, *args)
+            launch(Launcher::class.java, *args)
         }
 
         lateinit var stage: Stage
@@ -135,19 +107,19 @@ class Launcher : Application() {
         @FXML
         private lateinit var root: HBox
 
-        private fun removeFromRecents(item: RecentProject){
-            if(recentsListView.items.contains(item)){
+        private fun removeFromRecents(item: RecentProject) {
+            if (recentsListView.items.contains(item)) {
                 recentsListView.items.remove(item)
                 items.remove(item.projectLocation)
-                saveStringArray(items)
+                Settings.putStringArray(RECENTS_TAG, items)
             }
         }
 
         @Suppress("unused")
         fun initialize() {
-            appNameText.text = Launcher.APP_NAME
+            appNameText.text = APP_NAME
             appNameText.font = Font(40.0)
-            appInfoText.text = "${Launcher.RELEASE_TYPE} ${Launcher.APP_VERSION}"
+            appInfoText.text = "$RELEASE_TYPE $APP_VERSION"
             appInfoText.font = Font(20.0)
             appInfoText.fill = Color.valueOf("#666666")
             newProjectButton.text = "Decompile apk"
@@ -174,7 +146,7 @@ class Launcher : Application() {
                     items.remove(appPath)
                     items.add(0, appPath)
                     recentsListView.items.setAll(RecentProject.getArray(items))
-                    saveStringArray(items)
+                    Settings.putStringArray(RECENTS_TAG, items)
                 } else {
                     val dialog = Dialog<Unit>()
                     dialog.initOwner(stage)
@@ -219,8 +191,8 @@ class Launcher : Application() {
                             ButtonType.CANCEL)
                     val selectedOptions = ArrayList<ApktoolCommand>()
                     var resultPath: String
-                    dialog.setResultConverter {button ->
-                        if (button == decompileButton){
+                    dialog.setResultConverter { button ->
+                        if (button == decompileButton) {
                             cont.goThrough(selectedOptions)
                             resultPath = folderPath.text + File.separator + folderName.text
                             selectedOptions.add(ApktoolCommand(
@@ -229,15 +201,15 @@ class Launcher : Application() {
                                 selectedOptions.add(ApktoolCommand(
                                         ApktoolCommand.General.FRAMEWORK_FOLDER_PATH,
                                         customFrameworkPath.text))
-                            for (cmd in selectedOptions){
+                            for (cmd in selectedOptions) {
                                 System.out.println(cmd.tag)
                             }
                         }
                     }
                     dialog.showAndWait()
-                    if(selectedOptions.isEmpty())
+                    if (selectedOptions.isEmpty())
                         return@setOnAction
-                    val folder= ApkToolUtils.decompile(app, *selectedOptions.toTypedArray())
+                    val folder = ApkToolUtils.decompile(app, *selectedOptions.toTypedArray())
                     addToRecents(folder!!.absolutePath)
                     stage.hide()
                 }
@@ -254,39 +226,47 @@ class Launcher : Application() {
             recentsListView.setCellFactory { RecentsListItem() }
             recentsListView.onMouseClicked = EventHandler {
                 if (it.target !is Button && it.clickCount == 2) {
-                    val projectToOpen = recentsListView.selectionModel.selectedItem.appFile
-                    if (projectToOpen.exists()) {
-                        root.scene.window.hide()
-                        Editor(projectToOpen).show()
-                    } else {
-                        val d = Dialog<Unit>()
-                        val pane = DialogPane()
-                        val warning = Text("This project doesn't exist! Do you want to remove it?")
-                        pane.content = warning
-                        pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
-                        val remove = ButtonType("Remove", ButtonBar.ButtonData.NEXT_FORWARD)
-                        pane.buttonTypes.addAll(
-                                remove,
-                                ButtonType.CANCEL)
-                        d.dialogPane = pane
-                        d.title = "Project doesn't exist"
-                        d.setResultConverter { clickedButton ->
-                            if (clickedButton == remove)
-                                removeFromRecents(recentsListView.selectionModel.selectedItem)
-                            //metka
-                        }
-                        d.showAndWait()
-                    }
+                    openRecentProject()
                 }
             }
+            recentsListView.onKeyPressed = EventHandler {
+                if (it.code != KeyCode.ENTER || !recentsListView.isFocused)
+                    return@EventHandler
+                openRecentProject()
+            }
             appLogoImageView.image = LoadUtils.getDrawable("logo.png")
-            items = getRecentsList() ?: return
+            items = Settings.getStringArray(RECENTS_TAG, items)
             items.removeIf { s -> s.isBlank() }
             for (s in items) {
                 System.out.println(s)
                 recentsListView.items.add(RecentProject(File(s)))
             }
             recentsListView.selectionModel.select(0)
+        }
+
+        private fun openRecentProject() {
+            val projectToOpen = recentsListView.selectionModel.selectedItem.appFile
+            if (projectToOpen.exists()) {
+                root.scene.window.hide()
+                Editor(projectToOpen).show()
+            } else {
+                val d = Dialog<Unit>()
+                val pane = DialogPane()
+                val warning = Text("This project doesn't exist! Do you want to remove it?")
+                pane.content = warning
+                pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
+                val remove = ButtonType("Remove", ButtonBar.ButtonData.NEXT_FORWARD)
+                pane.buttonTypes.addAll(
+                        remove,
+                        ButtonType.CANCEL)
+                d.dialogPane = pane
+                d.title = "Project doesn't exist"
+                d.setResultConverter { clickedButton ->
+                    if (clickedButton == remove)
+                        removeFromRecents(recentsListView.selectionModel.selectedItem)
+                }
+                d.showAndWait()
+            }
         }
 
         private fun openProject(): File? {

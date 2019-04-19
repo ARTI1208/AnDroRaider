@@ -9,7 +9,8 @@ class TypeDetector {
             init {
                 knownTypes.addAll(
                         "txt", "xml",
-                        "yml", "smali")
+                        "yml", "smali",
+                        "svg")
             }
 
             fun listContains(extension : String) : Boolean{

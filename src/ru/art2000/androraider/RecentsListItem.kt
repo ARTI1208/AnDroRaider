@@ -11,6 +11,7 @@ import javafx.scene.layout.AnchorPane
 import javafx.scene.text.Text
 import java.net.URL
 import java.util.*
+import java.util.logging.Logger
 
 class RecentsListItem : ListCell<RecentProject>(), Initializable {
 
@@ -43,7 +44,8 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
         try {
             prefWidthProperty().bind(listView.widthProperty().subtract(20))
         } catch (e : java.lang.Exception){
-            throw java.lang.Exception("Cannot bind ListView width")
+//            throw java.lang.Exception("Cannot bind ListView width")
+            System.out.println("Cannot bind ListView width")
         }
         maxWidth = Control.USE_PREF_SIZE
     }

@@ -1,5 +1,6 @@
 package ru.art2000.androraider
 
+import javafx.beans.value.ChangeListener
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
@@ -7,6 +8,7 @@ import javafx.geometry.Insets
 import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.*
+import javafx.scene.input.KeyCode
 import javafx.scene.input.MouseButton
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Pane
@@ -23,7 +25,7 @@ constructor(project: File) : Window() {
 
     companion object {
         @JvmStatic
-        lateinit var file: File
+        lateinit var baseFolder: File
 
 //        @JvmStatic
 //        var editorStage = Stage()
@@ -32,12 +34,12 @@ constructor(project: File) : Window() {
     var editorStage = Stage()
 
     init {
-        file = if (project.isDirectory) project else project.parentFile
+        baseFolder = if (project.isDirectory) project else project.parentFile
         val loader = FXMLLoader(javaClass.getResource(LoadUtils.getLayout("editor.fxml")))
         loader.setController(EditorLayoutController())
         val root = loader.load<Parent>()
         editorStage.icons.add(LoadUtils.getDrawable("logo.png"))
-        editorStage.title = "${file.name} - Project Editor"
+        editorStage.title = "${baseFolder.name} - Project Editor"
         editorStage.scene = Scene(root, 900.0, 600.0)
 //        editorStage.isMaximized = true
 //        editorStage.show()
@@ -49,26 +51,27 @@ constructor(project: File) : Window() {
 
     inner class EditorLayoutController {
         @FXML
-        lateinit var filesList : ListView<String>
+        lateinit var filesList: ListView<String>
         @FXML
-        lateinit var homeButton : Button
+        lateinit var homeButton: Button
         @FXML
-        lateinit var upButton : Button
+        lateinit var upButton: Button
         @FXML
-        lateinit var editorArea : TextArea
+        lateinit var editorArea: TextArea
         @FXML
-        lateinit var upBar : HBox
+        lateinit var upBar: HBox
         @FXML
-        lateinit var recompile : MenuItem
+        lateinit var recompile: MenuItem
         @FXML
-        lateinit var home : MenuItem
+        lateinit var home: MenuItem
         @FXML
-        lateinit var settings : MenuItem
-        private var currentFolder = Editor.file
-        private var currentEditingFile : File? = null
+        lateinit var settings: MenuItem
+        private var currentFolder = baseFolder
+        private var currentEditingFile: File? = null
+        private var isFileChanged = false
 
         @Suppress("unused")
-        fun initialize(){
+        fun initialize() {
             settings.onAction = EventHandler {
                 Settings(editorStage).show()
             }
@@ -97,15 +100,20 @@ constructor(project: File) : Window() {
                     val pathChooser = DirectoryChooser()
                     val chosen = pathChooser.showDialog(dialog.owner)
                     folderPath.text = chosen.absolutePath
+                    folderPath.tooltip = Tooltip(folderPath.text)
                 }
                 framePathSelector.onAction = EventHandler {
                     val pathChooser = DirectoryChooser()
                     val chosen = pathChooser.showDialog(dialog.owner)
                     customFrameworkPath.text = chosen.absolutePath
+                    customFrameworkPath.tooltip = Tooltip(customFrameworkPath.text)
                 }
-                folderPath.text = file.parent
+
+                folderPath.text = baseFolder.parent
+                folderPath.tooltip = Tooltip(folderPath.text)
                 val fileName = cont.lookup("#fileName") as TextField
-                fileName.text = file.name
+                fileName.text = baseFolder.name
+                fileName.tooltip = Tooltip(fileName.text)
                 pane.content = cont
                 pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
                 dialog.title = "Recompile options"
@@ -117,7 +125,7 @@ constructor(project: File) : Window() {
                         ButtonType.CANCEL)
                 val selectedOptions = ArrayList<ApktoolCommand>()
                 dialog.setResultConverter {
-                    if (it == recompileButton){
+                    if (it == recompileButton) {
                         cont.goThrough(selectedOptions)
                         selectedOptions.add(ApktoolCommand(
                                 ApktoolCommand.General.OUTPUT, folderPath.text + "/" +
@@ -126,7 +134,7 @@ constructor(project: File) : Window() {
                             selectedOptions.add(ApktoolCommand(
                                     ApktoolCommand.General.FRAMEWORK_FOLDER_PATH,
                                     customFrameworkPath.text))
-                        for (cmd in selectedOptions){
+                        for (cmd in selectedOptions) {
                             System.out.println(cmd.tag)
                         }
 
@@ -134,7 +142,7 @@ constructor(project: File) : Window() {
                 }
                 dialog.showAndWait()
                 if (selectedOptions.isNotEmpty())
-                    ApkToolUtils.recompile(file, *selectedOptions.toTypedArray())
+                    ApkToolUtils.recompile(baseFolder, *selectedOptions.toTypedArray())
             }
             home.onAction = EventHandler {
                 editorStage.close()
@@ -142,10 +150,10 @@ constructor(project: File) : Window() {
             }
             updateDirContent(currentFolder)
             homeButton.onAction = EventHandler {
-                updateDirContent(Editor.file)
+                updateDirContent(baseFolder)
             }
             upButton.onAction = EventHandler {
-                if (currentFolder != Editor.file)
+                if (currentFolder != baseFolder)
                     updateDirContent(currentFolder.parentFile)
             }
             filesList.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
@@ -154,30 +162,65 @@ constructor(project: File) : Window() {
             filesList.onMouseClicked = EventHandler {
                 val newFile = File(currentFolder.absolutePath + "/" + filesList.selectionModel.selectedItem)
                 if (it.button === MouseButton.PRIMARY
-                        && it.clickCount == 2){
+                        && it.clickCount == 2) {
                     if (newFile.isDirectory) {
                         filesList.items.clear()
                         updateDirContent(newFile)
                     } else {
-                        if (TypeDetector.isTextFile(newFile.name)){
+                        if (TypeDetector.isTextFile(newFile.name)) {
                             currentEditingFile = newFile
+                            isFileChanged = true
                             editorArea.text = String(Files.readAllBytes(newFile.toPath()))
                         }
                     }
                 }
             }
-            editorArea.textProperty().addListener {
-                _, _, newValue ->
-                if (currentEditingFile != null)
+            filesList.onKeyPressed = EventHandler {
+                if (it.code == KeyCode.ENTER) {
+                    val newFile = File(currentFolder.absolutePath + "/" + filesList.selectionModel.selectedItem)
+                    if (newFile.isDirectory) {
+                        filesList.items.clear()
+                        updateDirContent(newFile)
+                    } else {
+                        if (TypeDetector.isTextFile(newFile.name)) {
+                            currentEditingFile = newFile
+                            isFileChanged = true
+                            editorArea.text = String(Files.readAllBytes(newFile.toPath()))
+                        }
+                    }
+                }
+                if (it.code == KeyCode.ESCAPE) {
+                    if (currentFolder != baseFolder)
+                        updateDirContent(currentFolder.parentFile)
+                }
+            }
+            editorArea.textProperty().addListener { _, oldValue, newValue ->
+                if (isFileChanged){
+                    isFileChanged = false
+                    return@addListener
+                }
+                if (currentEditingFile != null && oldValue.isNotEmpty()) {
+
+                    System.out.println("Old value:")
+                    System.out.println(oldValue)
+                    System.out.println("-----------------------")
+                    System.out.println("New value:")
+                    System.out.println(newValue)
+
                     Files.write(currentEditingFile?.toPath(), newValue.toByteArray())
+                }
             }
         }
 
-        private fun updateDirContent(file : File){
+        private fun updateDirContent(file: File) {
             filesList.items.clear()
-            for (f in file.listFiles())
+            for (f in file.listFiles().filter { item -> item.isDirectory && !item.isHidden })
+                filesList.items.add(f.name)
+            for (f in file.listFiles().filter { item -> item.isFile && !item.isHidden  })
                 filesList.items.add(f.name)
             currentFolder = file
+            filesList.selectionModel.select(0)
+            editorStage.title = "${currentFolder.absolutePath.removePrefix(baseFolder.parent + "\\")} - Project Editor"
         }
 
     }
