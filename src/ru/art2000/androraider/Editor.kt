@@ -141,8 +141,16 @@ constructor(project: File) : Window() {
                     }
                 }
                 dialog.showAndWait()
-                if (selectedOptions.isNotEmpty())
-                    ApkToolUtils.recompile(baseFolder, *selectedOptions.toTypedArray())
+                if (selectedOptions.isNotEmpty()) {
+                    val apk = ApkToolUtils.recompile(baseFolder, *selectedOptions.toTypedArray())
+                    if (apk == null) {
+                        val errorDialog = Dialog<Unit>()
+                        errorDialog.initOwner(editorStage)
+                        errorDialog.contentText = "An error occurred while decompiling"
+                        errorDialog.dialogPane.buttonTypes.add(ButtonType.OK)
+                        errorDialog.show()
+                    }
+                }
             }
             home.onAction = EventHandler {
                 editorStage.close()

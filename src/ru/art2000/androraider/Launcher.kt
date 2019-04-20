@@ -192,13 +192,13 @@ class Launcher : Application() {
                     if (selectedOptions.isEmpty())
                         return@setOnAction
                     val folder = ApkToolUtils.decompile(app, *selectedOptions.toTypedArray())
-                    if (folder == null){
+                    if (folder == null) {
                         val errorDialog = Dialog<Unit>()
                         errorDialog.initOwner(stage)
                         errorDialog.contentText = "An error occurred while decompiling"
                         errorDialog.dialogPane.buttonTypes.add(ButtonType.OK)
                         errorDialog.show()
-                    } else{
+                    } else {
                         addToRecents(folder.absolutePath)
                         stage.hide()
                     }

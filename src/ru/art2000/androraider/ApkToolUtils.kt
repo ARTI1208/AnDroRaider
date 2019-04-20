@@ -13,11 +13,6 @@ import java.io.File
 import java.util.*
 import kotlin.collections.ArrayList
 
-fun <E> ArrayList<E>.addAndReturn(el: E): ArrayList<E> {
-    this.add(el)
-    return this
-}
-
 fun <E> ArrayList<E>.addAll(vararg els: E) {
     els.forEach {
         this.add(it)
@@ -30,16 +25,18 @@ class ApkToolUtils {
 
         private var path = Settings.getString(Settings.APKTOOL_PATH)
 
-        private var apktool: File? = if (path == null) null else File(path)
+        private val apktool: File?
+            get() {
+                path = Settings.getString(Settings.APKTOOL_PATH)
+                return if (path == null || !File(path).exists()) null else File(path)
+            }
 
         @JvmStatic
         fun decompile(apk: File, vararg options: ApktoolCommand): File? {
-            val path = Settings.getString(Settings.APKTOOL_PATH)
-            if (path == null || !File(path).exists()) {
+            if (apktool == null) {
                 System.out.println("Apktool not found! Checkout its path in settings")
                 return null
             }
-            apktool = File(path)
             val wind = Stage()
             val message = Text("Decompiling ${apk.name}...")
             val box = VBox()
@@ -79,8 +76,7 @@ class ApkToolUtils {
 
         @JvmStatic
         fun recompile(projectFolder: File, vararg options: ApktoolCommand): File? {
-            apktool = File(Settings.getString(Settings.APKTOOL_PATH))
-            if (!apktool!!.exists()) {
+            if (apktool == null) {
                 System.out.println("Apktool not found! Checkout its path in settings")
                 return null
             }

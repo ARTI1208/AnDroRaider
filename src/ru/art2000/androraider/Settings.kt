@@ -14,7 +14,6 @@ import javafx.scene.control.ToggleGroup
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import javafx.stage.Window
-import java.lang.StringBuilder
 import java.util.prefs.Preferences
 
 class Settings(owner: Window) : Window() {
