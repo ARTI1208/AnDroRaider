@@ -9,7 +9,6 @@ fun Pane.goThrough(list: ArrayList<ApktoolCommand>) {
             ch.goThrough(list)
         } else if (ch is CheckBox && ch.id.startsWith('-') && ch.isSelected) {
             list.add(ApktoolCommand(ch.id))
-            System.out.println("Found")
         }
     }
 }

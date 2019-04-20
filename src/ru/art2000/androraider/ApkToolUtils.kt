@@ -64,14 +64,13 @@ class ApkToolUtils {
                 gobbler.start()
                 process.waitFor()
                 Platform.runLater {
-                    System.out.println("ENded")
+                    System.out.println("Decompilation ended")
                     wind.hide()
                     wind.close()
                     Editor(appDecompileFolder).show()
                 }
             }
             t.start()
-            System.out.println("Decompillesd")
             return appDecompileFolder
         }
 
@@ -105,7 +104,6 @@ class ApkToolUtils {
                 window.hide()
             }
             dialog.show()
-            System.out.println("Start!")
             val myThread = Thread {
                 builder.start().waitFor()
                 Platform.runLater {

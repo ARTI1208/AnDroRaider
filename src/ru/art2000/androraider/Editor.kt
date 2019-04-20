@@ -138,7 +138,6 @@ constructor(project: File) : Window() {
                         for (cmd in selectedOptions) {
                             System.out.println(cmd.tag)
                         }
-
                     }
                 }
                 dialog.showAndWait()

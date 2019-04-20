@@ -44,26 +44,14 @@ class Launcher : Application() {
                 Settings.putStringArray(RECENTS_TAG, items)
             } else {
                 items.add(0, path)
-                System.out.println("Addingg")
-                items.forEach {
-                    System.out.println(it)
-                }
                 Settings.putStringArray(RECENTS_TAG, items)
             }
         }
-
-//        fun clearRecents(){
-//            items.clear()
-//            saveStringArray(items)
-//        }
 
         fun removeFromRecents(path: String) {
             if (items.contains(File(path).absolutePath)) {
                 items.remove(path)
                 Settings.putStringArray(RECENTS_TAG, items)
-            } else {
-                for (s in items)
-                    System.out.println(s)
             }
         }
 
@@ -81,7 +69,6 @@ class Launcher : Application() {
         loader.setController(LaunchLayoutController())
         val root = loader.load<Parent>()
         primaryStage.title = APP_NAME
-        System.out.println(Class.forName("javafx.stage.Window").isInstance("ru.art2000.androraider.Editor"))
         primaryStage.icons.add(LoadUtils.getDrawable("logo.png"))
         primaryStage.scene = Scene(root, 900.0, 600.0)
         primaryStage.isResizable = false
@@ -128,14 +115,10 @@ class Launcher : Application() {
             newProjectButton.setOnAction {
                 val chooser = FileChooser()
                 chooser.extensionFilters.add(FileChooser.ExtensionFilter("Android app package", "*.apk"))
-
                 if (recentsListView.items.size != 0) {
                     val parent = recentsListView.items[0].appFile.parentFile
-                    if (parent.isDirectory) {
+                    if (parent.isDirectory)
                         chooser.initialDirectory = parent
-                        System.out.println("dir ${parent.absolutePath}")
-                    } else
-                        System.out.println("NOT dir ${parent.absolutePath}")
                 }
                 val app = chooser.showOpenDialog(root.scene.window) ?: return@setOnAction
                 val appPath = app.absolutePath
@@ -237,7 +220,6 @@ class Launcher : Application() {
             items = Settings.getStringArray(RECENTS_TAG, items)
             items.removeIf { s -> s.isBlank() }
             for (s in items) {
-                System.out.println(s)
                 recentsListView.items.add(RecentProject(File(s)))
             }
             recentsListView.selectionModel.select(0)
