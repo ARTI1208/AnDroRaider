@@ -28,22 +28,25 @@ class ApkToolUtils {
 
     companion object {
 
-        private var apktool: File = File(Settings.getString("apktool_path"))
+        private var path = Settings.getString(Settings.APKTOOL_PATH)
+
+        private var apktool: File? = if (path == null) null else File(path)
 
         @JvmStatic
         fun decompile(apk: File, vararg options: ApktoolCommand): File? {
-            apktool = File(Settings.getString("apktool_path"))
-            if (!apktool.exists()) {
+            val path = Settings.getString(Settings.APKTOOL_PATH)
+            if (path == null || !File(path).exists()) {
                 System.out.println("Apktool not found! Checkout its path in settings")
                 return null
             }
+            apktool = File(path)
             val wind = Stage()
             val message = Text("Decompiling ${apk.name}...")
             val box = VBox()
             box.children.add(message)
             wind.scene = Scene(box, 900.0, 600.0)
             var appDecompileFolder: File? = null
-            val cmds = ArrayList<String>(Arrays.asList("java", "-jar", apktool.absolutePath,
+            val cmds = ArrayList<String>(Arrays.asList("java", "-jar", apktool!!.absolutePath,
                     ApktoolCommand.Decompiler.TAG))
             for (apkCommand in options) {
                 cmds.add(apkCommand.tag)
@@ -76,8 +79,8 @@ class ApkToolUtils {
 
         @JvmStatic
         fun recompile(projectFolder: File, vararg options: ApktoolCommand): File? {
-            apktool = File(Settings.getString("apktool_path"))
-            if (!apktool.exists()) {
+            apktool = File(Settings.getString(Settings.APKTOOL_PATH))
+            if (!apktool!!.exists()) {
                 System.out.println("Apktool not found! Checkout its path in settings")
                 return null
             }
@@ -88,7 +91,7 @@ class ApkToolUtils {
             pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
             dialog.dialogPane = pane
             var apk: File? = null
-            val cmds = ArrayList<String>(Arrays.asList("java", "-jar", apktool.absolutePath,
+            val cmds = ArrayList<String>(Arrays.asList("java", "-jar", apktool!!.absolutePath,
                     ApktoolCommand.Compiler.TAG))
             for (apkCommand in options) {
                 cmds.add(apkCommand.tag)
@@ -124,7 +127,7 @@ class ApkToolUtils {
         fun installFramework(framework: File, path: String?, tag: String?) {
             val builder = ProcessBuilder()
             val commands = ArrayList<String>()
-            commands.addAll(Arrays.asList("java", "-jar", apktool.absolutePath,
+            commands.addAll(Arrays.asList("java", "-jar", apktool!!.absolutePath,
                     ApktoolCommand.General.INSTALL_FRAME_TAG))
             if (path != null)
                 commands.addAll(ApktoolCommand.General.FRAMEWORK_FOLDER_PATH, path)

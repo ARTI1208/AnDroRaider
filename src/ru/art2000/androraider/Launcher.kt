@@ -192,8 +192,16 @@ class Launcher : Application() {
                     if (selectedOptions.isEmpty())
                         return@setOnAction
                     val folder = ApkToolUtils.decompile(app, *selectedOptions.toTypedArray())
-                    addToRecents(folder!!.absolutePath)
-                    stage.hide()
+                    if (folder == null){
+                        val errorDialog = Dialog<Unit>()
+                        errorDialog.initOwner(stage)
+                        errorDialog.contentText = "An error occurred while decompiling"
+                        errorDialog.dialogPane.buttonTypes.add(ButtonType.OK)
+                        errorDialog.show()
+                    } else{
+                        addToRecents(folder.absolutePath)
+                        stage.hide()
+                    }
                 }
             }
             openProjectButton.text = "Open project"

@@ -25,6 +25,9 @@ class Settings(owner: Window) : Window() {
         private val prefs = Preferences.userNodeForPackage(this::class.java)
 
         @JvmStatic
+        val APKTOOL_PATH = "apktool_path"
+
+        @JvmStatic
         fun getString(key: String, default: String? = null): String? {
             return prefs.get(key, default)
         }
@@ -140,6 +143,7 @@ class Settings(owner: Window) : Window() {
 
             clearDataButton.onAction = EventHandler {
                 prefs.remove(Launcher.RECENTS_TAG)
+                prefs.remove(APKTOOL_PATH)
             }
 
         }
