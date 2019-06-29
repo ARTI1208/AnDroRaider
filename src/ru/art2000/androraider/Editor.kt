@@ -45,7 +45,7 @@ constructor(project: File) : Window() {
 
     inner class EditorLayoutController {
         @FXML
-        lateinit var filesList: ListView<String>
+        lateinit var filesList: ListView<File>
         @FXML
         lateinit var homeButton: Button
         @FXML
@@ -136,7 +136,7 @@ constructor(project: File) : Window() {
                                     ApktoolCommand.General.FRAMEWORK_FOLDER_PATH,
                                     customFrameworkPath.text))
                         for (cmd in selectedOptions) {
-                            System.out.println(cmd.tag)
+                            println(cmd.tag)
                         }
                     }
                 }
@@ -167,8 +167,9 @@ constructor(project: File) : Window() {
             filesList.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
             filesList.prefWidthProperty().bind(upBar.widthProperty().multiply(1.0))
             editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(upBar.widthProperty()))
+            filesList.setCellFactory { FileManagerListItem() }
             filesList.onMouseClicked = EventHandler {
-                val newFile = File(currentFolder.absolutePath + "/" + filesList.selectionModel.selectedItem)
+                val newFile = filesList.selectionModel.selectedItem
                 if (it.button === MouseButton.PRIMARY
                         && it.clickCount == 2) {
                     if (newFile.isDirectory) {
@@ -184,7 +185,7 @@ constructor(project: File) : Window() {
             }
             filesList.onKeyPressed = EventHandler {
                 if (it.code == KeyCode.ENTER) {
-                    val newFile = File(currentFolder.absolutePath + "/" + filesList.selectionModel.selectedItem)
+                    val newFile = filesList.selectionModel.selectedItem
                     if (newFile.isDirectory) {
                         filesList.items.clear()
                         updateDirContent(newFile)
@@ -206,17 +207,22 @@ constructor(project: File) : Window() {
                     return@addListener
                 }
                 if (currentEditingFile != null && oldValue.isNotEmpty()) {
-                    Files.write(currentEditingFile?.toPath(), newValue.toByteArray())
+                    Files.write(currentEditingFile!!.toPath(), newValue.toByteArray())
                 }
             }
         }
 
         private fun updateDirContent(file: File) {
             filesList.items.clear()
-            for (f in file.listFiles().filter { item -> item.isDirectory && !item.isHidden })
-                filesList.items.add(f.name)
-            for (f in file.listFiles().filter { item -> item.isFile && !item.isHidden })
-                filesList.items.add(f.name)
+            val files = file.listFiles()
+            if (files == null){
+                println("Error loading files list")
+                return
+            }
+            for (f in files.filter { item -> item.isDirectory && !item.isHidden })
+                filesList.items.add(f)
+            for (f in files.filter { item -> item.isFile && !item.isHidden })
+                filesList.items.add(f)
             currentFolder = file
             filesList.selectionModel.select(0)
             editorStage.title = "${currentFolder.absolutePath.removePrefix(baseFolder.parent + "\\")} - Project Editor"

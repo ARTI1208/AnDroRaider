@@ -112,7 +112,7 @@ class Launcher : Application() {
             settingsButton.onAction = EventHandler {
                 Settings(stage).show()
             }
-            newProjectButton.setOnAction {
+            newProjectButton.onAction = EventHandler {
                 val chooser = FileChooser()
                 chooser.extensionFilters.add(FileChooser.ExtensionFilter("Android app package", "*.apk"))
                 if (recentsListView.items.size != 0) {
@@ -120,7 +120,7 @@ class Launcher : Application() {
                     if (parent.isDirectory)
                         chooser.initialDirectory = parent
                 }
-                val app = chooser.showOpenDialog(root.scene.window) ?: return@setOnAction
+                val app = chooser.showOpenDialog(root.scene.window) ?: return@EventHandler
                 val appPath = app.absolutePath
                 if (items == null)
                     items = FXCollections.observableArrayList<String>()
@@ -184,13 +184,13 @@ class Launcher : Application() {
                                         ApktoolCommand.General.FRAMEWORK_FOLDER_PATH,
                                         customFrameworkPath.text))
                             for (cmd in selectedOptions) {
-                                System.out.println(cmd.tag)
+                                println(cmd.tag)
                             }
                         }
                     }
                     dialog.showAndWait()
                     if (selectedOptions.isEmpty())
-                        return@setOnAction
+                        return@EventHandler
                     val folder = ApkToolUtils.decompile(app, *selectedOptions.toTypedArray())
                     if (folder == null) {
                         val errorDialog = Dialog<Unit>()
@@ -205,7 +205,7 @@ class Launcher : Application() {
                 }
             }
             openProjectButton.text = "Open project"
-            openProjectButton.setOnAction {
+            openProjectButton.onAction = EventHandler {
                 val project = openProject()
                 if (project != null) {
                     addToRecents(project.absolutePath)

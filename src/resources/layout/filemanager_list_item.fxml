@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+
+<?import javafx.scene.text.Text?>
+<?import javafx.scene.image.ImageView?>
+<AnchorPane fx:id="pane" id="pane" xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml">
+
+    <HBox alignment="CENTER_LEFT" spacing="10">
+        <ImageView fx:id="fileIcon" id="fileIcon" fitHeight="20" fitWidth="20"/>
+        <Text fx:id="fileName" id="fileName" text="FileName" />
+    </HBox>
+</AnchorPane>
