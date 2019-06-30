@@ -15,9 +15,21 @@ import javafx.scene.layout.VBox
 import javafx.stage.DirectoryChooser
 import javafx.stage.Stage
 import javafx.stage.Window
+import org.fxmisc.richtext.CodeArea
+import org.fxmisc.richtext.LineNumberFactory
+import org.fxmisc.richtext.model.StyleSpans
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
+import java.time.Duration
+import java.util.regex.Pattern
+import java.time.Duration.ofMillis
+import java.awt.SystemColor.text
+import java.util.Collections.emptyList
+import org.fxmisc.richtext.model.StyleSpansBuilder
+import java.util.*
+import kotlin.collections.ArrayList
+
 
 class Editor @Throws(IOException::class)
 constructor(project: File) : Window() {
@@ -37,6 +49,7 @@ constructor(project: File) : Window() {
         editorStage.icons.add(LoadUtils.getDrawable("logo.png"))
         editorStage.title = "${baseFolder.name} - Project Editor"
         editorStage.scene = Scene(root, 900.0, 600.0)
+        editorStage.scene.stylesheets.add(javaClass.getResource(LoadUtils.getStyle("code.css")).toExternalForm())
     }
 
     public override fun show() {
@@ -51,7 +64,7 @@ constructor(project: File) : Window() {
         @FXML
         lateinit var upButton: Button
         @FXML
-        lateinit var editorArea: TextArea
+        lateinit var editorArea: CodeArea
         @FXML
         lateinit var upBar: HBox
         @FXML
@@ -60,6 +73,9 @@ constructor(project: File) : Window() {
         lateinit var home: MenuItem
         @FXML
         lateinit var settings: MenuItem
+
+        @FXML
+        lateinit var main: HBox
 
         private var currentFolder = baseFolder
 
@@ -166,7 +182,16 @@ constructor(project: File) : Window() {
             }
             filesList.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
             filesList.prefWidthProperty().bind(upBar.widthProperty().multiply(1.0))
+
+            editorArea
+                    .multiPlainChanges()
+                    .successionEnds(ofMillis(100))
+                    .subscribe { _ -> editorArea.setStyleSpans(0, updateHighlighting() )}
+
+
             editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(upBar.widthProperty()))
+            editorArea.paragraphGraphicFactory = LineNumberFactory.get(editorArea)
+
             filesList.setCellFactory { FileManagerListItem() }
             filesList.onMouseClicked = EventHandler {
                 val newFile = filesList.selectionModel.selectedItem
@@ -178,7 +203,7 @@ constructor(project: File) : Window() {
                     } else {
                         if (TypeDetector.isTextFile(newFile.name)) {
                             currentEditingFile = newFile
-                            editorArea.text = String(Files.readAllBytes(newFile.toPath()))
+                            editorArea.replaceText(String(Files.readAllBytes(newFile.toPath())))
                         }
                     }
                 }
@@ -192,7 +217,7 @@ constructor(project: File) : Window() {
                     } else {
                         if (TypeDetector.isTextFile(newFile.name)) {
                             currentEditingFile = newFile
-                            editorArea.text = String(Files.readAllBytes(newFile.toPath()))
+                            editorArea.replaceText(String(Files.readAllBytes(newFile.toPath())))
                         }
                     }
                 }
@@ -202,6 +227,7 @@ constructor(project: File) : Window() {
                 }
             }
             editorArea.textProperty().addListener { _, oldValue, newValue ->
+
                 if (isFileChanged) {
                     isFileChanged = false
                     return@addListener
@@ -210,6 +236,47 @@ constructor(project: File) : Window() {
                     Files.write(currentEditingFile!!.toPath(), newValue.toByteArray())
                 }
             }
+        }
+
+        private fun updateHighlighting() : StyleSpans<Collection<String>> {
+
+            editorArea.clearStyle(0, editorArea.text.length)
+
+            val pattern = Pattern.compile("\\b(?<local>v\\d+)\\b|\\b(?<param>p\\d+)\\b")
+            val matcher = pattern.matcher(editorArea.text)
+            var lastKwEnd = 0
+            val spansBuilder = StyleSpansBuilder<Collection<String>>()
+            while (matcher.find()) {
+                val styleClass = (when {
+                    matcher.group("local") != null -> "local"
+                    matcher.group("param") != null -> "param"
+                    matcher.group("BRACE") != null -> "brace"
+                    matcher.group("BRACKET") != null -> "bracket"
+                    matcher.group("SEMICOLON") != null -> "semicolon"
+                    matcher.group("STRING") != null -> "string"
+                    matcher.group("COMMENT") != null -> "comment"
+                    else -> null
+                })!! /* never happens */
+                spansBuilder.add(emptyList(), matcher.start() - lastKwEnd)
+                spansBuilder.add(Collections.singleton(styleClass), matcher.end() - matcher.start())
+                lastKwEnd = matcher.end()
+            }
+            spansBuilder.add(emptyList(), editorArea.text.length - lastKwEnd)
+
+            return spansBuilder.create()
+
+//            var pattern = Pattern.compile("v\\d+")
+//            var matcher = pattern.matcher(newValue)
+//
+//            while (matcher.find()) {
+//                editorArea.setStyleClass(matcher.start(), matcher.end(), "local")
+//            }
+//
+//            pattern = Pattern.compile("p\\d+")
+//            matcher = pattern.matcher(newValue)
+//            while (matcher.find()) {
+//                editorArea.setStyleClass(matcher.start(), matcher.end(), "param")
+//            }
         }
 
         private fun updateDirContent(file: File) {

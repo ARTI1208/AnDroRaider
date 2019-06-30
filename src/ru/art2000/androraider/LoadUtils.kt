@@ -13,6 +13,9 @@ class LoadUtils {
         private val LAYOUT_PATH = "/resources/layout/"
 
         @JvmStatic
+        private val STYLE_PATH = "/resources/style/"
+
+        @JvmStatic
         fun getDrawable(_name: String): Image {
             return Image(DRAWABLE_PATH + _name)
         }
@@ -22,7 +25,10 @@ class LoadUtils {
             return LAYOUT_PATH + _name
         }
 
+        @JvmStatic
+        fun getStyle(_name: String): String {
+            return STYLE_PATH + _name
+        }
     }
-
 
 }

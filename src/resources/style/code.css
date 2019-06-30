@@ -1,0 +1,9 @@
+.local{
+    -fx-font-weight: bold;
+    -fx-fill: orange;
+}
+
+.param{
+    -fx-font-weight: bold;
+    -fx-fill: darkblue;
+}
