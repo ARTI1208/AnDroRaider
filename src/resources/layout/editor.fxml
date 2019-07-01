@@ -33,6 +33,5 @@
                 <CodeArea fx:id="editorArea" />
             </content>
         </VirtualizedScrollPane>
-
     </HBox>
 </VBox>

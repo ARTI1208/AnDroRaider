@@ -18,16 +18,14 @@ import javafx.stage.Window
 import org.fxmisc.richtext.CodeArea
 import org.fxmisc.richtext.LineNumberFactory
 import org.fxmisc.richtext.model.StyleSpans
+import org.fxmisc.richtext.model.StyleSpansBuilder
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
-import java.time.Duration
-import java.util.regex.Pattern
 import java.time.Duration.ofMillis
-import java.awt.SystemColor.text
-import java.util.Collections.emptyList
-import org.fxmisc.richtext.model.StyleSpansBuilder
 import java.util.*
+import java.util.Collections.emptyList
+import java.util.regex.Pattern
 import kotlin.collections.ArrayList
 
 
@@ -186,8 +184,11 @@ constructor(project: File) : Window() {
             editorArea
                     .multiPlainChanges()
                     .successionEnds(ofMillis(100))
-                    .subscribe { _ -> editorArea.setStyleSpans(0, updateHighlighting() )}
-
+                    .subscribe { _ ->
+                        val spans = updateHighlighting()
+                        if (spans.spanCount > 0)
+                            editorArea.setStyleSpans(0, spans)
+                    }
 
             editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(upBar.widthProperty()))
             editorArea.paragraphGraphicFactory = LineNumberFactory.get(editorArea)
@@ -238,51 +239,44 @@ constructor(project: File) : Window() {
             }
         }
 
-        private fun updateHighlighting() : StyleSpans<Collection<String>> {
-
+        private fun updateHighlighting(): StyleSpans<Collection<String>> {
             editorArea.clearStyle(0, editorArea.text.length)
+            val spansBuilder = StyleSpansBuilder<Collection<String>>()
+            return when (currentEditingFile?.extension) {
+                "smali" -> getSmaliHighlighting(spansBuilder)
+                else -> spansBuilder.add(emptyList(), 0)
+            }.create()
+        }
 
-            val pattern = Pattern.compile("\\b(?<local>v\\d+)\\b|\\b(?<param>p\\d+)\\b")
+        private fun getSmaliHighlighting(builder: StyleSpansBuilder<Collection<String>>): StyleSpansBuilder<Collection<String>> {
+            val pattern = Pattern.compile(TypeDetector.getPatternForExtension(currentEditingFile?.extension), Pattern.MULTILINE)
             val matcher = pattern.matcher(editorArea.text)
             var lastKwEnd = 0
-            val spansBuilder = StyleSpansBuilder<Collection<String>>()
+
             while (matcher.find()) {
                 val styleClass = (when {
-                    matcher.group("local") != null -> "local"
-                    matcher.group("param") != null -> "param"
-                    matcher.group("BRACE") != null -> "brace"
-                    matcher.group("BRACKET") != null -> "bracket"
-                    matcher.group("SEMICOLON") != null -> "semicolon"
-                    matcher.group("STRING") != null -> "string"
+                    matcher.group("LOCAL") != null -> "local"
+                    matcher.group("PARAM") != null -> "param"
+//                    matcher.group("BRACE") != null -> "brace"
                     matcher.group("COMMENT") != null -> "comment"
+                    matcher.group("BRACKET") != null -> "bracket"
+//                    matcher.group("SEMICOLON") != null -> "semicolon"
+                    matcher.group("STRING") != null -> "string"
+
                     else -> null
                 })!! /* never happens */
-                spansBuilder.add(emptyList(), matcher.start() - lastKwEnd)
-                spansBuilder.add(Collections.singleton(styleClass), matcher.end() - matcher.start())
+                builder.add(emptyList(), matcher.start() - lastKwEnd)
+                builder.add(Collections.singleton(styleClass), matcher.end() - matcher.start())
                 lastKwEnd = matcher.end()
             }
-            spansBuilder.add(emptyList(), editorArea.text.length - lastKwEnd)
-
-            return spansBuilder.create()
-
-//            var pattern = Pattern.compile("v\\d+")
-//            var matcher = pattern.matcher(newValue)
-//
-//            while (matcher.find()) {
-//                editorArea.setStyleClass(matcher.start(), matcher.end(), "local")
-//            }
-//
-//            pattern = Pattern.compile("p\\d+")
-//            matcher = pattern.matcher(newValue)
-//            while (matcher.find()) {
-//                editorArea.setStyleClass(matcher.start(), matcher.end(), "param")
-//            }
+            builder.add(emptyList(), editorArea.text.length - lastKwEnd)
+            return builder
         }
 
         private fun updateDirContent(file: File) {
             filesList.items.clear()
             val files = file.listFiles()
-            if (files == null){
+            if (files == null) {
                 println("Error loading files list")
                 return
             }

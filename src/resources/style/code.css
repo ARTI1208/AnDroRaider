@@ -7,3 +7,17 @@
     -fx-font-weight: bold;
     -fx-fill: darkblue;
 }
+
+.bracket{
+    -fx-fill: blueviolet;
+}
+
+.comment{
+    -fx-fill: gray;
+    -fx-font-style: italic;
+}
+
+.string{
+    -fx-font-weight: bold;
+    -fx-fill: green;
+}
