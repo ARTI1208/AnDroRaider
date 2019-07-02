@@ -15,6 +15,9 @@
             <MenuItem fx:id="settings" text="Settings"/>
             <MenuItem fx:id="recompile" text="Recompile"/>
         </Menu>
+        <Menu fx:id="searchMenu" text="Search">
+            <CustomMenuItem fx:id="search" />
+        </Menu>
     </MenuBar>
     <HBox fx:id="main">
         <VBox>

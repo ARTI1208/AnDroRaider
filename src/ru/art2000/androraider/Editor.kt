@@ -71,9 +71,10 @@ constructor(project: File) : Window() {
         lateinit var home: MenuItem
         @FXML
         lateinit var settings: MenuItem
-
         @FXML
-        lateinit var main: HBox
+        lateinit var searchMenu: Menu
+        @FXML
+        lateinit var search: CustomMenuItem
 
         private var currentFolder = baseFolder
 
@@ -87,8 +88,28 @@ constructor(project: File) : Window() {
 
         private var isFileChanged = false
 
+        private var currentSearch: String? = null
+
         @Suppress("unused")
         fun initialize() {
+
+            val searchField = TextField()
+            searchField.textProperty().addListener { _, _, now ->
+                currentSearch = now
+                editorArea.setStyleSpans(0, updateHighlighting(currentSearch))
+            }
+            search.isHideOnClick = false
+            search.content = searchField
+            searchMenu.onShown = EventHandler {
+                search.content.requestFocus()
+            }
+            editorArea.onKeyPressed = EventHandler {
+                if (it.isControlDown && it.code == KeyCode.F) {
+                    searchMenu.show()
+                    search.content.requestFocus()
+                }
+            }
+
             settings.onAction = EventHandler {
                 Settings(editorStage).show()
             }
@@ -187,10 +208,9 @@ constructor(project: File) : Window() {
             editorArea
                     .multiPlainChanges()
                     .successionEnds(ofMillis(100))
-                    .subscribe { _ ->
-                        val spans = updateHighlighting()
-                        if (spans.spanCount > 0)
-                            editorArea.setStyleSpans(0, spans)
+                    .subscribe {
+                        val spans = updateHighlighting(currentSearch)
+                        editorArea.setStyleSpans(0, spans)
                     }
 
             editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(upBar.widthProperty()))
@@ -242,32 +262,57 @@ constructor(project: File) : Window() {
             }
         }
 
-        private fun updateHighlighting(): StyleSpans<Collection<String>> {
+        private fun updateHighlighting(searchString: String?): StyleSpans<Collection<String>> {
             editorArea.clearStyle(0, editorArea.text.length)
-            val spansBuilder = StyleSpansBuilder<Collection<String>>()
+            var p = TypeDetector.getPatternForExtension(currentEditingFile?.extension)
+            if (searchString != null && searchString.isNotEmpty()) {
+                p += if (p.isNotEmpty()) "|" else ""
+                p += "(?<SEARCH>$searchString)"
+            }
+            val pattern = Pattern.compile(p, Pattern.MULTILINE)
+            println(pattern.pattern())
             return when (currentEditingFile?.extension) {
-                "smali" -> getSmaliHighlighting(spansBuilder)
-                else -> spansBuilder.add(emptyList(), 0)
+                "smali" -> getSmaliHighlighting(pattern)
+                else -> getSimpleHighlighting(pattern)
             }.create()
         }
 
-        private fun getSmaliHighlighting(builder: StyleSpansBuilder<Collection<String>>): StyleSpansBuilder<Collection<String>> {
-            val pattern = Pattern.compile(TypeDetector.getPatternForExtension(currentEditingFile?.extension), Pattern.MULTILINE)
+        private fun getSimpleHighlighting(pattern: Pattern): StyleSpansBuilder<Collection<String>> {
+            val builder = StyleSpansBuilder<Collection<String>>()
             val matcher = pattern.matcher(editorArea.text)
             var lastKwEnd = 0
-            println(pattern.pattern())
+            if (pattern.pattern().isNotEmpty()) {
+                while (matcher.find()) {
+                    val styleClass = (when {
+                        matcher.contains("SEARCH") -> "search"
+                        else -> return builder
+                    })
+                    builder.add(emptyList(), matcher.start() - lastKwEnd)
+                    builder.add(Collections.singleton(styleClass), matcher.end() - matcher.start())
+                    lastKwEnd = matcher.end()
+                }
+            }
+            builder.add(emptyList(), editorArea.text.length - lastKwEnd)
+            return builder
+        }
+
+        private fun getSmaliHighlighting(pattern: Pattern): StyleSpansBuilder<Collection<String>> {
+            val builder = StyleSpansBuilder<Collection<String>>()
+            val matcher = pattern.matcher(editorArea.text)
+            var lastKwEnd = 0
             while (matcher.find()) {
                 val styleClass = (when {
-                    matcher.group("LOCAL") != null -> "local"
-                    matcher.group("PARAM") != null -> "param"
-                    matcher.group("CALL") != null -> "call"
-                    matcher.group("KEYWORD") != null -> "keyword"
-                    matcher.group("COMMENT") != null -> "comment"
-                    matcher.group("BRACKET") != null -> "bracket"
-                    matcher.group("STRING") != null -> "string"
-
-                    else -> null
-                })!! /* never happens */
+                    matcher.contains("LOCAL") -> "local"
+                    matcher.contains("PARAM") -> "param"
+                    matcher.contains("CALL") -> "call"
+                    matcher.contains("NUMBER") -> "number"
+                    matcher.contains("KEYWORD") -> "keyword"
+                    matcher.contains("COMMENT") -> "comment"
+                    matcher.contains("BRACKET") -> "bracket"
+                    matcher.contains("STRING") -> "string"
+                    matcher.contains("SEARCH") -> "search"
+                    else -> return builder
+                })
                 builder.add(emptyList(), matcher.start() - lastKwEnd)
                 builder.add(Collections.singleton(styleClass), matcher.end() - matcher.start())
                 lastKwEnd = matcher.end()

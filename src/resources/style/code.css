@@ -5,6 +5,10 @@
 
 .param{
     -fx-font-weight: bold;
+    -fx-fill: darkcyan;
+}
+
+.number{
     -fx-fill: dodgerblue;
 }
 
@@ -30,4 +34,8 @@
 .call{
     -fx-font-weight: bold;
     -fx-fill: brown;
+}
+
+.search{
+    -rtfx-background-color: yellow;
 }

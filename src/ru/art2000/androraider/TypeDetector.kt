@@ -38,8 +38,9 @@ class TypeDetector {
                 "\\b(?<LOCAL>v\\d+)\\b|" +
                         "\\b(?<PARAM>p\\d+)\\b|" +
                         "(?<BRACKET>[()])|" +
+                        "\\b(?<NUMBER>0x[\\da-fA-F]+)\\b|" +
                         "(?<COMMENT>#[\\S \\t]*\$)|" +
-                        "(?<STRING>(\"[^\"]*\")|const-string)|" +
+                        "(?<STRING>(\"[^\"]*\")|const-string(/jumbo)?)|" +
                         "(?<CALL>(" + SMALI_METHOD_CALL.joinToString("|") { "\\b$it\\b(/range)?" } + "|" +
                         SMALI_CALL_CHARS.joinToString("|")+"))|" +
                         "(?<KEYWORD>(" + SMALI_STARTING_KEYWORDS.joinToString("|") { "^[\\s]*\\.$it" } + "|" +

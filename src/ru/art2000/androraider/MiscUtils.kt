@@ -2,6 +2,7 @@ package ru.art2000.androraider
 
 import javafx.scene.control.CheckBox
 import javafx.scene.layout.Pane
+import java.util.regex.Matcher
 
 fun Pane.goThrough(list: ArrayList<ApktoolCommand>) {
     for (ch in this.childrenUnmodifiable) {
@@ -11,4 +12,8 @@ fun Pane.goThrough(list: ArrayList<ApktoolCommand>) {
             list.add(ApktoolCommand(ch.id))
         }
     }
+}
+
+fun Matcher.contains(group: String): Boolean {
+    return pattern().pattern().contains(group) && group(group) != null
 }
