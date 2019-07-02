@@ -79,6 +79,8 @@ constructor(project: File) : Window() {
 
         private var currentEditingFile: File? = null
             set(value) {
+                if (value != null)
+                    editorStage.title = "${value.absolutePath.removePrefix(baseFolder.parent + "\\")} - Project Editor"
                 isFileChanged = true
                 field = value
             }
@@ -90,6 +92,7 @@ constructor(project: File) : Window() {
             settings.onAction = EventHandler {
                 Settings(editorStage).show()
             }
+            editorStage.title = "${baseFolder.name} - Project Editor"
             recompile.onAction = EventHandler {
                 val dialog = Dialog<Unit>()
                 val pane = DialogPane()
@@ -252,15 +255,15 @@ constructor(project: File) : Window() {
             val pattern = Pattern.compile(TypeDetector.getPatternForExtension(currentEditingFile?.extension), Pattern.MULTILINE)
             val matcher = pattern.matcher(editorArea.text)
             var lastKwEnd = 0
-
+            println(pattern.pattern())
             while (matcher.find()) {
                 val styleClass = (when {
                     matcher.group("LOCAL") != null -> "local"
                     matcher.group("PARAM") != null -> "param"
-//                    matcher.group("BRACE") != null -> "brace"
+                    matcher.group("CALL") != null -> "call"
+                    matcher.group("KEYWORD") != null -> "keyword"
                     matcher.group("COMMENT") != null -> "comment"
                     matcher.group("BRACKET") != null -> "bracket"
-//                    matcher.group("SEMICOLON") != null -> "semicolon"
                     matcher.group("STRING") != null -> "string"
 
                     else -> null
@@ -286,7 +289,6 @@ constructor(project: File) : Window() {
                 filesList.items.add(f)
             currentFolder = file
             filesList.selectionModel.select(0)
-            editorStage.title = "${currentFolder.absolutePath.removePrefix(baseFolder.parent + "\\")} - Project Editor"
         }
 
     }

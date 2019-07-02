@@ -5,7 +5,7 @@
 
 .param{
     -fx-font-weight: bold;
-    -fx-fill: darkblue;
+    -fx-fill: dodgerblue;
 }
 
 .bracket{
@@ -20,4 +20,14 @@
 .string{
     -fx-font-weight: bold;
     -fx-fill: green;
+}
+
+.keyword{
+    -fx-font-weight: bold;
+    -fx-fill: darkblue;
+}
+
+.call{
+    -fx-font-weight: bold;
+    -fx-fill: brown;
 }
