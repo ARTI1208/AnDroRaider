@@ -15,25 +15,6 @@ import java.util.*
 
 class FileManagerListItem : ListCell<File?>(), Initializable {
 
-    @FXML
-    lateinit var pane: AnchorPane
-    @FXML
-    lateinit var fileName: Text
-    @FXML
-    lateinit var fileIcon: ImageView
-
-    private var fxmlLoader: FXMLLoader? = null
-
-    init {
-        fxmlLoader = FXMLLoader(javaClass.getResource(LoadUtils.getLayout("filemanager_list_item.fxml")))
-        fxmlLoader?.setController(this)
-        try {
-            pane = fxmlLoader!!.load()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         maxWidth = Control.USE_PREF_SIZE
     }
@@ -49,16 +30,16 @@ class FileManagerListItem : ListCell<File?>(), Initializable {
         if (item == null) {
             return
         }
-
-        fileName.text = item.name
-        when {
-            item.isDirectory -> fileIcon.image = LoadUtils.getDrawable("folder.png")
-            TypeDetector.Text.listContains(item.extension) -> fileIcon.image = LoadUtils.getDrawable("txt.png")
-            else -> fileIcon.image = LoadUtils.getDrawable("unknown.png")
-        }
-        text = null
-        graphic = pane
-        contentDisplay = ContentDisplay.GRAPHIC_ONLY
+        val icon = ImageView(when {
+            item.isDirectory -> LoadUtils.getDrawable("folder.png")
+            TypeDetector.Text.listContains(item.extension) -> LoadUtils.getDrawable("txt.png")
+            else -> LoadUtils.getDrawable("unknown.png")
+        })
+        icon.fitWidth = 20.0
+        icon.fitHeight = 20.0
+        text = item.name
+        graphic = icon
+        contentDisplay = ContentDisplay.LEFT
     }
 
 }

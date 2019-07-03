@@ -44,10 +44,13 @@ constructor(project: File) : Window() {
         val loader = FXMLLoader(javaClass.getResource(LoadUtils.getLayout("editor.fxml")))
         loader.setController(EditorLayoutController())
         val root = loader.load<Parent>()
-        editorStage.icons.add(LoadUtils.getDrawable("logo.png"))
-        editorStage.title = "${baseFolder.name} - Project Editor"
-        editorStage.scene = Scene(root, 900.0, 600.0)
-        editorStage.scene.stylesheets.add(javaClass.getResource(LoadUtils.getStyle("code.css")).toExternalForm())
+        editorStage.apply {
+            icons.add(LoadUtils.getDrawable("logo.png"))
+            title = "${baseFolder.name} - Project Editor"
+            scene = Scene(root, 900.0, 600.0)
+            scene.stylesheets.add(
+                    this@Editor.javaClass.getResource(LoadUtils.getStyle("code.css")).toExternalForm())
+        }
     }
 
     public override fun show() {
@@ -93,21 +96,44 @@ constructor(project: File) : Window() {
         @Suppress("unused")
         fun initialize() {
 
-            val searchField = TextField()
-            searchField.textProperty().addListener { _, _, now ->
-                currentSearch = now
-                editorArea.setStyleSpans(0, updateHighlighting(currentSearch))
+            search.apply {
+                isHideOnClick = false
+                val searchField = TextField()
+                searchField.textProperty().addListener { _, _, now ->
+                    currentSearch = now
+                    editorArea.setStyleSpans(0, updateHighlighting())
+                }
+                content = searchField
             }
-            search.isHideOnClick = false
-            search.content = searchField
+
             searchMenu.onShown = EventHandler {
                 search.content.requestFocus()
             }
-            editorArea.onKeyPressed = EventHandler {
-                if (it.isControlDown && it.code == KeyCode.F) {
-                    searchMenu.show()
-                    search.content.requestFocus()
+
+            editorArea.apply {
+                styleClass.add("text-area")
+                onKeyPressed = EventHandler {
+                    if (it.isControlDown && it.code == KeyCode.F) {
+                        searchMenu.show()
+                        search.content.requestFocus()
+                    }
                 }
+                prefWidthProperty().bind(editorStage.widthProperty().subtract(upBar.widthProperty()))
+                paragraphGraphicFactory = LineNumberFactory.get(this)
+                textProperty().addListener { _, oldValue, newValue ->
+                    if (isFileChanged) {
+                        isFileChanged = false
+                        return@addListener
+                    }
+                    if (currentEditingFile != null && oldValue.isNotEmpty()) {
+                        Files.write(currentEditingFile!!.toPath(), newValue.toByteArray())
+                    }
+                }
+                multiPlainChanges()
+                        .successionEnds(ofMillis(100))
+                        .subscribe {
+                            setStyleSpans(0, updateHighlighting())
+                        }
             }
 
             settings.onAction = EventHandler {
@@ -205,17 +231,6 @@ constructor(project: File) : Window() {
             filesList.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
             filesList.prefWidthProperty().bind(upBar.widthProperty().multiply(1.0))
 
-            editorArea
-                    .multiPlainChanges()
-                    .successionEnds(ofMillis(100))
-                    .subscribe {
-                        val spans = updateHighlighting(currentSearch)
-                        editorArea.setStyleSpans(0, spans)
-                    }
-
-            editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(upBar.widthProperty()))
-            editorArea.paragraphGraphicFactory = LineNumberFactory.get(editorArea)
-
             filesList.setCellFactory { FileManagerListItem() }
             filesList.onMouseClicked = EventHandler {
                 val newFile = filesList.selectionModel.selectedItem
@@ -250,34 +265,37 @@ constructor(project: File) : Window() {
                         updateDirContent(currentFolder.parentFile)
                 }
             }
-            editorArea.textProperty().addListener { _, oldValue, newValue ->
-
-                if (isFileChanged) {
-                    isFileChanged = false
-                    return@addListener
-                }
-                if (currentEditingFile != null && oldValue.isNotEmpty()) {
-                    Files.write(currentEditingFile!!.toPath(), newValue.toByteArray())
-                }
+            editorStage.onShown = EventHandler {
+                filesList.requestFocus()
             }
         }
 
-        private fun updateHighlighting(searchString: String?): StyleSpans<Collection<String>> {
+        private fun updateHighlighting(searchString: String? = currentSearch): StyleSpans<Collection<String>> {
             editorArea.clearStyle(0, editorArea.text.length)
-            var p = TypeDetector.getPatternForExtension(currentEditingFile?.extension)
-            if (searchString != null && searchString.isNotEmpty()) {
-                p += if (p.isNotEmpty()) "|" else ""
-                p += "(?<SEARCH>$searchString)"
-            }
+            val p = TypeDetector.getPatternForExtension(currentEditingFile?.extension)
             val pattern = Pattern.compile(p, Pattern.MULTILINE)
             println(pattern.pattern())
-            return when (currentEditingFile?.extension) {
+
+            var sp = when (currentEditingFile?.extension) {
                 "smali" -> getSmaliHighlighting(pattern)
-                else -> getSimpleHighlighting(pattern)
+                else -> getSimpleHighlighting()
             }.create()
+
+            if (searchString != null && searchString.isNotEmpty()){
+                sp = sp.overlay(getSearchHighlighting(searchString)){
+                    first, second ->
+                    val list = ArrayList<String>()
+                    list.addAll(first)
+                    list.addAll(second)
+                    return@overlay list
+                }
+            }
+
+            return sp
         }
 
-        private fun getSimpleHighlighting(pattern: Pattern): StyleSpansBuilder<Collection<String>> {
+        private fun getSearchHighlighting(toSearch: String?): StyleSpans<Collection<String>> {
+            val pattern = Pattern.compile("(?<SEARCH>$toSearch)")
             val builder = StyleSpansBuilder<Collection<String>>()
             val matcher = pattern.matcher(editorArea.text)
             var lastKwEnd = 0
@@ -285,7 +303,7 @@ constructor(project: File) : Window() {
                 while (matcher.find()) {
                     val styleClass = (when {
                         matcher.contains("SEARCH") -> "search"
-                        else -> return builder
+                        else -> return builder.create()
                     })
                     builder.add(emptyList(), matcher.start() - lastKwEnd)
                     builder.add(Collections.singleton(styleClass), matcher.end() - matcher.start())
@@ -293,6 +311,12 @@ constructor(project: File) : Window() {
                 }
             }
             builder.add(emptyList(), editorArea.text.length - lastKwEnd)
+            return builder.create()
+        }
+
+        private fun getSimpleHighlighting(): StyleSpansBuilder<Collection<String>> {
+            val builder = StyleSpansBuilder<Collection<String>>()
+            builder.add(emptyList(), 0)
             return builder
         }
 
@@ -310,7 +334,6 @@ constructor(project: File) : Window() {
                     matcher.contains("COMMENT") -> "comment"
                     matcher.contains("BRACKET") -> "bracket"
                     matcher.contains("STRING") -> "string"
-                    matcher.contains("SEARCH") -> "search"
                     else -> return builder
                 })
                 builder.add(emptyList(), matcher.start() - lastKwEnd)
