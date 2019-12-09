@@ -8,9 +8,12 @@ import javafx.scene.control.Button
 import javafx.scene.control.ContentDisplay
 import javafx.scene.control.Control
 import javafx.scene.control.ListCell
-import javafx.scene.effect.ColorAdjust
+import javafx.scene.effect.Blend
+import javafx.scene.effect.BlendMode
+import javafx.scene.effect.ColorInput
 import javafx.scene.image.ImageView
 import javafx.scene.layout.AnchorPane
+import javafx.scene.paint.Color
 import javafx.scene.text.Text
 import java.net.URL
 import java.util.*
@@ -26,6 +29,8 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
     lateinit var projectLocation: Text
     @FXML
     lateinit var removeButton: Button
+
+    private val defaultCrossColor: Color = Color.valueOf("#33A3F8")
 
     private var fxmlLoader: FXMLLoader? = null
 
@@ -48,29 +53,37 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
         val imageView = ImageView(LoadUtils.getDrawable("cross.png"))
         imageView.fitHeight = 20.0
         imageView.fitWidth = 20.0
+        imageView.isVisible = false
+
+        imageView.effect = Blend(
+                BlendMode.SRC_ATOP,
+                null,
+                ColorInput(
+                        0.0,
+                        0.0,
+                        imageView.image.width,
+                        imageView.image.height,
+                        defaultCrossColor
+                )
+        )
+
         removeButton.graphic = imageView
         removeButton.styleClass.clear()
         removeButton.hoverProperty().addListener { _, _, now ->
-            if (now) {
-                val monochrome = ColorAdjust()
-                monochrome.saturation = -1.0
-            }
+            val color = if (now) {
+                if (isSelected) Color.WHITE else Color.BLACK
+            } else
+                defaultCrossColor
 
-
-//            val blush = Blend(
-//                    BlendMode.RED,
-//                    monochrome,
-//                    ColorInput(
-//                            0.0,
-//                            0.0,
-//                            imageView.image.width,
-//                            imageView.image.height,
-//                            Color.RED
-//                    )
-//            )
-
-
-//            imageView.effect = monochrome
+            val tint = Blend(
+                    BlendMode.SRC_ATOP,
+                    null, ColorInput(
+                    0.0,
+                    0.0,
+                    imageView.image.width,
+                    imageView.image.height,
+                    color))
+            imageView.effect = tint
         }
         projectName.style = "-fx-fill: black; -fx-font-weight: bold;"
         projectLocation.style = "-fx-fill: black"
@@ -82,6 +95,10 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
                 projectName.style = "-fx-fill: black; -fx-font-weight: bold;"
                 projectLocation.style = "-fx-fill: black"
             }
+        }
+
+        hoverProperty().addListener { _, _, isHovered ->
+            imageView.isVisible = isHovered
         }
     }
 

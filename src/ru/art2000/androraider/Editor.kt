@@ -205,10 +205,6 @@ constructor(project: File) : Window() {
                         Files.write(currentEditingFile!!.toPath(), newValue.toByteArray())
                     }
                 }
-                hoverProperty().addListener { _, _, _ ->
-                    print("fi2\n")
-                    requestFocus()
-                }
                 multiPlainChanges()
                         .successionEnds(ofMillis(100))
                         .subscribe {
@@ -349,10 +345,6 @@ constructor(project: File) : Window() {
             }
             filesList.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
             filesList.prefWidthProperty().bind(upBar.widthProperty().multiply(1.0))
-            filesList.hoverProperty().addListener { _, _, _ ->
-                print("fi1\n")
-                requestFocus()
-            }
             filesList.setCellFactory { FileManagerListItem() }
             filesList.onMouseClicked = EventHandler {
                 val newFile = filesList.selectionModel.selectedItem
@@ -371,6 +363,11 @@ constructor(project: File) : Window() {
                     }
                     KeyCode.DELETE -> {
                         onFileItemDelete(filesList.selectionModel.selectedItem)
+                    }
+                    KeyCode.LEFT -> {
+                        if (it.isControlDown && it.isAltDown)
+                            if (currentFolder != baseFolder)
+                                updateDirContent(currentFolder.parentFile)
                     }
                 }
             }
@@ -415,6 +412,7 @@ constructor(project: File) : Window() {
             deleteFileDialog.dialogPane = dialogPane
             deleteFileDialog.initOwner(editorStage)
             deleteFileDialog.dialogPane.buttonTypes.addAll(ButtonType.CLOSE, ButtonType.OK)
+            (deleteFileDialog.dialogPane.lookupButton(ButtonType.CLOSE) as Button).isDefaultButton = true
 
             deleteFileDialog.setResultConverter {
                 if (it == ButtonType.OK) {
@@ -430,7 +428,6 @@ constructor(project: File) : Window() {
                     updateDirContent(currentFolder)
                 }
             }
-
             deleteFileDialog.showAndWait()
         }
 

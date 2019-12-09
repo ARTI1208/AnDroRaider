@@ -78,6 +78,11 @@
     -fx-padding: 2 5 2 5;
 }
 
+.button:focused {
+    -fx-border-color: chocolate;
+    -fx-background-color: #fadc69;
+}
+
 .button:hover {
     -fx-background-color: chocolate;
     -fx-text-fill: white;

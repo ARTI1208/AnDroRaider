@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/AnDroRaider.iml" filepath="$PROJECT_DIR$/AnDroRaider.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../Java/SvgGui/VectorTools.iml" filepath="$PROJECT_DIR$/../../Java/SvgGui/VectorTools.iml" />
     </modules>
   </component>
 </project>

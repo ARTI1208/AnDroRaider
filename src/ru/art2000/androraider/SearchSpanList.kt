@@ -2,7 +2,7 @@ package ru.art2000.androraider
 
 import java.util.function.Consumer
 
-class SearchSpanList : ArrayList<IntRange> {
+class SearchSpanList() : ArrayList<IntRange>() {
 
     var searchString: String? = null
         set(value) {
@@ -11,12 +11,8 @@ class SearchSpanList : ArrayList<IntRange> {
         }
     private val list = ArrayList<IntRange>()
 
-    constructor(searchString: String) {
+    constructor(searchString: String) : this() {
         this.searchString = searchString
-    }
-
-    constructor() {
-
     }
 
     override fun forEach(action: Consumer<in IntRange>?) {
