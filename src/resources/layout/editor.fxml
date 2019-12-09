@@ -18,6 +18,9 @@
         <Menu fx:id="searchMenu" text="Search">
             <CustomMenuItem fx:id="search" />
         </Menu>
+        <Menu fx:id="miscMenu" text="Misc">
+            <MenuItem fx:id="examineFile" text="Examine file"/>
+        </Menu>
     </MenuBar>
     <HBox fx:id="main">
         <VBox>

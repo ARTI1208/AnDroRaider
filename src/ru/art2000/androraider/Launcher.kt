@@ -21,7 +21,6 @@ import javafx.stage.DirectoryChooser
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import java.io.File
-import java.util.*
 import kotlin.collections.ArrayList
 
 class Launcher : Application() {
@@ -67,6 +66,8 @@ class Launcher : Application() {
         stage = primaryStage
         val loader = FXMLLoader(javaClass.getResource(LoadUtils.getLayout("launcher.fxml")))
         loader.setController(LaunchLayoutController())
+        println(getUserAgentStylesheet())
+        setUserAgentStylesheet(LoadUtils.getStyle("application.css"))
         val root = loader.load<Parent>()
         primaryStage.title = APP_NAME
         primaryStage.icons.add(LoadUtils.getDrawable("logo.png"))
@@ -85,11 +86,11 @@ class Launcher : Application() {
         @FXML
         private lateinit var appLogoImageView: ImageView
         @FXML
-        private lateinit var newProjectButton: Button
+        private lateinit var newProjectButton: Hyperlink
         @FXML
-        private lateinit var openProjectButton: Button
+        private lateinit var openProjectButton: Hyperlink
         @FXML
-        private lateinit var settingsButton: Button
+        private lateinit var settingsButton: Hyperlink
         @FXML
         private lateinit var root: HBox
 
@@ -263,7 +264,7 @@ class Launcher : Application() {
             while (dir == null) {
                 val chooser = DirectoryChooser()
                 val chosen = chooser.showDialog(root.scene.window) ?: return null
-                val contains = Objects.requireNonNull(chosen.list { _, name1 -> name1 == "apktool.yml" }).isNotEmpty()
+                val contains = !chosen.list { _, filename -> filename == "apktool.yml" }.isNullOrEmpty()
                 if (contains)
                     dir = chosen
                 else {

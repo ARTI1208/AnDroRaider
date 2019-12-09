@@ -1,5 +1,7 @@
 package ru.art2000.androraider
 
+import java.io.File
+
 class TypeDetector {
 
     class Text {
@@ -19,13 +21,40 @@ class TypeDetector {
         }
     }
 
+    class Image {
+        companion object {
+            private val knownRasterTypes = ArrayList<String>()
+            private val knownVectorTypes = ArrayList<String>()
+
+            init {
+                knownRasterTypes.addAll(
+                        "png", "jpg",
+                        "jpeg", "webp")
+                knownVectorTypes.add("svg")
+            }
+
+            fun isVectorDrawable(file: File?) : Boolean {
+                if (file == null)
+                    return false
+                if (knownVectorTypes.contains(file.extension))
+                    return true
+                println("ext is ${file.extension}, parent ${file.parent}")
+                if (file.extension == "xml" && file.parentFile.name.startsWith("drawable"))
+                    return true
+
+                return false
+            }
+
+        }
+    }
+
     companion object {
 
         private val SMALI_STARTING_KEYWORDS = arrayOf("class", "super", "field", "end method", "method",
                 "packed-switch", "sparse-switch", "locals")
 
         private val OTHER_SMALI_KEYWORDS = arrayOf(
-                "public", "private", "protected", "abstract", "static",
+                "public", "private", "protected", "abstract", "static", "synthetic", "final",
                 "if-((eq)|(ne)|(lt)|(ge)|(gt)|(le)|(eqz)|(nez))", "return((-void)|(-object)|(-wide))?")
 
         private val SMALI_METHOD_CALL = arrayOf(
@@ -38,7 +67,7 @@ class TypeDetector {
                 "\\b(?<LOCAL>v\\d+)\\b|" +
                         "\\b(?<PARAM>p\\d+)\\b|" +
                         "(?<BRACKET>[()])|" +
-                        "\\b(?<NUMBER>0x[\\da-fA-F]+)\\b|" +
+                        "\\b(?<NUMBER>(0x[\\da-fA-F]+)|\\d+)\\b|" +
                         "(?<COMMENT>#[\\S \\t]*\$)|" +
                         "(?<STRING>(\"[^\"]*\")|const-string(/jumbo)?)|" +
                         "(?<CALL>(" + SMALI_METHOD_CALL.joinToString("|") { "\\b$it\\b(/range)?" } + "|" +

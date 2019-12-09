@@ -4,6 +4,7 @@
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Text?>
+<?import javafx.scene.control.Hyperlink?>
 <HBox fx:id="root" xmlns:fx="http://javafx.com/fxml"
       alignment="CENTER_LEFT">
     <ListView fx:id="recentsListView" prefWidth="400"/>
@@ -20,9 +21,9 @@
             </VBox.margin>
         </Text>
         <VBox prefWidth="700" alignment="CENTER" spacing="10">
-            <Button fx:id="newProjectButton"/>
-            <Button fx:id="openProjectButton"/>
-            <Button text="Settings" fx:id="settingsButton"/>
+            <Hyperlink fx:id="newProjectButton"/>
+            <Hyperlink fx:id="openProjectButton"/>
+            <Hyperlink text="Settings" fx:id="settingsButton"/>
         </VBox>
     </VBox>
 </HBox>
