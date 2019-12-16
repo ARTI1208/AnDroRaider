@@ -3,6 +3,11 @@
     -fx-text-fill: white;
 }
 
+.tree-cell:filled:selected:focused, .tree-cell:filled:selected {
+    -fx-background-color: linear-gradient(#328BDB 0%, #207BCF 25%, #1973C9 75%, #0A65BF 100%);
+    -fx-text-fill: white;
+}
+
 .list-cell {
     -fx-padding: 2 5 2 5;
 }
@@ -16,6 +21,15 @@
     -fx-border-width: 0 1 0 0;
 }
 
+.tree-view {
+    -fx-border-color: gray;
+    -fx-border-width: 0 1 0 0;
+}
+
+.tree-cell:filled:hover {
+    -fx-background-color: #d0d0d0;
+}
+
 .list-cell:filled:hover {
     -fx-background-color: #d0d0d0;
 }
@@ -26,7 +40,7 @@
     -fx-border-width: 0 0 1 0;
 }
 
-.menu-item{
+.menu-item {
     -fx-background-color: #fafafa;
     -fx-padding: 3 5 3 5;
 }

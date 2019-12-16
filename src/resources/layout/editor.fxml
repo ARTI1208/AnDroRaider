@@ -23,17 +23,7 @@
         </Menu>
     </MenuBar>
     <HBox fx:id="main">
-        <VBox>
-            <HBox prefWidth="300" fx:id="upBar" alignment="CENTER_LEFT" spacing="10">
-                <padding>
-                    <Insets topRightBottomLeft="5"/>
-                </padding>
-                <Text text="Files in project" fx:id="testTextView"/>
-                <Button text="Home" fx:id="homeButton"/>
-                <Button text="Up a level" fx:id="upButton"/>
-            </HBox>
-            <ListView fx:id="filesList"/>
-        </VBox>
+        <TreeView prefWidth="200" fx:id="filesTreeList" />
         <VirtualizedScrollPane>
             <content>
                 <CodeArea fx:id="editorArea" />

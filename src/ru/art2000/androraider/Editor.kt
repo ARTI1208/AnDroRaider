@@ -1,7 +1,6 @@
 package ru.art2000.androraider
 
 import VectorTools.Main
-import javafx.collections.FXCollections
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
@@ -11,6 +10,7 @@ import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseButton
 import javafx.scene.layout.*
 import javafx.scene.paint.Paint
@@ -64,30 +64,29 @@ constructor(project: File) : Window() {
     }
 
     inner class EditorLayoutController {
-        @FXML
-        lateinit var filesList: ListView<File>
-        @FXML
-        lateinit var homeButton: Button
-        @FXML
-        lateinit var upButton: Button
-        @FXML
-        lateinit var editorArea: CodeArea
-        @FXML
-        lateinit var upBar: HBox
-        @FXML
-        lateinit var recompile: MenuItem
+        // Menu/File
         @FXML
         lateinit var home: MenuItem
         @FXML
         lateinit var settings: MenuItem
         @FXML
+        lateinit var recompile: MenuItem
+
+        // Menu/Search
+        @FXML
         lateinit var searchMenu: Menu
         @FXML
         lateinit var search: CustomMenuItem
+
+        // Menu/Misc
         @FXML
         lateinit var examineFile: MenuItem
 
-        private var currentFolder = baseFolder
+        // Main area
+        @FXML
+        lateinit var filesTreeList: TreeView<File>
+        @FXML
+        lateinit var editorArea: CodeArea
 
         private var currentEditingFile: File? = null
             set(value) {
@@ -150,7 +149,7 @@ constructor(project: File) : Window() {
                 prev.prefWidth = 100.0
                 prev.onAction = EventHandler {
                     val size = searchSpanList.size
-                    if (size == 0){
+                    if (size == 0) {
                         currentSearchCursor = -1
                         return@EventHandler
                     }
@@ -160,7 +159,7 @@ constructor(project: File) : Window() {
                 val next = Button("Next")
                 next.prefWidth = 100.0
                 next.onAction = EventHandler {
-                    if (searchSpanList.size == 0){
+                    if (searchSpanList.size == 0) {
                         currentSearchCursor = -1
                         return@EventHandler
                     }
@@ -194,7 +193,6 @@ constructor(project: File) : Window() {
                         searchField.positionCaret(searchField.text.length)
                     }
                 }
-                prefWidthProperty().bind(editorStage.widthProperty().subtract(upBar.widthProperty()))
                 paragraphGraphicFactory = LineNumberFactory.get(this)
                 textProperty().addListener { _, oldValue, newValue ->
                     if (isFileChanged) {
@@ -335,74 +333,65 @@ constructor(project: File) : Window() {
                 editorStage.close()
                 Launcher().start(Stage())
             }
-            updateDirContent(currentFolder)
-            homeButton.onAction = EventHandler {
-                updateDirContent(baseFolder)
-            }
-            upButton.onAction = EventHandler {
-                if (currentFolder != baseFolder)
-                    updateDirContent(currentFolder.parentFile)
-            }
-            filesList.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
-            filesList.prefWidthProperty().bind(upBar.widthProperty().multiply(1.0))
-            filesList.setCellFactory { FileManagerListItem() }
-            filesList.onMouseClicked = EventHandler {
-                val newFile = filesList.selectionModel.selectedItem
-                if (it.button === MouseButton.PRIMARY
-                        && it.clickCount == 2) {
-                    onFileItemClick(newFile)
-                }
-            }
-            filesList.onKeyPressed = EventHandler {
-                @Suppress("NON_EXHAUSTIVE_WHEN")
-                when (it.code) {
-                    KeyCode.ENTER, KeyCode.SPACE -> onFileItemClick(filesList.selectionModel.selectedItem)
-                    KeyCode.ESCAPE -> {
-                        if (currentFolder != baseFolder)
-                            updateDirContent(currentFolder.parentFile)
-                    }
-                    KeyCode.DELETE -> {
-                        onFileItemDelete(filesList.selectionModel.selectedItem)
-                    }
-                    KeyCode.LEFT -> {
-                        if (it.isControlDown && it.isAltDown)
-                            if (currentFolder != baseFolder)
-                                updateDirContent(currentFolder.parentFile)
-                    }
-                }
-            }
+
+            editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(filesTreeList.prefWidthProperty()))
+            editorArea.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
+            filesTreeList.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
+
+            setupFileExplorerView()
             editorStage.onShown = EventHandler {
-                filesList.requestFocus()
+                filesTreeList.requestFocus()
             }
         }
 
-        private fun getFileRelativePath(file: File? = currentEditingFile) : String? {
+        private fun getFileRelativePath(file: File? = currentEditingFile): String? {
             return file?.absolutePath?.removePrefix(baseFolder.parent + "\\")
         }
 
-        private fun onFileItemClick(file: File) {
-            if (file.isDirectory) {
-                filesList.items.clear()
-                updateDirContent(file)
-            } else {
-                if (TypeDetector.isTextFile(file.name)) {
-                    if (file.absolutePath != currentEditingFile?.absolutePath){
-                        editorArea.replaceText(String(Files.readAllBytes(file.toPath())))
-                        editorArea.displaceCaret(0)
-                        currentEditingFile = file
-                    }
-                    editorArea.requestFocus()
+        private fun onTreeItemClick(treeItem: TreeItem<File>?, byMouse: Boolean = false) {
+            if (treeItem == null) {
+                println("null exit")
+                return
+            }
+//            println("Try open ${treeItem.value.name} $byMouse")
+            if (treeItem.value.isDirectory) {
+                if (!byMouse) {
+                    treeItem.isExpanded = !treeItem.isExpanded
+                    println("Set exp ${treeItem.isExpanded} for ${treeItem.value.name}")
                 }
-                // TODO show message for unsupported types of files
+            } else {
+                onFileItemClick(treeItem.value)
             }
         }
 
-        private fun onFileItemDelete(file: File) {
-            val deleteFileDialog = Dialog<Unit>()
+        private fun onFileItemClick(file: File) {
+            if (TypeDetector.isTextFile(file.name)) {
+                if (file.absolutePath != currentEditingFile?.absolutePath) {
+                    editorArea.replaceText(String(Files.readAllBytes(file.toPath())))
+                    editorArea.displaceCaret(0)
+                    currentEditingFile = file
+                }
+                editorArea.requestFocus()
+            }
+            // TODO show message for unsupported types of files
+        }
+
+        private fun onTreeItemDelete(treeItem: TreeItem<File>?) {
+            if (treeItem == null)
+                return
+
+            val deleted = onFileItemDelete(treeItem.value)
+            if (deleted) {
+                treeItem.parent.children.remove(treeItem)
+            }
+        }
+
+        private fun onFileItemDelete(file: File): Boolean {
+            val deleteFileDialog = Dialog<Boolean>()
             deleteFileDialog.title = "Delete ${getFileRelativePath(file)}"
             val dialogPane = DialogPane()
             val toDeleteString = "${if (file.isDirectory) "directory" else "file"} ${getFileRelativePath(file)}"
-            val mainLabel = Label("Are you sure you want delete $toDeleteString")
+            val mainLabel = Label("Are you sure you want delete $toDeleteString?")
             val dialogBox = HBox()
             dialogBox.children.addAll(mainLabel)
             dialogBox.padding = Insets(0.0, 0.0, 20.0, 0.0)
@@ -418,20 +407,22 @@ constructor(project: File) : Window() {
                 if (it == ButtonType.OK) {
                     try {
                         if (file.isDirectory) {
-                            file.deleteRecursively()
+                            return@setResultConverter file.deleteRecursively()
                         } else {
-                            file.delete()
+                            return@setResultConverter file.delete()
                         }
                     } catch (exception: SecurityException) {
                         showErrorMessage("Delete error", "Error deleting $toDeleteString")
                     }
-                    updateDirContent(currentFolder)
                 }
+
+                return@setResultConverter false
             }
-            deleteFileDialog.showAndWait()
+            return deleteFileDialog.showAndWait().get()
         }
 
-        private fun showErrorMessage(title: String, message : String) {
+        @Suppress("SameParameterValue")
+        private fun showErrorMessage(title: String, message: String) {
             val errorDialog = Dialog<Unit>()
             errorDialog.title = title
             val dialogPane = DialogPane()
@@ -471,7 +462,7 @@ constructor(project: File) : Window() {
             return sp
         }
 
-        private fun createFileInfoDialog(){
+        private fun createFileInfoDialog() {
             val fileInfoDialog = Dialog<Unit>()
             fileInfoDialog.title = getFileRelativePath() ?: "No file is currently editing"
             val dialogPane = DialogPane()
@@ -486,7 +477,7 @@ constructor(project: File) : Window() {
                 val vectorImageLabelTitle = Label("Edit Vector Image:")
                 val vectorImageButtonValue = Button("Edit...")
                 vectorImageButtonValue.onAction = EventHandler {
-//                    VectorTools.Main.launch(currentEditingFile?.path)
+                    //                    VectorTools.Main.launch(currentEditingFile?.path)
                     println(Main.openWindow())
                 }
                 val vectorImageBox = HBox()
@@ -555,23 +546,67 @@ constructor(project: File) : Window() {
             return builder
         }
 
-        private fun updateDirContent(file: File) {
-            filesList.items.clear()
-            val files = file.listFiles()
-            if (files == null) {
-                println("Error loading files list")
+        private fun setupFileExplorerView() {
+            if (filesTreeList.root != null)
                 return
+
+            filesTreeList.setCellFactory { FileManagerTreeListItem() }
+
+            filesTreeList.onMouseClicked = EventHandler {
+                if (it.button === MouseButton.PRIMARY
+                        && it.clickCount == 2) {
+                    onTreeItemClick(filesTreeList.selectionModel.selectedItem, true)
+                }
             }
-            val items = FXCollections.observableArrayList<File>()
-//            items.add(file.parentFile)
-            for (f in files.filter { item -> item.isDirectory && !item.isHidden })
-                items.add(f)
-            for (f in files.filter { item -> item.isFile && !item.isHidden })
-                items.add(f)
-            currentFolder = file
-            filesList.items = items
-            filesList.selectionModel.select(0)
+
+            filesTreeList.addEventHandler(KeyEvent.KEY_PRESSED) {
+                if (it.code == KeyCode.SPACE) {
+                    onTreeItemClick(filesTreeList.selectionModel.selectedItem)
+                    it.consume()
+                }
+            }
+
+            filesTreeList.onKeyPressed = EventHandler {
+                @Suppress("NON_EXHAUSTIVE_WHEN")
+                when (it.code) {
+                    KeyCode.ENTER -> onTreeItemClick(filesTreeList.selectionModel.selectedItem)
+                    KeyCode.DELETE -> onTreeItemDelete(filesTreeList.selectionModel.selectedItem)
+                    KeyCode.LEFT -> {
+                        if (it.isAltDown)
+                            filesTreeList.selectionModel.selectedItem?.parent?.isExpanded = false
+                    }
+                    KeyCode.RIGHT -> {
+                        if (it.isAltDown)
+                            filesTreeList.selectionModel.selectedItem?.isExpanded = true
+                    }
+                }
+            }
+
+            filesTreeList.root = TreeItem(baseFolder)
+            addChildren(filesTreeList.root)
+            filesTreeList.selectionModel.select(0)
         }
 
+        private fun addChildren(treeItem: TreeItem<File>) {
+            val allFiles = treeItem.value.listFiles() ?: return
+
+            val dirs = mutableListOf<TreeItem<File>>()
+            val files = mutableListOf<TreeItem<File>>()
+
+            allFiles.forEach {
+                if (it.isHidden)
+                    return@forEach
+
+                val treeSubItem = TreeItem(it)
+
+                if (it.isDirectory) {
+                    dirs.add(treeSubItem)
+                    addChildren(treeSubItem)
+                } else files.add(treeSubItem)
+            }
+
+            treeItem.children.setAll(dirs)
+            treeItem.children.addAll(files)
+        }
     }
 }
