@@ -54,7 +54,7 @@ class TypeDetector {
                 "packed-switch", "sparse-switch", "locals")
 
         private val OTHER_SMALI_KEYWORDS = arrayOf(
-                "public", "private", "protected", "abstract", "static", "synthetic", "final",
+                "public", "private", "protected", "abstract", "static", "synthetic", "final", "enum",
                 "if-((eq)|(ne)|(lt)|(ge)|(gt)|(le)|(eqz)|(nez))", "return((-void)|(-object)|(-wide))?")
 
         private val SMALI_METHOD_CALL = arrayOf(

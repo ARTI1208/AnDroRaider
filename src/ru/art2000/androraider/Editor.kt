@@ -9,9 +9,7 @@ import javafx.geometry.Pos
 import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.*
-import javafx.scene.input.KeyCode
-import javafx.scene.input.KeyEvent
-import javafx.scene.input.MouseButton
+import javafx.scene.input.*
 import javafx.scene.layout.*
 import javafx.scene.paint.Paint
 import javafx.stage.DirectoryChooser
@@ -119,229 +117,18 @@ constructor(project: File) : Window() {
         @Suppress("unused")
         fun initialize() {
 
-            examineFile.onAction = EventHandler {
-                createFileInfoDialog()
-            }
-
-            search.apply {
-                isHideOnClick = false
-                styleClass.add("custom-menu-item")
-                val mainBox = VBox()
-                searchField = TextField()
-                searchField.textProperty().addListener { _, _, now ->
-                    currentSearch = now
-                    editorArea.setStyleSpans(0, updateHighlighting())
-                    currentSearchCursor = 0
-                }
-                searchField.onKeyPressed = EventHandler {
-                    if (it.code == KeyCode.ENTER) {
-                        currentSearchCursor = (currentSearchCursor + 1) % searchSpanList.size
-                        editorArea.displaceCaret(searchSpanList[currentSearchCursor].last)
-                    }
-                }
-                searchField.promptText = "Type here..."
-                val subBox = HBox()
-                mainBox.spacing = 5.0
-                subBox.alignment = Pos.BASELINE_CENTER
-                subBox.spacing = 2.0
-                subBox.background = Background(BackgroundFill(Paint.valueOf("#dedede"), CornerRadii.EMPTY, Insets.EMPTY))
-                val prev = Button("Prev")
-                prev.prefWidth = 100.0
-                prev.onAction = EventHandler {
-                    val size = searchSpanList.size
-                    if (size == 0) {
-                        currentSearchCursor = -1
-                        return@EventHandler
-                    }
-                    currentSearchCursor = (size + currentSearchCursor - 1) % size
-                    editorArea.displaceCaret(searchSpanList[currentSearchCursor].last)
-                }
-                val next = Button("Next")
-                next.prefWidth = 100.0
-                next.onAction = EventHandler {
-                    if (searchSpanList.size == 0) {
-                        currentSearchCursor = -1
-                        return@EventHandler
-                    }
-                    currentSearchCursor = (currentSearchCursor + 1) % searchSpanList.size
-                    editorArea.displaceCaret(searchSpanList[currentSearchCursor].last)
-                }
-                subBox.children.addAll(prev, next)
-                mainBox.children.addAll(searchField, subBox)
-                content = mainBox
-                content.hoverProperty().addListener { _, _, now ->
-                    if (now) {
-                        searchField.requestFocus()
-                        searchField.positionCaret(searchField.text.length)
-                        searchField.deselect()
-                    }
-                }
-            }
-
-            searchMenu.onShown = EventHandler {
-                searchField.requestFocus()
-                searchField.positionCaret(searchField.text.length)
-                searchField.deselect()
-            }
-
-            editorArea.apply {
-                styleClass.add("text-area")
-                onKeyPressed = EventHandler {
-                    if (it.isControlDown && it.code == KeyCode.F) {
-                        searchMenu.show()
-                        searchField.requestFocus()
-                        searchField.positionCaret(searchField.text.length)
-                    }
-                }
-                paragraphGraphicFactory = LineNumberFactory.get(this)
-                textProperty().addListener { _, oldValue, newValue ->
-                    if (isFileChanged) {
-                        isFileChanged = false
-                        return@addListener
-                    }
-                    if (currentEditingFile != null && oldValue.isNotEmpty()) {
-                        Files.write(currentEditingFile!!.toPath(), newValue.toByteArray())
-                    }
-                }
-                multiPlainChanges()
-                        .successionEnds(ofMillis(100))
-                        .subscribe {
-                            setStyleSpans(0, updateHighlighting())
-                        }
-            }
-
-
-            val popup = Popup()
-            val popupMsg = Label()
-            popupMsg.style = "-fx-background-color: black;" +
-                    "-fx-text-fill: white;" +
-                    "-fx-padding: 5;"
-            popup.content.add(popupMsg)
-
-            editorArea.mouseOverTextDelay = Duration.ofSeconds(1)
-            editorArea.addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_BEGIN) { e ->
-                val chIdx = e.characterIndex
-                val pos = e.screenPosition
-                val pre = editorArea.text.substring(0, chIdx).lastIndexOf(" ")
-                val aft = editorArea.text.substring(chIdx).indexOf(" ") + chIdx
-                val sub = editorArea.text.substring(pre + 1, aft)
-                val pat = Pattern.compile("(?<LOCAL>v\\d+)")
-                val mt = pat.matcher(sub)
-                if (mt.find()) {
-
-                    val txt = mt.group("LOCAL").substring(1).toInt()
-                    val loc = editorArea.text.substring(0, chIdx).lastIndexOf("locals") + "locals ".length
-                    val t = editorArea.text.substring(loc).indexOf("\n") + loc
-                    val num = editorArea.text.substring(loc, t).toInt()
-                    popupMsg.text = "Found local " + mt.group("LOCAL") + ".\n"
-                    if (txt < num)
-                        popupMsg.text += "Total available locals : $num"
-                    else
-                        popupMsg.text += "ERROR! Total available locals $num, but current is $txt!"
-                    popup.show(editorArea, pos.x, pos.y + 10)
-                }
-            }
-            editorArea.addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_END) { popup.hide() }
-
-            settings.onAction = EventHandler {
-                Settings(editorStage).show()
-            }
             editorStage.title = "${baseFolder.name} - Project Editor"
-            recompile.onAction = EventHandler {
-                val dialog = Dialog<Unit>()
-                val pane = DialogPane()
-                val cont = FXMLLoader(
-                        javaClass.getResource(LoadUtils.getLayout("recompile_options.fxml"))).load<VBox>()
-                val group = ToggleGroup()
-                val builtinFramework = cont.lookup("#builtinFrame") as RadioButton
-                val customFramework = cont.lookup("#customFrame") as RadioButton
-                val customFrameworkPath = cont.lookup("#-p") as TextField
-                val frameworkPathBox = cont.lookup("#framePathBox") as Pane
-                builtinFramework.toggleGroup = group
-                customFramework.toggleGroup = group
-                builtinFramework.selectedProperty().addListener { _, _, newValue ->
-                    run {
-                        frameworkPathBox.isDisable = newValue
-                    }
-                }
-                builtinFramework.isSelected = true
-                val folderPath = cont.lookup("#path") as TextField
-                val folderPathSelector = cont.lookup("#pathSelector") as Button
-                val framePathSelector = cont.lookup("#customFramePathSelector") as Button
-                folderPathSelector.onAction = EventHandler {
-                    DirectoryChooser()
-                            .showDialog(dialog.owner)
-                            ?.absolutePath
-                            ?.also {
-                                folderPath.text = it
-                                folderPath.tooltip.text = it
-                            }
-                }
-                framePathSelector.onAction = EventHandler {
-                    DirectoryChooser()
-                            .showDialog(dialog.owner)
-                            ?.absolutePath
-                            ?.also {
-                                customFrameworkPath.text = it
-                                customFrameworkPath.tooltip.text = it
-                            }
-                }
-
-                folderPath.text = baseFolder.parent
-                folderPath.tooltip = Tooltip(folderPath.text)
-                val fileName = cont.lookup("#fileName") as TextField
-                fileName.text = baseFolder.name
-                fileName.tooltip = Tooltip(fileName.text)
-                pane.content = cont
-                pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
-                dialog.title = "Recompile options"
-                dialog.initOwner(editorStage)
-                dialog.dialogPane = pane
-                val recompileButton = ButtonType("Recompile", ButtonBar.ButtonData.OK_DONE)
-                pane.buttonTypes.addAll(
-                        recompileButton,
-                        ButtonType.CANCEL)
-                val selectedOptions = ArrayList<ApktoolCommand>()
-                dialog.setResultConverter {
-                    if (it == recompileButton) {
-                        cont.goThrough(selectedOptions)
-                        selectedOptions.add(ApktoolCommand(
-                                ApktoolCommand.General.OUTPUT, folderPath.text + "/" +
-                                if (fileName.text.endsWith(".apk")) fileName.text else fileName.text + ".apk"))
-                        if (customFramework.isSelected)
-                            selectedOptions.add(ApktoolCommand(
-                                    ApktoolCommand.General.FRAMEWORK_FOLDER_PATH,
-                                    customFrameworkPath.text))
-                        for (cmd in selectedOptions) {
-                            println(cmd.tag)
-                        }
-                    }
-                }
-                dialog.showAndWait()
-                if (selectedOptions.isNotEmpty()) {
-                    val apk = ApkToolUtils.recompile(baseFolder, *selectedOptions.toTypedArray())
-                    if (apk == null) {
-                        val errorDialog = Dialog<Unit>()
-                        errorDialog.initOwner(editorStage)
-                        errorDialog.contentText = "An error occurred while recompiling"
-                        errorDialog.dialogPane.buttonTypes.add(ButtonType.OK)
-                        errorDialog.show()
-                    }
-                }
-            }
-            home.onAction = EventHandler {
-                editorStage.close()
-                Launcher().start(Stage())
+            editorStage.onShown = EventHandler {
+                filesTreeList.requestFocus()
             }
 
             editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(filesTreeList.prefWidthProperty()))
             editorArea.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
             filesTreeList.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
 
+            setupMenu()
+            setupCodeArea()
             setupFileExplorerView()
-            editorStage.onShown = EventHandler {
-                filesTreeList.requestFocus()
-            }
         }
 
         private fun getFileRelativePath(file: File? = currentEditingFile): String? {
@@ -546,6 +333,230 @@ constructor(project: File) : Window() {
             return builder
         }
 
+        private fun setupCodeArea() {
+            editorArea.apply {
+                styleClass.add("text-area")
+                onKeyPressed = EventHandler {
+                    if (it.isControlDown && it.code == KeyCode.F) {
+                        searchMenu.show()
+                        searchField.requestFocus()
+                        searchField.positionCaret(searchField.text.length)
+                    }
+                }
+                paragraphGraphicFactory = LineNumberFactory.get(this)
+                textProperty().addListener { _, oldValue, newValue ->
+                    if (isFileChanged) {
+                        isFileChanged = false
+                        return@addListener
+                    }
+                    if (currentEditingFile != null && oldValue.isNotEmpty()) {
+                        Files.write(currentEditingFile!!.toPath(), newValue.toByteArray())
+                    }
+                }
+                multiPlainChanges()
+                        .successionEnds(ofMillis(100))
+                        .subscribe {
+                            setStyleSpans(0, updateHighlighting())
+                        }
+            }
+
+
+            val popup = Popup()
+            val popupMsg = Label()
+            popupMsg.style = "-fx-background-color: black;" +
+                    "-fx-text-fill: white;" +
+                    "-fx-padding: 5;"
+            popup.content.add(popupMsg)
+
+            editorArea.mouseOverTextDelay = Duration.ofSeconds(1)
+            editorArea.addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_BEGIN) { e ->
+                val chIdx = e.characterIndex
+                val pos = e.screenPosition
+                val pre = editorArea.text.substring(0, chIdx).lastIndexOf(" ")
+                val aft = editorArea.text.substring(chIdx).indexOf(" ") + chIdx
+                val sub = editorArea.text.substring(pre + 1, aft)
+                val pat = Pattern.compile("(?<LOCAL>v\\d+)")
+                val mt = pat.matcher(sub)
+                if (mt.find()) {
+
+                    val txt = mt.group("LOCAL").substring(1).toInt()
+                    val loc = editorArea.text.substring(0, chIdx).lastIndexOf("locals") + "locals ".length
+                    val t = editorArea.text.substring(loc).indexOf("\n") + loc
+                    val num = editorArea.text.substring(loc, t).toInt()
+                    popupMsg.text = "Found local " + mt.group("LOCAL") + ".\n"
+                    if (txt < num)
+                        popupMsg.text += "Total available locals : $num"
+                    else
+                        popupMsg.text += "ERROR! Total available locals $num, but current is $txt!"
+                    popup.show(editorArea, pos.x, pos.y + 10)
+                }
+            }
+            editorArea.addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_END) { popup.hide() }
+        }
+
+        private fun setupMenu() {
+            // Menu/File
+            home.parentMenu.isMnemonicParsing = true
+            home.onAction = EventHandler {
+                editorStage.close()
+                Launcher().start(Stage())
+            }
+            settings.onAction = EventHandler {
+                Settings(editorStage).show()
+            }
+            recompile.accelerator = KeyCodeCombination(KeyCode.R, KeyCombination.CONTROL_DOWN)
+            recompile.onAction = EventHandler {
+                val dialog = Dialog<Unit>()
+                val pane = DialogPane()
+                val cont = FXMLLoader(
+                        javaClass.getResource(LoadUtils.getLayout("recompile_options.fxml"))).load<VBox>()
+                val group = ToggleGroup()
+                val builtinFramework = cont.lookup("#builtinFrame") as RadioButton
+                val customFramework = cont.lookup("#customFrame") as RadioButton
+                val customFrameworkPath = cont.lookup("#-p") as TextField
+                val frameworkPathBox = cont.lookup("#framePathBox") as Pane
+                builtinFramework.toggleGroup = group
+                customFramework.toggleGroup = group
+                builtinFramework.selectedProperty().addListener { _, _, newValue ->
+                    run {
+                        frameworkPathBox.isDisable = newValue
+                    }
+                }
+                builtinFramework.isSelected = true
+                val folderPath = cont.lookup("#path") as TextField
+                val folderPathSelector = cont.lookup("#pathSelector") as Button
+                val framePathSelector = cont.lookup("#customFramePathSelector") as Button
+                folderPathSelector.onAction = EventHandler {
+                    DirectoryChooser()
+                            .showDialog(dialog.owner)
+                            ?.absolutePath
+                            ?.also {
+                                folderPath.text = it
+                                folderPath.tooltip.text = it
+                            }
+                }
+                framePathSelector.onAction = EventHandler {
+                    DirectoryChooser()
+                            .showDialog(dialog.owner)
+                            ?.absolutePath
+                            ?.also {
+                                customFrameworkPath.text = it
+                                customFrameworkPath.tooltip.text = it
+                            }
+                }
+
+                folderPath.text = baseFolder.parent
+                folderPath.tooltip = Tooltip(folderPath.text)
+                val fileName = cont.lookup("#fileName") as TextField
+                fileName.text = baseFolder.name
+                fileName.tooltip = Tooltip(fileName.text)
+                pane.content = cont
+                pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
+                dialog.title = "Recompile options"
+                dialog.initOwner(editorStage)
+                dialog.dialogPane = pane
+                val recompileButton = ButtonType("Recompile", ButtonBar.ButtonData.OK_DONE)
+                pane.buttonTypes.addAll(
+                        recompileButton,
+                        ButtonType.CANCEL)
+                val selectedOptions = ArrayList<ApktoolCommand>()
+                dialog.setResultConverter {
+                    if (it == recompileButton) {
+                        cont.goThrough(selectedOptions)
+                        selectedOptions.add(ApktoolCommand(
+                                ApktoolCommand.General.OUTPUT, folderPath.text + "/" +
+                                if (fileName.text.endsWith(".apk")) fileName.text else fileName.text + ".apk"))
+                        if (customFramework.isSelected)
+                            selectedOptions.add(ApktoolCommand(
+                                    ApktoolCommand.General.FRAMEWORK_FOLDER_PATH,
+                                    customFrameworkPath.text))
+                        for (cmd in selectedOptions) {
+                            println(cmd.tag)
+                        }
+                    }
+                }
+                dialog.showAndWait()
+                if (selectedOptions.isNotEmpty()) {
+                    val apk = ApkToolUtils.recompile(baseFolder, *selectedOptions.toTypedArray())
+                    if (apk == null) {
+                        val errorDialog = Dialog<Unit>()
+                        errorDialog.initOwner(editorStage)
+                        errorDialog.contentText = "An error occurred while recompiling"
+                        errorDialog.dialogPane.buttonTypes.add(ButtonType.OK)
+                        errorDialog.show()
+                    }
+                }
+            }
+
+            // Menu/Search
+            searchMenu.isMnemonicParsing = true
+            searchMenu.onShown = EventHandler {
+                searchField.requestFocus()
+                searchField.positionCaret(searchField.text.length)
+                searchField.deselect()
+            }
+            search.apply {
+                isHideOnClick = false
+                styleClass.add("custom-menu-item")
+                val mainBox = VBox()
+                searchField = TextField()
+                searchField.textProperty().addListener { _, _, now ->
+                    currentSearch = now
+                    editorArea.setStyleSpans(0, updateHighlighting())
+                    currentSearchCursor = 0
+                }
+                searchField.onKeyPressed = EventHandler {
+                    if (it.code == KeyCode.ENTER) {
+                        currentSearchCursor = (currentSearchCursor + 1) % searchSpanList.size
+                        editorArea.displaceCaret(searchSpanList[currentSearchCursor].last)
+                    }
+                }
+                searchField.promptText = "Type here..."
+                val subBox = HBox()
+                mainBox.spacing = 5.0
+                subBox.alignment = Pos.BASELINE_CENTER
+                subBox.spacing = 2.0
+                subBox.background = Background(BackgroundFill(Paint.valueOf("#dedede"), CornerRadii.EMPTY, Insets.EMPTY))
+                val prev = Button("Prev")
+                prev.prefWidth = 100.0
+                prev.onAction = EventHandler {
+                    val size = searchSpanList.size
+                    if (size == 0) {
+                        currentSearchCursor = -1
+                        return@EventHandler
+                    }
+                    currentSearchCursor = (size + currentSearchCursor - 1) % size
+                    editorArea.displaceCaret(searchSpanList[currentSearchCursor].last)
+                }
+                val next = Button("Next")
+                next.prefWidth = 100.0
+                next.onAction = EventHandler {
+                    if (searchSpanList.size == 0) {
+                        currentSearchCursor = -1
+                        return@EventHandler
+                    }
+                    currentSearchCursor = (currentSearchCursor + 1) % searchSpanList.size
+                    editorArea.displaceCaret(searchSpanList[currentSearchCursor].last)
+                }
+                subBox.children.addAll(prev, next)
+                mainBox.children.addAll(searchField, subBox)
+                content = mainBox
+                content.hoverProperty().addListener { _, _, now ->
+                    if (now) {
+                        searchField.requestFocus()
+                        searchField.positionCaret(searchField.text.length)
+                        searchField.deselect()
+                    }
+                }
+            }
+
+            // Menu/Misc
+            examineFile.parentMenu.isMnemonicParsing = true
+            examineFile.onAction = EventHandler {
+                createFileInfoDialog()
+            }
+        }
+
         private fun setupFileExplorerView() {
             if (filesTreeList.root != null)
                 return
@@ -583,11 +594,11 @@ constructor(project: File) : Window() {
             }
 
             filesTreeList.root = TreeItem(baseFolder)
-            addChildren(filesTreeList.root)
+            addFileExplorerTreeItemChildren(filesTreeList.root)
             filesTreeList.selectionModel.select(0)
         }
 
-        private fun addChildren(treeItem: TreeItem<File>) {
+        private fun addFileExplorerTreeItemChildren(treeItem: TreeItem<File>) {
             val allFiles = treeItem.value.listFiles() ?: return
 
             val dirs = mutableListOf<TreeItem<File>>()
@@ -601,7 +612,7 @@ constructor(project: File) : Window() {
 
                 if (it.isDirectory) {
                     dirs.add(treeSubItem)
-                    addChildren(treeSubItem)
+                    addFileExplorerTreeItemChildren(treeSubItem)
                 } else files.add(treeSubItem)
             }
 

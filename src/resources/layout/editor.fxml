@@ -10,15 +10,15 @@
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml">
     <MenuBar>
-        <Menu text="File">
+        <Menu text="_File">
             <MenuItem fx:id="home" text="Go home"/>
             <MenuItem fx:id="settings" text="Settings"/>
             <MenuItem fx:id="recompile" text="Recompile"/>
         </Menu>
-        <Menu fx:id="searchMenu" text="Search">
+        <Menu fx:id="searchMenu" text="_Search">
             <CustomMenuItem fx:id="search" />
         </Menu>
-        <Menu fx:id="miscMenu" text="Misc">
+        <Menu fx:id="miscMenu" text="_Misc">
             <MenuItem fx:id="examineFile" text="Examine file"/>
         </Menu>
     </MenuBar>
