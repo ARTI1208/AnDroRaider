@@ -237,6 +237,12 @@ class Launcher : Application() {
         private fun openRecentProject() {
             val projectToOpen = recentsListView.selectionModel.selectedItem.appFile
             if (projectToOpen.exists()) {
+
+                items.remove(projectToOpen.absolutePath)
+                items.add(0, projectToOpen.absolutePath)
+                recentsListView.items.setAll(RecentProject.getArray(items))
+                Settings.putStringArray(RECENTS_TAG, items)
+
                 root.scene.window.hide()
                 Editor(projectToOpen).show()
             } else {
