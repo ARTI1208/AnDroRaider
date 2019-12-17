@@ -19,7 +19,7 @@ import java.util.regex.Pattern
 import kotlin.collections.ArrayList
 
 @Suppress("RedundantVisibilityModifier")
-class CodeEditorArea : CodeArea() {
+class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     lateinit var editorWindow: Editor
 
@@ -52,10 +52,11 @@ class CodeEditorArea : CodeArea() {
                 currentEditingFileChangeListeners.forEach {
                     it?.changed(observableCurrentEditingFile, previousValue, value)
                 }
-            }
-            if (previousValue != value && value == null) {
-                currentEditingFileInvalidationListeners.forEach {
-                    it?.invalidated(observableCurrentEditingFile)
+
+                if (value == null) {
+                    currentEditingFileInvalidationListeners.forEach {
+                        it?.invalidated(observableCurrentEditingFile)
+                    }
                 }
             }
         }
@@ -78,7 +79,6 @@ class CodeEditorArea : CodeArea() {
                 field = -1
             }
         }
-//    currentSearchCursor
 
     private val searchSpanList = SearchSpanList()
 
@@ -139,10 +139,43 @@ class CodeEditorArea : CodeArea() {
             return
 
         if (file.absolutePath != currentEditingFile?.absolutePath) {
-            replaceText(String(Files.readAllBytes(file.toPath())))
-            displaceCaret(0)
             currentEditingFile = file
+            replaceText(String(Files.readAllBytes(file.toPath())))
+            setStyleSpans(0, updateHighlighting())
+            displaceCaret(0)
         }
+    }
+
+    public override fun find(valueToFind: String?) {
+        findAll(valueToFind)
+    }
+
+    public override fun findAll(valueToFind: String?) {
+        currentSearch = valueToFind
+        setStyleSpans(0, updateHighlighting())
+        currentSearchCursor = 0
+    }
+
+    public override fun findNext() {
+        if (searchSpanList.size == 0 || currentSearch.isNullOrEmpty()) {
+            currentSearchCursor = -1
+            return
+        }
+
+        currentSearchCursor = (currentSearchCursor + 1) % searchSpanList.size
+        displaceCaret(searchSpanList[currentSearchCursor].last)
+    }
+
+    public override fun findPrevious() {
+        val size = searchSpanList.size
+        if (size == 0 || currentSearch.isNullOrEmpty()) {
+            currentSearchCursor = -1
+            searchSpanList.searchString
+            return
+        }
+
+        currentSearchCursor = (size + currentSearchCursor - 1) % size
+        displaceCaret(searchSpanList[currentSearchCursor].last)
     }
 
     private fun getSmaliHighlighting(pattern: Pattern, text: String): StyleSpansBuilder<Collection<String>> {
@@ -197,34 +230,7 @@ class CodeEditorArea : CodeArea() {
         return builder.create()
     }
 
-    public fun findAll(searchString: String?) {
-        currentSearch = searchString
-        setStyleSpans(0, updateHighlighting())
-        currentSearchCursor = 0
-    }
-
-    public fun findNext() {
-        if (searchSpanList.size == 0 || currentSearch.isNullOrEmpty()) {
-            currentSearchCursor = -1
-            return
-        }
-
-        currentSearchCursor = (currentSearchCursor + 1) % searchSpanList.size
-        displaceCaret(searchSpanList[currentSearchCursor].last)
-    }
-
-    public fun findPrev() {
-        val size = searchSpanList.size
-        if (size == 0 || currentSearch.isNullOrEmpty()) {
-            currentSearchCursor = -1
-            searchSpanList.searchString
-            return
-        }
-        currentSearchCursor = (size + currentSearchCursor - 1) % size
-        displaceCaret(searchSpanList[currentSearchCursor].last)
-    }
-
-    private fun updateHighlighting(searchString: String? = currentSearch): StyleSpans<Collection<String>> {
+    private fun updateHighlighting(): StyleSpans<Collection<String>> {
         clearStyle(0, text.length)
         val p = TypeDetector.getPatternForExtension(currentEditingFile?.extension)
         val pattern = Pattern.compile(p, Pattern.MULTILINE)
@@ -235,8 +241,8 @@ class CodeEditorArea : CodeArea() {
             else -> getSimpleHighlighting()
         }.create()
 
-        if (searchString != null && searchString.isNotEmpty()) {
-            sp = sp.overlay(getSearchHighlighting(searchString, text)) { first, second ->
+        if (!currentSearch.isNullOrEmpty()) {
+            sp = sp.overlay(getSearchHighlighting(currentSearch, text)) { first, second ->
                 val list = ArrayList<String>()
                 list.addAll(first)
                 list.addAll(second)
