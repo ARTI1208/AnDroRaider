@@ -19,6 +19,9 @@ fun Matcher.contains(group: String): Boolean {
     return pattern().pattern().contains(group) && group(group) != null
 }
 
-public fun getFileRelativePath(file: File?, folder: File): String? {
-    return file?.absolutePath?.removePrefix(folder.parent + "\\")
+public fun getFileRelativePath(file: File?, folder: File?): String? {
+    if (file == null || folder == null)
+        return null
+
+    return file.absolutePath.removePrefix(folder.parent + "\\")
 }

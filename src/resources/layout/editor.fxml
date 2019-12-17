@@ -5,6 +5,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import org.fxmisc.flowless.VirtualizedScrollPane?>
 <?import ru.art2000.androraider.CodeEditorArea?>
+<?import ru.art2000.androraider.FileManagerView?>
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml">
     <MenuBar>
@@ -21,7 +22,7 @@
         </Menu>
     </MenuBar>
     <HBox fx:id="main">
-        <TreeView prefWidth="200" fx:id="filesTreeList" />
+        <FileManagerView prefWidth="200" fx:id="fileManagerView" />
         <VirtualizedScrollPane>
             <content>
                 <CodeEditorArea fx:id="editorArea" />

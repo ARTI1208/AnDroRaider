@@ -23,15 +23,11 @@ import kotlin.collections.ArrayList
 class Editor @Throws(IOException::class)
 constructor(project: File) : Window() {
 
-    companion object {
-        @JvmStatic
-        lateinit var baseFolder: File
-    }
+    val baseFolder: File = if (project.isDirectory) project else project.parentFile
 
     var editorStage = Stage()
 
     init {
-        baseFolder = if (project.isDirectory) project else project.parentFile
         val loader = FXMLLoader(javaClass.getResource(LoadUtils.getLayout("editor.fxml")))
         loader.setController(EditorLayoutController())
         val root = loader.load<Parent>()
@@ -69,7 +65,7 @@ constructor(project: File) : Window() {
 
         // Main area
         @FXML
-        lateinit var filesTreeList: TreeView<File>
+        lateinit var fileManagerView: FileManagerView
         @FXML
         lateinit var editorArea: CodeEditorArea
 
@@ -80,102 +76,16 @@ constructor(project: File) : Window() {
 
             editorStage.title = "${baseFolder.name} - Project Editor"
             editorStage.onShown = EventHandler {
-                filesTreeList.requestFocus()
+                fileManagerView.requestFocus()
             }
 
-            editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(filesTreeList.prefWidthProperty()))
+            editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(fileManagerView.prefWidthProperty()))
             editorArea.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
-            filesTreeList.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
+            fileManagerView.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
 
             setupMenu()
             setupCodeArea()
             setupFileExplorerView()
-        }
-
-        private fun onTreeItemClick(treeItem: TreeItem<File>?, byMouse: Boolean = false) {
-            if (treeItem == null) {
-                return
-            }
-
-            if (treeItem.value.isDirectory) {
-                if (!byMouse) {
-                    treeItem.isExpanded = !treeItem.isExpanded
-                }
-            } else {
-                onFileItemClick(treeItem.value)
-            }
-        }
-
-        private fun onFileItemClick(file: File) {
-            if (TypeDetector.isTextFile(file.name)) {
-                editorArea.edit(file)
-                editorArea.requestFocus()
-            }
-            // TODO show message for unsupported types of files
-        }
-
-        private fun onTreeItemDelete(treeItem: TreeItem<File>?) {
-            if (treeItem == null)
-                return
-
-            val deleted = onFileItemDelete(treeItem.value)
-            if (deleted) {
-                treeItem.parent.children.remove(treeItem)
-            }
-        }
-
-        private fun onFileItemDelete(file: File): Boolean {
-            val deleteFileDialog = Dialog<Boolean>()
-            val path = getFileRelativePath(file, baseFolder)
-            deleteFileDialog.title = "Delete $path"
-            val dialogPane = DialogPane()
-            val toDeleteString = "${if (file.isDirectory) "directory" else "file"} $path"
-            val mainLabel = Label("Are you sure you want delete $toDeleteString?")
-            val dialogBox = HBox()
-            dialogBox.children.addAll(mainLabel)
-            dialogBox.padding = Insets(0.0, 0.0, 20.0, 0.0)
-
-            dialogPane.content = dialogBox
-            dialogPane.padding = Insets(10.0, 10.0, 10.0, 10.0)
-            deleteFileDialog.dialogPane = dialogPane
-            deleteFileDialog.initOwner(editorStage)
-            deleteFileDialog.dialogPane.buttonTypes.addAll(ButtonType.CLOSE, ButtonType.OK)
-            (deleteFileDialog.dialogPane.lookupButton(ButtonType.CLOSE) as Button).isDefaultButton = true
-
-            deleteFileDialog.setResultConverter {
-                if (it == ButtonType.OK) {
-                    try {
-                        if (file.isDirectory) {
-                            return@setResultConverter file.deleteRecursively()
-                        } else {
-                            return@setResultConverter file.delete()
-                        }
-                    } catch (exception: SecurityException) {
-                        showErrorMessage("Delete error", "Error deleting $toDeleteString")
-                    }
-                }
-
-                return@setResultConverter false
-            }
-            return deleteFileDialog.showAndWait().get()
-        }
-
-        @Suppress("SameParameterValue")
-        private fun showErrorMessage(title: String, message: String) {
-            val errorDialog = Dialog<Unit>()
-            errorDialog.title = title
-            val dialogPane = DialogPane()
-            val mainLabel = Label(message)
-            val dialogBox = HBox()
-            dialogBox.children.addAll(mainLabel)
-            dialogBox.padding = Insets(0.0, 0.0, 20.0, 0.0)
-
-            dialogPane.content = dialogBox
-            dialogPane.padding = Insets(10.0, 10.0, 10.0, 10.0)
-            errorDialog.dialogPane = dialogPane
-            errorDialog.initOwner(editorStage)
-            errorDialog.dialogPane.buttonTypes.addAll(ButtonType.OK)
-            errorDialog.showAndWait()
         }
 
         private fun createFileInfoDialog() {
@@ -350,7 +260,7 @@ constructor(project: File) : Window() {
                 val prev = Button("Prev")
                 prev.prefWidth = 100.0
                 prev.onAction = EventHandler {
-                    editorArea.findPrev()
+                    editorArea.findPrevious()
                 }
                 val next = Button("Next")
                 next.prefWidth = 100.0
@@ -377,66 +287,15 @@ constructor(project: File) : Window() {
         }
 
         private fun setupFileExplorerView() {
-            if (filesTreeList.root != null)
-                return
-
-            filesTreeList.setCellFactory { FileManagerTreeListItem() }
-
-            filesTreeList.onMouseClicked = EventHandler {
-                if (it.button === MouseButton.PRIMARY
-                        && it.clickCount == 2) {
-                    onTreeItemClick(filesTreeList.selectionModel.selectedItem, true)
-                }
-            }
-
-            filesTreeList.addEventHandler(KeyEvent.KEY_PRESSED) {
-                if (it.code == KeyCode.SPACE) {
-                    onTreeItemClick(filesTreeList.selectionModel.selectedItem)
-                    it.consume()
-                }
-            }
-
-            filesTreeList.onKeyPressed = EventHandler {
-                @Suppress("NON_EXHAUSTIVE_WHEN")
-                when (it.code) {
-                    KeyCode.ENTER -> onTreeItemClick(filesTreeList.selectionModel.selectedItem)
-                    KeyCode.DELETE -> onTreeItemDelete(filesTreeList.selectionModel.selectedItem)
-                    KeyCode.LEFT -> {
-                        if (it.isAltDown)
-                            filesTreeList.selectionModel.selectedItem?.parent?.isExpanded = false
-                    }
-                    KeyCode.RIGHT -> {
-                        if (it.isAltDown)
-                            filesTreeList.selectionModel.selectedItem?.isExpanded = true
+            fileManagerView.setupWithBaseFolder(baseFolder)
+            fileManagerView.onFileSelectedListeners.add(object : FileManagerView.FileSelectedListener{
+                override fun fileSelected(oldFile: File?, newFile: File) {
+                    if (TypeDetector.isTextFile(newFile.name)) {
+                        editorArea.edit(newFile)
+                        editorArea.requestFocus()
                     }
                 }
-            }
-
-            filesTreeList.root = TreeItem(baseFolder)
-            addFileExplorerTreeItemChildren(filesTreeList.root)
-            filesTreeList.selectionModel.select(0)
-        }
-
-        private fun addFileExplorerTreeItemChildren(treeItem: TreeItem<File>) {
-            val allFiles = treeItem.value.listFiles() ?: return
-
-            val dirs = mutableListOf<TreeItem<File>>()
-            val files = mutableListOf<TreeItem<File>>()
-
-            allFiles.forEach {
-                if (it.isHidden)
-                    return@forEach
-
-                val treeSubItem = TreeItem(it)
-
-                if (it.isDirectory) {
-                    dirs.add(treeSubItem)
-                    addFileExplorerTreeItemChildren(treeSubItem)
-                } else files.add(treeSubItem)
-            }
-
-            treeItem.children.setAll(dirs)
-            treeItem.children.addAll(files)
+            })
         }
     }
 }
