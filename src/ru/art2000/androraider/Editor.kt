@@ -13,23 +13,10 @@ import javafx.scene.input.*
 import javafx.scene.layout.*
 import javafx.scene.paint.Paint
 import javafx.stage.DirectoryChooser
-import javafx.stage.Popup
 import javafx.stage.Stage
 import javafx.stage.Window
-import org.fxmisc.richtext.Caret
-import org.fxmisc.richtext.CodeArea
-import org.fxmisc.richtext.LineNumberFactory
-import org.fxmisc.richtext.event.MouseOverTextEvent
-import org.fxmisc.richtext.model.StyleSpans
-import org.fxmisc.richtext.model.StyleSpansBuilder
 import java.io.File
 import java.io.IOException
-import java.nio.file.Files
-import java.time.Duration
-import java.time.Duration.ofMillis
-import java.util.*
-import java.util.Collections.emptyList
-import java.util.regex.Pattern
 import kotlin.collections.ArrayList
 
 
@@ -84,35 +71,9 @@ constructor(project: File) : Window() {
         @FXML
         lateinit var filesTreeList: TreeView<File>
         @FXML
-        lateinit var editorArea: CodeArea
+        lateinit var editorArea: CodeEditorArea
 
-        private var currentEditingFile: File? = null
-            set(value) {
-                if (value != null)
-                    editorStage.title = "${getFileRelativePath(value)} - Project Editor"
-                isFileChanged = true
-                field = value
-            }
-
-        private var isFileChanged = false
-
-        private var currentSearch: String? = null
-
-        private lateinit var searchField: TextField
-
-        private val searchSpanList = SearchSpanList()
-
-        private var currentSearchCursor = -1
-            set(value) {
-                if (value >= 0 && value < searchSpanList.size) {
-                    field = value
-                    editorArea.showCaret = Caret.CaretVisibility.ON
-                    editorArea.displaceCaret(searchSpanList[value].last)
-                    editorArea.scrollYToPixel(editorArea.currentParagraph.toDouble() * 15)
-                } else {
-                    field = -1
-                }
-            }
+        lateinit var searchField: TextField
 
         @Suppress("unused")
         fun initialize() {
@@ -131,20 +92,14 @@ constructor(project: File) : Window() {
             setupFileExplorerView()
         }
 
-        private fun getFileRelativePath(file: File? = currentEditingFile): String? {
-            return file?.absolutePath?.removePrefix(baseFolder.parent + "\\")
-        }
-
         private fun onTreeItemClick(treeItem: TreeItem<File>?, byMouse: Boolean = false) {
             if (treeItem == null) {
-                println("null exit")
                 return
             }
-//            println("Try open ${treeItem.value.name} $byMouse")
+
             if (treeItem.value.isDirectory) {
                 if (!byMouse) {
                     treeItem.isExpanded = !treeItem.isExpanded
-                    println("Set exp ${treeItem.isExpanded} for ${treeItem.value.name}")
                 }
             } else {
                 onFileItemClick(treeItem.value)
@@ -153,11 +108,7 @@ constructor(project: File) : Window() {
 
         private fun onFileItemClick(file: File) {
             if (TypeDetector.isTextFile(file.name)) {
-                if (file.absolutePath != currentEditingFile?.absolutePath) {
-                    editorArea.replaceText(String(Files.readAllBytes(file.toPath())))
-                    editorArea.displaceCaret(0)
-                    currentEditingFile = file
-                }
+                editorArea.edit(file)
                 editorArea.requestFocus()
             }
             // TODO show message for unsupported types of files
@@ -175,9 +126,10 @@ constructor(project: File) : Window() {
 
         private fun onFileItemDelete(file: File): Boolean {
             val deleteFileDialog = Dialog<Boolean>()
-            deleteFileDialog.title = "Delete ${getFileRelativePath(file)}"
+            val path = getFileRelativePath(file, baseFolder)
+            deleteFileDialog.title = "Delete $path"
             val dialogPane = DialogPane()
-            val toDeleteString = "${if (file.isDirectory) "directory" else "file"} ${getFileRelativePath(file)}"
+            val toDeleteString = "${if (file.isDirectory) "directory" else "file"} $path"
             val mainLabel = Label("Are you sure you want delete $toDeleteString?")
             val dialogBox = HBox()
             dialogBox.children.addAll(mainLabel)
@@ -226,41 +178,20 @@ constructor(project: File) : Window() {
             errorDialog.showAndWait()
         }
 
-        private fun updateHighlighting(searchString: String? = currentSearch): StyleSpans<Collection<String>> {
-            editorArea.clearStyle(0, editorArea.text.length)
-            val p = TypeDetector.getPatternForExtension(currentEditingFile?.extension)
-            val pattern = Pattern.compile(p, Pattern.MULTILINE)
-            println(pattern.pattern())
-
-            var sp = when (currentEditingFile?.extension) {
-                "smali" -> getSmaliHighlighting(pattern)
-                else -> getSimpleHighlighting()
-            }.create()
-
-            if (searchString != null && searchString.isNotEmpty()) {
-                sp = sp.overlay(getSearchHighlighting(searchString)) { first, second ->
-                    val list = ArrayList<String>()
-                    list.addAll(first)
-                    list.addAll(second)
-                    return@overlay list
-                }
-            }
-
-            return sp
-        }
-
         private fun createFileInfoDialog() {
             val fileInfoDialog = Dialog<Unit>()
-            fileInfoDialog.title = getFileRelativePath() ?: "No file is currently editing"
+            fileInfoDialog.title = getFileRelativePath(editorArea.observableCurrentEditingFile.value, baseFolder) ?:
+                    "No file is currently editing"
             val dialogPane = DialogPane()
             val typeLabelTitle = Label("Type:")
-            val typeLabelValue = Label(currentEditingFile?.extension ?: "No file or extension")
+            val typeLabelValue = Label(editorArea.observableCurrentEditingFile.value?.extension ?:
+            "No file or extension")
             val typeBox = HBox()
             typeBox.children.addAll(typeLabelTitle, typeLabelValue)
             typeBox.spacing = 40.0
             val dialogBox = VBox()
             dialogBox.children.add(typeBox)
-            if (TypeDetector.Image.isVectorDrawable(currentEditingFile)) {
+            if (TypeDetector.Image.isVectorDrawable(editorArea.observableCurrentEditingFile.value)) {
                 val vectorImageLabelTitle = Label("Edit Vector Image:")
                 val vectorImageButtonValue = Button("Edit...")
                 vectorImageButtonValue.onAction = EventHandler {
@@ -281,117 +212,19 @@ constructor(project: File) : Window() {
             fileInfoDialog.show()
         }
 
-        private fun getSearchHighlighting(toSearch: String?): StyleSpans<Collection<String>> {
-            searchSpanList.searchString = toSearch
-            val pattern = Pattern.compile("(?<SEARCH>$toSearch)")
-            val builder = StyleSpansBuilder<Collection<String>>()
-            val matcher = pattern.matcher(editorArea.text)
-            var lastKwEnd = 0
-            if (pattern.pattern().isNotEmpty()) {
-                while (matcher.find()) {
-                    val styleClass = (when {
-                        matcher.contains("SEARCH") -> "search"
-                        else -> return builder.create()
-                    })
-                    builder.add(emptyList(), matcher.start() - lastKwEnd)
-                    builder.add(Collections.singleton(styleClass), matcher.end() - matcher.start())
-                    searchSpanList.add(IntRange(matcher.start(), matcher.end()))
-                    lastKwEnd = matcher.end()
-                }
-            }
-            builder.add(emptyList(), editorArea.text.length - lastKwEnd)
-            return builder.create()
-        }
-
-        private fun getSimpleHighlighting(): StyleSpansBuilder<Collection<String>> {
-            val builder = StyleSpansBuilder<Collection<String>>()
-            builder.add(emptyList(), 0)
-            return builder
-        }
-
-        private fun getSmaliHighlighting(pattern: Pattern): StyleSpansBuilder<Collection<String>> {
-            val builder = StyleSpansBuilder<Collection<String>>()
-            val matcher = pattern.matcher(editorArea.text)
-            var lastKwEnd = 0
-            while (matcher.find()) {
-                val styleClass = (when {
-                    matcher.contains("LOCAL") -> "local"
-                    matcher.contains("PARAM") -> "param"
-                    matcher.contains("CALL") -> "call"
-                    matcher.contains("NUMBER") -> "number"
-                    matcher.contains("KEYWORD") -> "keyword"
-                    matcher.contains("COMMENT") -> "comment"
-                    matcher.contains("BRACKET") -> "bracket"
-                    matcher.contains("STRING") -> "string"
-                    else -> return builder
-                })
-                builder.add(emptyList(), matcher.start() - lastKwEnd)
-                builder.add(Collections.singleton(styleClass), matcher.end() - matcher.start())
-                lastKwEnd = matcher.end()
-            }
-            builder.add(emptyList(), editorArea.text.length - lastKwEnd)
-            return builder
-        }
-
         private fun setupCodeArea() {
-            editorArea.apply {
-                styleClass.add("text-area")
-                onKeyPressed = EventHandler {
-                    if (it.isControlDown && it.code == KeyCode.F) {
-                        searchMenu.show()
-                        searchField.requestFocus()
-                        searchField.positionCaret(searchField.text.length)
-                    }
-                }
-                paragraphGraphicFactory = LineNumberFactory.get(this)
-                textProperty().addListener { _, oldValue, newValue ->
-                    if (isFileChanged) {
-                        isFileChanged = false
-                        return@addListener
-                    }
-                    if (currentEditingFile != null && oldValue.isNotEmpty()) {
-                        Files.write(currentEditingFile!!.toPath(), newValue.toByteArray())
-                    }
-                }
-                multiPlainChanges()
-                        .successionEnds(ofMillis(100))
-                        .subscribe {
-                            setStyleSpans(0, updateHighlighting())
-                        }
-            }
-
-
-            val popup = Popup()
-            val popupMsg = Label()
-            popupMsg.style = "-fx-background-color: black;" +
-                    "-fx-text-fill: white;" +
-                    "-fx-padding: 5;"
-            popup.content.add(popupMsg)
-
-            editorArea.mouseOverTextDelay = Duration.ofSeconds(1)
-            editorArea.addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_BEGIN) { e ->
-                val chIdx = e.characterIndex
-                val pos = e.screenPosition
-                val pre = editorArea.text.substring(0, chIdx).lastIndexOf(" ")
-                val aft = editorArea.text.substring(chIdx).indexOf(" ") + chIdx
-                val sub = editorArea.text.substring(pre + 1, aft)
-                val pat = Pattern.compile("(?<LOCAL>v\\d+)")
-                val mt = pat.matcher(sub)
-                if (mt.find()) {
-
-                    val txt = mt.group("LOCAL").substring(1).toInt()
-                    val loc = editorArea.text.substring(0, chIdx).lastIndexOf("locals") + "locals ".length
-                    val t = editorArea.text.substring(loc).indexOf("\n") + loc
-                    val num = editorArea.text.substring(loc, t).toInt()
-                    popupMsg.text = "Found local " + mt.group("LOCAL") + ".\n"
-                    if (txt < num)
-                        popupMsg.text += "Total available locals : $num"
-                    else
-                        popupMsg.text += "ERROR! Total available locals $num, but current is $txt!"
-                    popup.show(editorArea, pos.x, pos.y + 10)
+            editorArea.editorWindow = this@Editor
+            editorArea.onKeyPressed = EventHandler {
+                if (it.isControlDown && it.code == KeyCode.F) {
+                    searchMenu.show()
+                    searchField.requestFocus()
+                    searchField.positionCaret(searchField.text.length)
                 }
             }
-            editorArea.addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_END) { popup.hide() }
+            editorArea.observableCurrentEditingFile.addListener { _, _, fileNew ->
+                if (fileNew != null)
+                    editorStage.title = "${getFileRelativePath(fileNew, baseFolder)} - Project Editor"
+            }
         }
 
         private fun setupMenu() {
@@ -501,14 +334,11 @@ constructor(project: File) : Window() {
                 val mainBox = VBox()
                 searchField = TextField()
                 searchField.textProperty().addListener { _, _, now ->
-                    currentSearch = now
-                    editorArea.setStyleSpans(0, updateHighlighting())
-                    currentSearchCursor = 0
+                    editorArea.findAll(now)
                 }
                 searchField.onKeyPressed = EventHandler {
                     if (it.code == KeyCode.ENTER) {
-                        currentSearchCursor = (currentSearchCursor + 1) % searchSpanList.size
-                        editorArea.displaceCaret(searchSpanList[currentSearchCursor].last)
+                        editorArea.findNext()
                     }
                 }
                 searchField.promptText = "Type here..."
@@ -520,23 +350,12 @@ constructor(project: File) : Window() {
                 val prev = Button("Prev")
                 prev.prefWidth = 100.0
                 prev.onAction = EventHandler {
-                    val size = searchSpanList.size
-                    if (size == 0) {
-                        currentSearchCursor = -1
-                        return@EventHandler
-                    }
-                    currentSearchCursor = (size + currentSearchCursor - 1) % size
-                    editorArea.displaceCaret(searchSpanList[currentSearchCursor].last)
+                    editorArea.findPrev()
                 }
                 val next = Button("Next")
                 next.prefWidth = 100.0
                 next.onAction = EventHandler {
-                    if (searchSpanList.size == 0) {
-                        currentSearchCursor = -1
-                        return@EventHandler
-                    }
-                    currentSearchCursor = (currentSearchCursor + 1) % searchSpanList.size
-                    editorArea.displaceCaret(searchSpanList[currentSearchCursor].last)
+                    editorArea.findNext()
                 }
                 subBox.children.addAll(prev, next)
                 mainBox.children.addAll(searchField, subBox)

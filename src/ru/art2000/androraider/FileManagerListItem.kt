@@ -42,6 +42,8 @@ class FileManagerTreeListItem : TreeCell<File?>(), Initializable {
         graphic = icon
         contentDisplay = ContentDisplay.LEFT
 
+        treeItem.expandedProperty()
+
         if (treeItem?.isExpanded == true)
             disclosureNode.rotate = 0.0
         else

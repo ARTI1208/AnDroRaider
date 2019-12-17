@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Text?>
 <?import org.fxmisc.flowless.VirtualizedScrollPane?>
-<?import org.fxmisc.richtext.CodeArea?>
+<?import ru.art2000.androraider.CodeEditorArea?>
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml">
     <MenuBar>
@@ -26,7 +24,7 @@
         <TreeView prefWidth="200" fx:id="filesTreeList" />
         <VirtualizedScrollPane>
             <content>
-                <CodeArea fx:id="editorArea" />
+                <CodeEditorArea fx:id="editorArea" />
             </content>
         </VirtualizedScrollPane>
     </HBox>
