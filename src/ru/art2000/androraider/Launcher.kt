@@ -164,8 +164,9 @@ class Launcher : Application() {
                     folderPath.text = app.parent
                     val folderName = cont.lookup("#folderName") as TextField
                     folderName.text = app.nameWithoutExtension
+                    cont.padding = Insets(0.0, 0.0, 20.0, 0.0)
                     pane.content = cont
-                    pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
+                    pane.padding = Insets(10.0, 10.0, 10.0, 10.0)
                     dialog.title = "Decompile options"
                     dialog.dialogPane = pane
                     val decompileButton = ButtonType("Decompile", ButtonBar.ButtonData.OK_DONE)
@@ -250,7 +251,7 @@ class Launcher : Application() {
                 val pane = DialogPane()
                 val warning = Text("This project doesn't exist! Do you want to remove it?")
                 pane.content = warning
-                pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
+                pane.padding = Insets(10.0, 10.0, 10.0, 10.0)
                 val remove = ButtonType("Remove", ButtonBar.ButtonData.NEXT_FORWARD)
                 pane.buttonTypes.addAll(
                         remove,

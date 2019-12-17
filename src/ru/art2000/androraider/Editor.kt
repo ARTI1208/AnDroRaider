@@ -70,9 +70,9 @@ constructor(project: File) : Window() {
         @FXML
         lateinit var editorArea: CodeEditorArea
 
-        lateinit var searchField: TextField
+        private lateinit var searchField: TextField
 
-        val searchMapping: HashMap<Searchable<String?>, String?> = HashMap()
+        private val searchMapping: HashMap<Searchable<String?>, String?> = HashMap()
 
         @Suppress("UNCHECKED_CAST")
         val currentSearchable: Searchable<String?>?
@@ -107,30 +107,27 @@ constructor(project: File) : Window() {
             val fileInfoDialog = Dialog<Unit>()
             fileInfoDialog.title = getFileRelativePath(editorArea.observableCurrentEditingFile.value, baseFolder)
                     ?: "No file is currently editing"
-            val dialogPane = DialogPane()
             val typeLabelTitle = Label("Type:")
             val typeLabelValue = Label(editorArea.observableCurrentEditingFile.value?.extension
                     ?: "No file or extension")
             val typeBox = HBox()
             typeBox.children.addAll(typeLabelTitle, typeLabelValue)
             typeBox.spacing = 40.0
-            val dialogBox = VBox()
-            dialogBox.children.add(typeBox)
+
+            val dialogPane = getBaseDialogPane(typeBox)
+
             if (TypeDetector.Image.isVectorDrawable(editorArea.observableCurrentEditingFile.value)) {
                 val vectorImageLabelTitle = Label("Edit Vector Image:")
                 val vectorImageButtonValue = Button("Edit...")
                 vectorImageButtonValue.onAction = EventHandler {
-                    //                    VectorTools.Main.launch(currentEditingFile?.path)
                     println(Main.openWindow())
                 }
                 val vectorImageBox = HBox()
                 vectorImageBox.spacing = 40.0
                 vectorImageBox.children.addAll(vectorImageLabelTitle, vectorImageButtonValue)
-                dialogBox.children.add(vectorImageBox)
+                (dialogPane.content as Pane).children.add(vectorImageBox)
             }
 
-            dialogPane.content = dialogBox
-            dialogPane.padding = Insets(10.0, 10.0, 10.0, 10.0)
             fileInfoDialog.dialogPane = dialogPane
             fileInfoDialog.initOwner(editorStage)
             fileInfoDialog.dialogPane.buttonTypes.add(ButtonType.OK)
@@ -208,8 +205,9 @@ constructor(project: File) : Window() {
                 val fileName = cont.lookup("#fileName") as TextField
                 fileName.text = baseFolder.name
                 fileName.tooltip = Tooltip(fileName.text)
+                cont.padding = Insets(0.0, 0.0, 20.0, 0.0)
                 pane.content = cont
-                pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
+                pane.padding = Insets(10.0, 10.0, 10.0, 10.0)
                 dialog.title = "Recompile options"
                 dialog.initOwner(editorStage)
                 dialog.dialogPane = pane

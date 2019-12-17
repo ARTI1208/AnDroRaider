@@ -1,12 +1,10 @@
 package ru.art2000.androraider
 
 import javafx.event.EventHandler
-import javafx.geometry.Insets
 import javafx.scene.control.*
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseButton
-import javafx.scene.layout.HBox
 import java.io.File
 
 @Suppress("RedundantVisibilityModifier")
@@ -99,16 +97,10 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
         val deleteFileDialog = Dialog<Boolean>()
         val path = getFileRelativePath(file, root.value)
         deleteFileDialog.title = "Delete $path"
-        val dialogPane = DialogPane()
         val toDeleteString = "${if (file.isDirectory) "directory" else "file"} $path"
         val mainLabel = Label("Are you sure you want delete $toDeleteString?")
-        val dialogBox = HBox()
-        dialogBox.children.addAll(mainLabel)
-        dialogBox.padding = Insets(0.0, 0.0, 20.0, 0.0)
 
-        dialogPane.content = dialogBox
-        dialogPane.padding = Insets(10.0, 10.0, 10.0, 10.0)
-        deleteFileDialog.dialogPane = dialogPane
+        deleteFileDialog.dialogPane = getBaseDialogPane(mainLabel)
         deleteFileDialog.initOwner(scene.window)
         deleteFileDialog.dialogPane.buttonTypes.addAll(ButtonType.CLOSE, ButtonType.OK)
         (deleteFileDialog.dialogPane.lookupButton(ButtonType.CLOSE) as Button).isDefaultButton = true
