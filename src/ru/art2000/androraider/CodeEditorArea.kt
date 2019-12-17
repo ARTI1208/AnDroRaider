@@ -66,7 +66,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     private var isFileChanged = false
 
-    private var currentSearch: String? = null
+    override var currentSearchValue: String? = null
 
     private var currentSearchCursor = -1
         set(value) {
@@ -151,13 +151,13 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
     }
 
     public override fun findAll(valueToFind: String?) {
-        currentSearch = valueToFind
+        currentSearchValue = valueToFind
         setStyleSpans(0, updateHighlighting())
         currentSearchCursor = 0
     }
 
     public override fun findNext() {
-        if (searchSpanList.size == 0 || currentSearch.isNullOrEmpty()) {
+        if (searchSpanList.size == 0 || currentSearchValue.isNullOrEmpty()) {
             currentSearchCursor = -1
             return
         }
@@ -168,7 +168,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     public override fun findPrevious() {
         val size = searchSpanList.size
-        if (size == 0 || currentSearch.isNullOrEmpty()) {
+        if (size == 0 || currentSearchValue.isNullOrEmpty()) {
             currentSearchCursor = -1
             searchSpanList.searchString
             return
@@ -241,8 +241,8 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
             else -> getSimpleHighlighting()
         }.create()
 
-        if (!currentSearch.isNullOrEmpty()) {
-            sp = sp.overlay(getSearchHighlighting(currentSearch, text)) { first, second ->
+        if (!currentSearchValue.isNullOrEmpty()) {
+            sp = sp.overlay(getSearchHighlighting(currentSearchValue, text)) { first, second ->
                 val list = ArrayList<String>()
                 list.addAll(first)
                 list.addAll(second)

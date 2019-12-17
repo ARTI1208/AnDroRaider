@@ -9,7 +9,9 @@ import javafx.geometry.Pos
 import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.*
-import javafx.scene.input.*
+import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyCodeCombination
+import javafx.scene.input.KeyCombination
 import javafx.scene.layout.*
 import javafx.scene.paint.Paint
 import javafx.stage.DirectoryChooser
@@ -17,7 +19,6 @@ import javafx.stage.Stage
 import javafx.stage.Window
 import java.io.File
 import java.io.IOException
-import kotlin.collections.ArrayList
 
 
 class Editor @Throws(IOException::class)
@@ -71,6 +72,20 @@ constructor(project: File) : Window() {
 
         lateinit var searchField: TextField
 
+        val searchMapping: HashMap<Searchable<String?>, String?> = HashMap()
+
+        @Suppress("UNCHECKED_CAST")
+        val currentSearchable: Searchable<String?>?
+            get() {
+                val focusedNode = editorStage.scene.focusOwner
+                println(focusedNode)
+                if (focusedNode is Searchable<*> && focusedNode.currentSearchValue is String?) {
+                    return focusedNode as Searchable<String?>
+                }
+
+                return null
+            }
+
         @Suppress("unused")
         fun initialize() {
 
@@ -90,12 +105,12 @@ constructor(project: File) : Window() {
 
         private fun createFileInfoDialog() {
             val fileInfoDialog = Dialog<Unit>()
-            fileInfoDialog.title = getFileRelativePath(editorArea.observableCurrentEditingFile.value, baseFolder) ?:
-                    "No file is currently editing"
+            fileInfoDialog.title = getFileRelativePath(editorArea.observableCurrentEditingFile.value, baseFolder)
+                    ?: "No file is currently editing"
             val dialogPane = DialogPane()
             val typeLabelTitle = Label("Type:")
-            val typeLabelValue = Label(editorArea.observableCurrentEditingFile.value?.extension ?:
-            "No file or extension")
+            val typeLabelValue = Label(editorArea.observableCurrentEditingFile.value?.extension
+                    ?: "No file or extension")
             val typeBox = HBox()
             typeBox.children.addAll(typeLabelTitle, typeLabelValue)
             typeBox.spacing = 40.0
@@ -147,7 +162,7 @@ constructor(project: File) : Window() {
             settings.onAction = EventHandler {
                 Settings(editorStage).show()
             }
-            recompile.accelerator = KeyCodeCombination(KeyCode.R, KeyCombination.CONTROL_DOWN)
+            recompile.accelerator = KeyCodeCombination(KeyCode.R, KeyCombination.SHORTCUT_DOWN)
             recompile.onAction = EventHandler {
                 val dialog = Dialog<Unit>()
                 val pane = DialogPane()
@@ -232,9 +247,15 @@ constructor(project: File) : Window() {
             }
 
             // Menu/Search
+            editorStage.setOnShown {
+                editorStage.scene.accelerators[KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN)] = Runnable {
+                    searchMenu.show()
+                }
+            }
             searchMenu.isMnemonicParsing = true
             searchMenu.onShown = EventHandler {
                 searchField.requestFocus()
+                searchField.text = searchMapping[currentSearchable] ?: ""
                 searchField.positionCaret(searchField.text.length)
                 searchField.deselect()
             }
@@ -244,11 +265,18 @@ constructor(project: File) : Window() {
                 val mainBox = VBox()
                 searchField = TextField()
                 searchField.textProperty().addListener { _, _, now ->
-                    editorArea.findAll(now)
+                    currentSearchable
+                            ?.also {
+                                searchMapping[it] = now
+                            }
+                            ?.findAll(now)
                 }
                 searchField.onKeyPressed = EventHandler {
                     if (it.code == KeyCode.ENTER) {
-                        editorArea.findNext()
+                        if (it.isShiftDown)
+                            currentSearchable?.findPrevious()
+                        else
+                            currentSearchable?.findNext()
                     }
                 }
                 searchField.promptText = "Type here..."
@@ -260,12 +288,12 @@ constructor(project: File) : Window() {
                 val prev = Button("Prev")
                 prev.prefWidth = 100.0
                 prev.onAction = EventHandler {
-                    editorArea.findPrevious()
+                    currentSearchable?.findPrevious()
                 }
                 val next = Button("Next")
                 next.prefWidth = 100.0
                 next.onAction = EventHandler {
-                    editorArea.findNext()
+                    currentSearchable?.findNext()
                 }
                 subBox.children.addAll(prev, next)
                 mainBox.children.addAll(searchField, subBox)
@@ -288,7 +316,7 @@ constructor(project: File) : Window() {
 
         private fun setupFileExplorerView() {
             fileManagerView.setupWithBaseFolder(baseFolder)
-            fileManagerView.onFileSelectedListeners.add(object : FileManagerView.FileSelectedListener{
+            fileManagerView.onFileSelectedListeners.add(object : FileManagerView.FileSelectedListener {
                 override fun fileSelected(oldFile: File?, newFile: File) {
                     if (TypeDetector.isTextFile(newFile.name)) {
                         editorArea.edit(newFile)

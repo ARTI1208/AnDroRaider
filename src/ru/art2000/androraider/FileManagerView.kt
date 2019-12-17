@@ -9,7 +9,8 @@ import javafx.scene.input.MouseButton
 import javafx.scene.layout.HBox
 import java.io.File
 
-class FileManagerView : TreeView<File>() {
+@Suppress("RedundantVisibilityModifier")
+class FileManagerView : TreeView<File>(), Searchable<String?> {
 
     @FunctionalInterface
     interface FileSelectedListener {
@@ -18,7 +19,7 @@ class FileManagerView : TreeView<File>() {
 
     val onFileSelectedListeners = mutableListOf<FileSelectedListener>()
 
-    val fileHistory = mutableListOf<File>()
+    private val fileHistory = mutableListOf<File>()
 
     init {
         setCellFactory { FileManagerTreeListItem() }
@@ -74,7 +75,6 @@ class FileManagerView : TreeView<File>() {
 
     private fun onFileItemClick(file: File) {
         if (fileHistory.getOrNull(0) == file) {
-            println("Same file ${file.absolutePath}")
             return
         }
 
@@ -151,5 +151,23 @@ class FileManagerView : TreeView<File>() {
 
         treeItem.children.setAll(dirs)
         treeItem.children.addAll(files)
+    }
+
+    override var currentSearchValue: String? = null
+
+    override fun find(valueToFind: String?) {
+        findAll(valueToFind)
+    }
+
+    override fun findAll(valueToFind: String?) {
+
+    }
+
+    override fun findNext() {
+
+    }
+
+    override fun findPrevious() {
+
     }
 }
