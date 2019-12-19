@@ -251,12 +251,7 @@ constructor(project: File) : Window() {
                 }
             }
             searchMenu.isMnemonicParsing = true
-            searchMenu.onShown = EventHandler {
-                searchField.requestFocus()
-                searchField.text = searchMapping[currentSearchable] ?: ""
-                searchField.positionCaret(searchField.text.length)
-                searchField.deselect()
-            }
+
             search.apply {
                 isHideOnClick = false
                 styleClass.add("custom-menu-item")
@@ -268,14 +263,6 @@ constructor(project: File) : Window() {
                                 searchMapping[it] = now
                             }
                             ?.findAll(now)
-                }
-                searchField.onKeyPressed = EventHandler {
-                    if (it.code == KeyCode.ENTER) {
-                        if (it.isShiftDown)
-                            currentSearchable?.findPrevious()
-                        else
-                            currentSearchable?.findNext()
-                    }
                 }
                 searchField.promptText = "Type here..."
                 val subBox = HBox()
@@ -293,8 +280,40 @@ constructor(project: File) : Window() {
                 next.onAction = EventHandler {
                     currentSearchable?.findNext()
                 }
+
+                searchField.onKeyPressed = EventHandler {
+                    if (it.code == KeyCode.ENTER) {
+                        when {
+                            it.isShiftDown && !prev.isDisable -> currentSearchable?.findPrevious()
+                            !next.isDisable -> currentSearchable?.findNext()
+                        }
+                    }
+                }
+
                 subBox.children.addAll(prev, next)
-                mainBox.children.addAll(searchField, subBox)
+                val searchScopeLabel = Label()
+                searchScopeLabel.labelFor = searchField
+
+                searchMenu.onShown = EventHandler {
+                    searchField.requestFocus()
+                    val searchScope = currentSearchable
+                    searchScopeLabel.text = searchScope?.javaClass?.simpleName
+                    if (searchScopeLabel.text == null) {
+                        searchScopeLabel.text = "Unknown search scope"
+                        searchField.isDisable = true
+                        prev.isDisable = true
+                        next.isDisable = true
+                    } else {
+                        searchField.isDisable = false
+                        prev.isDisable = false
+                        next.isDisable = false
+                    }
+                    searchField.text = searchMapping[searchScope] ?: ""
+                    searchField.positionCaret(searchField.text.length)
+                    searchField.deselect()
+                }
+
+                mainBox.children.addAll(searchScopeLabel, searchField, subBox)
                 content = mainBox
                 content.hoverProperty().addListener { _, _, now ->
                     if (now) {
