@@ -35,7 +35,7 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
     private var fxmlLoader: FXMLLoader? = null
 
     init {
-        fxmlLoader = FXMLLoader(javaClass.getResource(LoadUtils.getLayout("recents_list_item.fxml")))
+        fxmlLoader = FXMLLoader(javaClass.getResource("/layout/recents_list_item.fxml"))
         fxmlLoader?.setController(this)
         try {
             pane = fxmlLoader!!.load()
@@ -50,7 +50,9 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
             listView.items.remove(item)
         }
         maxWidth = Control.USE_PREF_SIZE
-        val imageView = ImageView(LoadUtils.getDrawable("cross.png"))
+        println("cross = ${javaClass.getDrawable("cross.png") == null}")
+
+        val imageView = ImageView(javaClass.getDrawable("cross.png"))
         imageView.fitHeight = 20.0
         imageView.fitWidth = 20.0
         imageView.isVisible = false

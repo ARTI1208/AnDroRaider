@@ -5,6 +5,7 @@ import javafx.collections.FXCollections
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
+import javafx.fxml.Initializable
 import javafx.geometry.Insets
 import javafx.scene.Parent
 import javafx.scene.Scene
@@ -21,6 +22,8 @@ import javafx.stage.DirectoryChooser
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import java.io.File
+import java.net.URL
+import java.util.*
 import kotlin.collections.ArrayList
 
 class Launcher : Application() {
@@ -64,19 +67,26 @@ class Launcher : Application() {
     @Throws(Exception::class)
     override fun start(primaryStage: Stage) {
         stage = primaryStage
-        val loader = FXMLLoader(javaClass.getResource(LoadUtils.getLayout("launcher.fxml")))
+
+        println(javaClass.getResource("/layout/launcher.fxml"))
+
+        val loader = FXMLLoader(javaClass.getResource("/layout/launcher.fxml"))
         loader.setController(LaunchLayoutController())
         println(getUserAgentStylesheet())
-        setUserAgentStylesheet(LoadUtils.getStyle("application.css"))
+        setUserAgentStylesheet(javaClass.getStyle("application.css"))
+//        setUserAgentStylesheet("/style/application.css")
         val root = loader.load<Parent>()
+//        val root = LoadUtils.loadFxml(javaClass, "/layout/launcher.fxml", LaunchLayoutController())
         primaryStage.title = APP_NAME
-        primaryStage.icons.add(LoadUtils.getDrawable("logo.png"))
+        primaryStage.icons.add(javaClass.getDrawable("logo.png"))
         primaryStage.scene = Scene(root, 900.0, 600.0)
         primaryStage.isResizable = false
         primaryStage.show()
+
+//        Settings(stage).show()
     }
 
-    class LaunchLayoutController {
+    class LaunchLayoutController : Initializable {
         @FXML
         private lateinit var appNameText: Text
         @FXML
@@ -102,8 +112,73 @@ class Launcher : Application() {
             }
         }
 
-        @Suppress("unused")
-        fun initialize() {
+        private fun openRecentProject() {
+            val projectToOpen = recentsListView.selectionModel.selectedItem.appFile
+            if (projectToOpen.exists()) {
+
+                items.remove(projectToOpen.absolutePath)
+                items.add(0, projectToOpen.absolutePath)
+                recentsListView.items.setAll(RecentProject.getArray(items))
+                Settings.putStringArray(RECENTS_TAG, items)
+
+                root.scene.window.hide()
+                Editor(projectToOpen).show()
+            } else {
+                val d = Dialog<Unit>()
+                val pane = DialogPane()
+                val warning = Text("This project doesn't exist! Do you want to remove it?")
+                pane.content = warning
+                pane.padding = Insets(10.0, 10.0, 10.0, 10.0)
+                val remove = ButtonType("Remove", ButtonBar.ButtonData.NEXT_FORWARD)
+                pane.buttonTypes.addAll(
+                        remove,
+                        ButtonType.CANCEL)
+                d.dialogPane = pane
+                d.title = "Project doesn't exist"
+                d.setResultConverter { clickedButton ->
+                    if (clickedButton == remove)
+                        removeFromRecents(recentsListView.selectionModel.selectedItem)
+                }
+                d.showAndWait()
+            }
+        }
+
+        private fun openProject(): File? {
+            var dir: File? = null
+            while (dir == null) {
+                val chooser = DirectoryChooser()
+                val chosen = chooser.showDialog(root.scene.window) ?: return null
+                val contains = !chosen.list { _, filename -> filename == "apktool.yml" }.isNullOrEmpty()
+                if (contains)
+                    dir = chosen
+                else {
+                    val error = Dialog<File>()
+                    val pane = DialogPane()
+                    val warning = Text("This folder is not a project folder")
+                    pane.content = warning
+                    pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
+                    val reselect = ButtonType("Reselect", ButtonBar.ButtonData.NEXT_FORWARD)
+                    pane.buttonTypes.addAll(
+                            reselect,
+                            ButtonType.CANCEL)
+                    error.dialogPane = pane
+                    error.title = "Not a project"
+                    error.setResultConverter {
+                        if (it == reselect)
+                            openProject()
+                        else
+                            null
+                    }
+                    error.showAndWait()
+                    val ret: File?
+                    ret = error.result
+                    return ret
+                }
+            }
+            return dir
+        }
+
+        override fun initialize(location: URL?, resources: ResourceBundle?) {
             appNameText.text = APP_NAME
             appNameText.font = Font(40.0)
             appInfoText.text = "$RELEASE_TYPE $APP_VERSION"
@@ -134,7 +209,7 @@ class Launcher : Application() {
                     val dialog = Dialog<Unit>()
                     dialog.initOwner(stage)
                     val pane = DialogPane()
-                    val cont = FXMLLoader(javaClass.getResource(LoadUtils.getLayout("decompile_options.fxml"))).load<VBox>()
+                    val cont = javaClass.getLayout("decompile_options.fxml").load<VBox>()
                     val group = ToggleGroup()
                     val builtinFramework = cont.lookup("#builtinFrame") as RadioButton
                     val customFramework = cont.lookup("#customFrame") as RadioButton
@@ -226,79 +301,13 @@ class Launcher : Application() {
                     return@EventHandler
                 openRecentProject()
             }
-            appLogoImageView.image = LoadUtils.getDrawable("logo.png")
+            appLogoImageView.image = javaClass.getDrawable("logo.png")
             items = Settings.getStringArray(RECENTS_TAG, items)
             items.removeIf { s -> s.isBlank() }
             for (s in items) {
                 recentsListView.items.add(RecentProject(File(s)))
             }
             recentsListView.selectionModel.select(0)
-        }
-
-        private fun openRecentProject() {
-            val projectToOpen = recentsListView.selectionModel.selectedItem.appFile
-            if (projectToOpen.exists()) {
-
-                items.remove(projectToOpen.absolutePath)
-                items.add(0, projectToOpen.absolutePath)
-                recentsListView.items.setAll(RecentProject.getArray(items))
-                Settings.putStringArray(RECENTS_TAG, items)
-
-                root.scene.window.hide()
-                Editor(projectToOpen).show()
-            } else {
-                val d = Dialog<Unit>()
-                val pane = DialogPane()
-                val warning = Text("This project doesn't exist! Do you want to remove it?")
-                pane.content = warning
-                pane.padding = Insets(10.0, 10.0, 10.0, 10.0)
-                val remove = ButtonType("Remove", ButtonBar.ButtonData.NEXT_FORWARD)
-                pane.buttonTypes.addAll(
-                        remove,
-                        ButtonType.CANCEL)
-                d.dialogPane = pane
-                d.title = "Project doesn't exist"
-                d.setResultConverter { clickedButton ->
-                    if (clickedButton == remove)
-                        removeFromRecents(recentsListView.selectionModel.selectedItem)
-                }
-                d.showAndWait()
-            }
-        }
-
-        private fun openProject(): File? {
-            var dir: File? = null
-            while (dir == null) {
-                val chooser = DirectoryChooser()
-                val chosen = chooser.showDialog(root.scene.window) ?: return null
-                val contains = !chosen.list { _, filename -> filename == "apktool.yml" }.isNullOrEmpty()
-                if (contains)
-                    dir = chosen
-                else {
-                    val error = Dialog<File>()
-                    val pane = DialogPane()
-                    val warning = Text("This folder is not a project folder")
-                    pane.content = warning
-                    pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
-                    val reselect = ButtonType("Reselect", ButtonBar.ButtonData.NEXT_FORWARD)
-                    pane.buttonTypes.addAll(
-                            reselect,
-                            ButtonType.CANCEL)
-                    error.dialogPane = pane
-                    error.title = "Not a project"
-                    error.setResultConverter {
-                        if (it == reselect)
-                            openProject()
-                        else
-                            null
-                    }
-                    error.showAndWait()
-                    val ret: File?
-                    ret = error.result
-                    return ret
-                }
-            }
-            return dir
         }
     }
 

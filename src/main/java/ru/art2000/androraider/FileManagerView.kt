@@ -6,6 +6,7 @@ import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseButton
 import java.io.File
+import java.util.*
 
 @Suppress("RedundantVisibilityModifier")
 class FileManagerView : TreeView<File>(), Searchable<String?> {
@@ -18,6 +19,12 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
     val onFileSelectedListeners = mutableListOf<FileSelectedListener>()
 
     private val fileHistory = mutableListOf<File>()
+
+    private val searchResults = mutableListOf<File>()
+
+    private val searchResultsAsTree = mutableListOf<File>()
+
+    private lateinit var baseFolder: File
 
     init {
         setCellFactory { FileManagerTreeListItem() }
@@ -51,9 +58,13 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
         }
     }
 
-    public fun setupWithBaseFolder(baseFolder: File) {
+    public fun setupWithBaseFolder(baseFolder: File, expandFolders: Boolean = false) {
+        this.baseFolder = baseFolder
         root = TreeItem(baseFolder)
-        addFileExplorerTreeItemChildren(root)
+        if (expandFolders)
+            root.isExpanded = true
+
+        addFileExplorerTreeItemChildren(root, expandFolders)
         selectionModel.select(0)
     }
 
@@ -123,7 +134,7 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
         return deleteFileDialog.showAndWait().get()
     }
 
-    private fun addFileExplorerTreeItemChildren(treeItem: TreeItem<File>) {
+    private fun addFileExplorerTreeItemChildren(treeItem: TreeItem<File>, expandFolders: Boolean = false) {
         val allFiles = treeItem.value.listFiles() ?: return
 
         val dirs = mutableListOf<TreeItem<File>>()
@@ -133,12 +144,14 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
             if (it.isHidden)
                 return@forEach
 
-            val treeSubItem = TreeItem(it)
-
-            if (it.isDirectory) {
-                dirs.add(treeSubItem)
-                addFileExplorerTreeItemChildren(treeSubItem)
-            } else files.add(treeSubItem)
+            if (searchResultsAsTree.size == 0 || searchResultsAsTree.contains(it) || searchResultsAsTree.contains(it.parentFile)) {
+                val treeSubItem = TreeItem(it)
+                if (it.isDirectory) {
+                    dirs.add(treeSubItem)
+                    addFileExplorerTreeItemChildren(treeSubItem)
+                    treeSubItem.isExpanded = expandFolders
+                } else files.add(treeSubItem)
+            }
         }
 
         treeItem.children.setAll(dirs)
@@ -152,7 +165,24 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
     }
 
     override fun findAll(valueToFind: String?) {
+        searchResultsAsTree.clear()
 
+        if (valueToFind == null || valueToFind.isEmpty()) {
+
+            return
+        }
+
+
+        baseFolder.walk().forEach {
+
+            if (it.name.toLowerCase().contains(valueToFind.toLowerCase())
+                    || it.extension.toLowerCase().contains(valueToFind.toLowerCase())
+                    || searchResultsAsTree.contains(it.parentFile)) {
+                searchResultsAsTree.add(it)
+            }
+        }
+
+        setupWithBaseFolder(baseFolder, true)
     }
 
     override fun findNext() {

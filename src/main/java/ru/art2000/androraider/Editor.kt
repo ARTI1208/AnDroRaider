@@ -1,6 +1,6 @@
 package ru.art2000.androraider
 
-import VectorTools.Main
+//import VectorTools.Main
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
@@ -27,17 +27,17 @@ constructor(project: File) : Window() {
     val baseFolder: File = if (project.isDirectory) project else project.parentFile
 
     var editorStage = Stage()
+    var vectorImageEditorStage : Stage? = null
 
     init {
-        val loader = FXMLLoader(javaClass.getResource(LoadUtils.getLayout("editor.fxml")))
+        val loader = javaClass.getLayout("editor.fxml")
         loader.setController(EditorLayoutController())
         val root = loader.load<Parent>()
         editorStage.apply {
-            icons.add(LoadUtils.getDrawable("logo.png"))
+            icons.add(this@Editor.javaClass.getDrawable("logo.png"))
             title = "${baseFolder.name} - Project Editor"
             scene = Scene(root, 900.0, 600.0)
-            scene.stylesheets.add(
-                    this@Editor.javaClass.getResource(LoadUtils.getStyle("code.css")).toExternalForm())
+            scene.stylesheets.add(this@Editor.javaClass.getStyle("code.css"))
         }
     }
 
@@ -116,11 +116,19 @@ constructor(project: File) : Window() {
 
             val dialogPane = getBaseDialogPane(typeBox)
 
-            if (TypeDetector.Image.isVectorDrawable(editorArea.observableCurrentEditingFile.value)) {
+            if (TypeDetector.Image.isVectorDrawable(editorArea.observableCurrentEditingFile.value) && false) {
                 val vectorImageLabelTitle = Label("Edit Vector Image:")
                 val vectorImageButtonValue = Button("Edit...")
                 vectorImageButtonValue.onAction = EventHandler {
-                    println(Main.openWindow())
+
+//                    if (vectorImageEditorStage == null) {
+//                        vectorImageEditorStage = Main.openWindow()
+//                    } else {
+//                        vectorImageEditorStage?.toFront().also {
+//                            if (it == null)
+//                                vectorImageEditorStage = null
+//                        }
+//                    }
                 }
                 val vectorImageBox = HBox()
                 vectorImageBox.spacing = 40.0
@@ -163,8 +171,7 @@ constructor(project: File) : Window() {
             recompile.onAction = EventHandler {
                 val dialog = Dialog<Unit>()
                 val pane = DialogPane()
-                val cont = FXMLLoader(
-                        javaClass.getResource(LoadUtils.getLayout("recompile_options.fxml"))).load<VBox>()
+                val cont = javaClass.getLayout("recompile_options.fxml").load<VBox>()
                 val group = ToggleGroup()
                 val builtinFramework = cont.lookup("#builtinFrame") as RadioButton
                 val customFramework = cont.lookup("#customFrame") as RadioButton

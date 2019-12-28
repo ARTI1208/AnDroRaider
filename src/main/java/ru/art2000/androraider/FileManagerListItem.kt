@@ -12,7 +12,7 @@ import java.util.*
 class FileManagerTreeListItem : TreeCell<File?>(), Initializable {
 
     init {
-        val close = ImageView(LoadUtils.getDrawable("arrow.png"))
+        val close = ImageView(javaClass.getDrawable("arrow.png"))
         close.fitWidth = 20.0
         close.fitHeight = 20.0
         disclosureNode = close
@@ -32,9 +32,9 @@ class FileManagerTreeListItem : TreeCell<File?>(), Initializable {
         }
 
         val icon = ImageView(when {
-            item.isDirectory -> LoadUtils.getDrawable("folder.png")
-            TypeDetector.Text.listContains(item.extension) -> LoadUtils.getDrawable("txt.png")
-            else -> LoadUtils.getDrawable("unknown.png")
+            item.isDirectory -> javaClass.getDrawable("folder.png")
+            TypeDetector.Text.listContains(item.extension) -> javaClass.getDrawable("txt.png")
+            else -> javaClass.getDrawable("unknown.png")
         })
         icon.fitWidth = 20.0
         icon.fitHeight = 20.0

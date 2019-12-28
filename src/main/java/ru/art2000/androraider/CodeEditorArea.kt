@@ -3,6 +3,7 @@ package ru.art2000.androraider
 import javafx.beans.InvalidationListener
 import javafx.beans.value.ChangeListener
 import javafx.beans.value.ObservableValue
+import javafx.scene.Node
 import javafx.scene.control.Label
 import javafx.stage.Popup
 import org.fxmisc.richtext.Caret
@@ -15,6 +16,7 @@ import java.io.File
 import java.nio.file.Files
 import java.time.Duration
 import java.util.*
+import java.util.function.IntFunction
 import java.util.regex.Pattern
 import kotlin.collections.ArrayList
 
@@ -82,8 +84,16 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     private val searchSpanList = SearchSpanList()
 
+    inner class LineNumber : IntFunction<Node> {
+        override fun apply(value: Int): Node {
+            return Label("${value + 1}")
+        }
+
+    }
+
     init {
         styleClass.add("text-area")
+//        paragraphGraphicFactory = LineNumber()
         paragraphGraphicFactory = LineNumberFactory.get(this)
         textProperty().addListener { _, oldValue, newValue ->
             if (isFileChanged) {

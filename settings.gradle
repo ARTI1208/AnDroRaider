@@ -1,0 +1,4 @@
+rootProject.name = 'AnDroRaider'
+
+//include 'VectorTools'
+//project(":VectorTools").projectDir = file("D:\\Coding\\Java\\SvgGui")

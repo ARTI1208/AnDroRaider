@@ -115,3 +115,8 @@
     -fx-text-fill: white;
     -fx-fill: white;
 }
+
+.lineno {
+    -fx-text-fill: orange;
+    -fx-background-color: blue;
+}

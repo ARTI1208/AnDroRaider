@@ -58,10 +58,10 @@ class Settings(owner: Window) : Window() {
     var settingsStage = Stage()
 
     init {
-        val loader = FXMLLoader(javaClass.getResource(LoadUtils.getLayout("settings.fxml")))
+        val loader = FXMLLoader(javaClass.getResource("/layout/settings.fxml"))
         loader.setController(Controller())
         val root = loader.load<Parent>()
-        settingsStage.icons.add(LoadUtils.getDrawable("logo.png"))
+//        settingsStage.icons.add(LoadUtils.getDrawable("logo.png"))
         settingsStage.title = "Settings"
         settingsStage.scene = Scene(root, 900.0, 600.0)
         settingsStage.initOwner(owner)
