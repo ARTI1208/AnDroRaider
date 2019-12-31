@@ -1,0 +1,42 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.openjfx.javafxplugin'
+    id 'antlr'
+}
+
+//apply plugin: 'idea'
+
+group 'ru.art2000'
+version 'BETA 0.1'
+
+//mainClassName = 'app/ru.art2000.androraider.Launcher'
+
+sourceCompatibility = 12
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+
+//    compile project(':AntlrAnalyzer')
+    antlr "org.antlr:antlr4:4.7.2"
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation "org.fxmisc.richtext:richtextfx:0.10.3"
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "12"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "12"
+}
+
+compileKotlin.destinationDir = compileJava.destinationDir
+
+javafx {
+    version = "12"
+    modules = [ 'javafx.controls', 'javafx.fxml' ]
+}

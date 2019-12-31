@@ -11,6 +11,11 @@
     <padding>
         <Insets topRightBottomLeft="20"/>
     </padding>
+    <Text text="Java sources"/>
+    <HBox>
+        <TextField promptText="apktool path" fx:id="javaSourcesPath"/>
+        <Button text="Select" fx:id="javaSourcesPathSelectButton"/>
+    </HBox>
     <Text text="General apktool options"/>
     <HBox>
         <TextField promptText="apktool path" fx:id="apktoolPath"/>

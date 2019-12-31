@@ -74,6 +74,8 @@ class Settings(owner: Window) : Window() {
     inner class Controller {
 
         @FXML
+        private lateinit var javaSourcesPathSelectButton: Button
+        @FXML
         private lateinit var apktoolPathSelectButton: Button
         @FXML
         private lateinit var frameworkFilePathSelectButton: Button
@@ -83,6 +85,8 @@ class Settings(owner: Window) : Window() {
         @FXML
         private lateinit var clearDataButton: Button
 
+        @FXML
+        private lateinit var javaSourcesPath: TextField
         @FXML
         private lateinit var apktoolPath: TextField
         @FXML
@@ -130,6 +134,15 @@ class Settings(owner: Window) : Window() {
                 }
             }
             frameworkFileRB.isSelected = true
+
+            apktoolPath.text = getString("apktool_path") ?: ""
+            apktoolPathSelectButton.onAction = EventHandler {
+                val chooser = FileChooser()
+                chooser.extensionFilters.add(FileChooser.ExtensionFilter("Executable JAR", "*.jar"))
+                val jar = chooser.showOpenDialog(settingsStage) ?: return@EventHandler
+                apktoolPath.text = jar.absolutePath
+                putString("apktool_path", apktoolPath.text)
+            }
 
             apktoolPath.text = getString("apktool_path") ?: ""
             apktoolPathSelectButton.onAction = EventHandler {

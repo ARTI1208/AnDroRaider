@@ -1,4 +1,6 @@
 rootProject.name = 'AnDroRaider'
-
+include 'app'
 //include 'VectorTools'
 //project(":VectorTools").projectDir = file("D:\\Coding\\Java\\SvgGui")
+//include 'AntlrAnalyzer'
+

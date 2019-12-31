@@ -75,6 +75,24 @@ class TypeDetector {
                         "(?<KEYWORD>(" + SMALI_STARTING_KEYWORDS.joinToString("|") { "^[\\s]*\\.$it" } + "|" +
                         OTHER_SMALI_KEYWORDS.joinToString("|") { "\\b$it" } + ")[^\\w\\S-])"
 
+        public val SMALI_ARRAY = "(?<SMALIARRAY>[\\[]*)"
+        public val SMALI_CLASS_TYPE = "$SMALI_ARRAY((?<CLASSNAME>L[a-zA-Z0-9/]+;)|(?<PRIMITIVENAME>[ZBCDFIJS]))"
+
+        public val SMALI_CLASS_DECLARATION = "[.]class (?<CLASSNAME>L[a-zA-Z0-9/]+;)"
+        public val SMALI_SUPERCLASS_DECLARATION = "[.]super (?<SUPERCLASSNAME>L[a-zA-Z0-9/]+;)"
+
+        public val SMALI_MODIFIERS = "((?<ACCESS>(public|protected|private)) )?" +
+        "((?<STATIC>(static)) )?((?<FINAL>(final)) )?((?<SYNTHETIC>(synthetic)) )?"
+
+        public val SMALI_FIELD_DECLARATION = "(?<FIELD>[.]field $SMALI_MODIFIERS" +
+                "(?<NAME>[\\S]+):$SMALI_CLASS_TYPE)"
+
+        public val SMALI_METHOD_DECLARATION = "(?<METHOD>[.]method $SMALI_MODIFIERS" +
+                "(?<NAME>[\\S]+)[(]($SMALI_CLASS_TYPE)*[)])"
+
+        public val SMALI_FILE_PATTERN = SMALI_CLASS_DECLARATION +
+                SMALI_SUPERCLASS_DECLARATION
+
         fun isTextFile(fileName: String): Boolean {
             if (!fileName.contains('.'))
                 return false

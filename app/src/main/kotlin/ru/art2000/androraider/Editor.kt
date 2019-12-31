@@ -17,6 +17,7 @@ import javafx.scene.paint.Paint
 import javafx.stage.DirectoryChooser
 import javafx.stage.Stage
 import javafx.stage.Window
+import ru.art2000.androraider.analyzer.SmaliAnalyzer
 import java.io.File
 import java.io.IOException
 
@@ -29,10 +30,13 @@ constructor(project: File) : Window() {
     var editorStage = Stage()
     var vectorImageEditorStage : Stage? = null
 
+    val smaliAnalyzer = SmaliAnalyzer(baseFolder)
+
     init {
         val loader = javaClass.getLayout("editor.fxml")
         loader.setController(EditorLayoutController())
         val root = loader.load<Parent>()
+
         editorStage.apply {
             icons.add(this@Editor.javaClass.getDrawable("logo.png"))
             title = "${baseFolder.name} - Project Editor"
@@ -343,6 +347,8 @@ constructor(project: File) : Window() {
             fileManagerView.onFileSelectedListeners.add(object : FileManagerView.FileSelectedListener {
                 override fun fileSelected(oldFile: File?, newFile: File) {
                     if (TypeDetector.isTextFile(newFile.name)) {
+//                        smaliAnalyzer.getAccessibleMethods(newFile)
+                        smaliAnalyzer.analyzeFile(newFile)
                         editorArea.edit(newFile)
                         editorArea.requestFocus()
                     }
