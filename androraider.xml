@@ -179,7 +179,7 @@
       <exclude name="AnDroRaider.jar"/>
     </fx:fileset>
     <fx:fileset id="all_AnDroRaider" dir="${artifact.temp.output.AnDroRaider}" includes="**/*.jar"/>
-    <fx:application id="AnDroRaider_id" name="AnDroRaider" mainClass="ru.art2000.androraider.Launcher"/>
+    <fx:application id="AnDroRaider_id" name="AnDroRaider" mainClass="ru.art2000.androraider.windows.launcher.Launcher"/>
     <fx:jar destfile="${artifact.temp.output.AnDroRaider}/AnDroRaider.jar">
       <fx:application refid="AnDroRaider_id"/>
       <fileset dir="${artifact.temp.output.AnDroRaider}" excludes="**/*.jar"/>

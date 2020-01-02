@@ -1,4 +1,4 @@
-package ru.art2000.androraider
+package ru.art2000.androraider.windows.editor
 
 interface Searchable<T> {
 

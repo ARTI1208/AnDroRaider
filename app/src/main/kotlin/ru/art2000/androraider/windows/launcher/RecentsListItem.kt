@@ -1,4 +1,4 @@
-package ru.art2000.androraider
+package ru.art2000.androraider.windows.launcher
 
 import javafx.event.EventHandler
 import javafx.fxml.FXML
@@ -15,6 +15,8 @@ import javafx.scene.image.ImageView
 import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
 import javafx.scene.text.Text
+import ru.art2000.androraider.utils.getDrawable
+import ru.art2000.androraider.utils.getLayout
 import java.net.URL
 import java.util.*
 

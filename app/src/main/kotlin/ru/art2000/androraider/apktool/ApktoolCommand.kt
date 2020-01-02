@@ -1,4 +1,4 @@
-package ru.art2000.androraider
+package ru.art2000.androraider.apktool
 
 class ApktoolCommand(val tag: String, val value: String? = null) {
     class General {

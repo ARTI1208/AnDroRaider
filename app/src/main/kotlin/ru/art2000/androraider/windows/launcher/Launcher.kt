@@ -1,10 +1,9 @@
-package ru.art2000.androraider
+package ru.art2000.androraider.windows.launcher
 
 import javafx.application.Application
 import javafx.collections.FXCollections
 import javafx.event.EventHandler
 import javafx.fxml.FXML
-import javafx.fxml.FXMLLoader
 import javafx.fxml.Initializable
 import javafx.geometry.Insets
 import javafx.scene.Parent
@@ -21,6 +20,14 @@ import javafx.scene.text.Text
 import javafx.stage.DirectoryChooser
 import javafx.stage.FileChooser
 import javafx.stage.Stage
+import ru.art2000.androraider.apktool.ApkToolUtils
+import ru.art2000.androraider.apktool.ApktoolCommand
+import ru.art2000.androraider.windows.editor.Editor
+import ru.art2000.androraider.utils.getDrawable
+import ru.art2000.androraider.utils.getLayout
+import ru.art2000.androraider.utils.getStyle
+import ru.art2000.androraider.utils.goThrough
+import ru.art2000.androraider.windows.Settings
 import java.io.File
 import java.net.URL
 import java.util.*

@@ -1,10 +1,12 @@
-package ru.art2000.androraider
+package ru.art2000.androraider.windows.editor
 
 import javafx.fxml.Initializable
 import javafx.scene.control.ContentDisplay
 import javafx.scene.control.Control
 import javafx.scene.control.TreeCell
 import javafx.scene.image.ImageView
+import ru.art2000.androraider.utils.TypeDetector
+import ru.art2000.androraider.utils.getDrawable
 import java.io.File
 import java.net.URL
 import java.util.*

@@ -1,4 +1,4 @@
-package ru.art2000.androraider
+package ru.art2000.androraider.apktool
 
 import javafx.application.Platform
 import javafx.event.EventHandler
@@ -9,6 +9,9 @@ import javafx.scene.control.DialogPane
 import javafx.scene.layout.VBox
 import javafx.scene.text.Text
 import javafx.stage.Stage
+import ru.art2000.androraider.windows.Settings
+import ru.art2000.androraider.StreamGobbler
+import ru.art2000.androraider.windows.editor.Editor
 import java.io.File
 import kotlin.collections.ArrayList
 

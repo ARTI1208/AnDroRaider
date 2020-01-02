@@ -1,12 +1,13 @@
-package ru.art2000.androraider
+package ru.art2000.androraider.windows.editor
 
 import javafx.event.EventHandler
 import javafx.scene.control.*
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseButton
+import ru.art2000.androraider.*
+import ru.art2000.androraider.utils.getFileRelativePath
 import java.io.File
-import java.util.*
 
 @Suppress("RedundantVisibilityModifier")
 class FileManagerView : TreeView<File>(), Searchable<String?> {

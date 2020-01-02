@@ -1,4 +1,4 @@
-package ru.art2000.androraider
+package ru.art2000.androraider.utils
 
 import javafx.fxml.FXMLLoader
 import javafx.scene.image.Image

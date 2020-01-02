@@ -1,9 +1,8 @@
-package ru.art2000.androraider
+package ru.art2000.androraider.windows.editor
 
 //import VectorTools.Main
 import javafx.event.EventHandler
 import javafx.fxml.FXML
-import javafx.fxml.FXMLLoader
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Parent
@@ -17,7 +16,13 @@ import javafx.scene.paint.Paint
 import javafx.stage.DirectoryChooser
 import javafx.stage.Stage
 import javafx.stage.Window
+import ru.art2000.androraider.*
 import ru.art2000.androraider.analyzer.SmaliAnalyzer
+import ru.art2000.androraider.apktool.ApkToolUtils
+import ru.art2000.androraider.apktool.ApktoolCommand
+import ru.art2000.androraider.windows.launcher.Launcher
+import ru.art2000.androraider.utils.*
+import ru.art2000.androraider.windows.Settings
 import java.io.File
 import java.io.IOException
 

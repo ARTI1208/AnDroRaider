@@ -1,7 +1,8 @@
-package ru.art2000.androraider
+package ru.art2000.androraider.utils
 
 import javafx.scene.control.CheckBox
 import javafx.scene.layout.Pane
+import ru.art2000.androraider.apktool.ApktoolCommand
 import java.io.File
 import java.util.regex.Matcher
 

@@ -1,4 +1,4 @@
-package ru.art2000.androraider
+package ru.art2000.androraider.windows.editor
 
 import javafx.beans.InvalidationListener
 import javafx.beans.value.ChangeListener
@@ -12,6 +12,8 @@ import org.fxmisc.richtext.LineNumberFactory
 import org.fxmisc.richtext.event.MouseOverTextEvent
 import org.fxmisc.richtext.model.StyleSpans
 import org.fxmisc.richtext.model.StyleSpansBuilder
+import ru.art2000.androraider.utils.TypeDetector
+import ru.art2000.androraider.utils.contains
 import java.io.File
 import java.nio.file.Files
 import java.time.Duration
