@@ -68,22 +68,15 @@ class Launcher : Application() {
     override fun start(primaryStage: Stage) {
         stage = primaryStage
 
-        println(javaClass.getResource("/layout/launcher.fxml"))
-
-        val loader = FXMLLoader(javaClass.getResource("/layout/launcher.fxml"))
+        val loader = javaClass.getLayout("launcher.fxml")
         loader.setController(LaunchLayoutController())
-        println(getUserAgentStylesheet())
         setUserAgentStylesheet(javaClass.getStyle("application.css"))
-//        setUserAgentStylesheet("/style/application.css")
         val root = loader.load<Parent>()
-//        val root = LoadUtils.loadFxml(javaClass, "/layout/launcher.fxml", LaunchLayoutController())
         primaryStage.title = APP_NAME
         primaryStage.icons.add(javaClass.getDrawable("logo.png"))
         primaryStage.scene = Scene(root, 900.0, 600.0)
         primaryStage.isResizable = false
         primaryStage.show()
-
-//        Settings(stage).show()
     }
 
     class LaunchLayoutController : Initializable {

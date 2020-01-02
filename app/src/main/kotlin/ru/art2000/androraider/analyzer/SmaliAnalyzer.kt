@@ -1,170 +1,23 @@
 package ru.art2000.androraider.analyzer
 
+//import ru.art2000.androraider.analyzer.SmaliParserBaseListener
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.TokenSource
 import org.antlr.v4.runtime.TokenStream
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.ParseTreeWalker
-import ru.art2000.androraider.TypeDetector
 import ru.art2000.androraider.analyzer.antlr.SmaliLexer
 import ru.art2000.androraider.analyzer.antlr.SmaliParser
-//import ru.art2000.androraider.analyzer.SmaliParserBaseListener
+import ru.art2000.androraider.analyzer.types.SmaliClass
+import ru.art2000.androraider.analyzer.types.SmaliField
+import ru.art2000.androraider.analyzer.types.SmaliMethod
+import ru.art2000.androraider.analyzer.types.SmaliPackage
 import java.io.File
-import java.util.regex.Matcher
-import java.util.regex.Pattern
+import java.io.FileWriter
 
 
-class SmaliPackage(val name: String, var parentPackage: SmaliPackage? = null) {
-
-    init {
-        parentPackage?.addSubPackage(this)
-    }
-
-    val subpackages = mutableListOf<SmaliPackage>()
-
-    val classes = mutableListOf<SmaliClass>()
-
-    val fullname: String
-        get() {
-            var result = name
-            var parent = parentPackage
-            while (parent != null) {
-                result = parent.name + "." + result
-                parent = parent.parentPackage
-            }
-            return result
-        }
-
-    public fun addSubPackage(smaliPackage: SmaliPackage) {
-        smaliPackage.parentPackage = this
-        subpackages.add(smaliPackage)
-    }
-
-    public fun removeSubPackage(smaliPackage: SmaliPackage?) {
-        smaliPackage?.parentPackage = null
-        subpackages.remove(smaliPackage)
-    }
-
-    public fun addClass(smaliClass: SmaliClass) {
-        smaliClass.parentPackage = this
-        classes.add(smaliClass)
-    }
-
-    public fun removeClass(smaliClass: SmaliClass) {
-        smaliClass.parentPackage = null
-        classes.remove(smaliClass)
-    }
-}
-
-data class SmaliMethod(val name: String,
-                       val returnType: String,
-                       val accessModifier: AccessModifiers = AccessModifiers.PACKAGE_PRIVATE,
-                       val finalModifier: FinalModifiers = FinalModifiers.NO,
-                       val staticModifier: StaticModifiers = StaticModifiers.NO,
-                       var parentClass: SmaliClass? = null) {}
-
-class SmaliConstructor(val returnType: String,
-                       val accessModifier: AccessModifiers = AccessModifiers.PACKAGE_PRIVATE,
-                       val finalModifier: FinalModifiers = FinalModifiers.NO,
-                       val staticModifier: StaticModifiers = StaticModifiers.NO,
-                       val parentClass: SmaliClass? = null) {}
-
-class SmaliField(val name: String,
-                 val type: String,
-                 val accessModifier: AccessModifiers = AccessModifiers.PACKAGE_PRIVATE,
-                 val finalModifier: FinalModifiers = FinalModifiers.NO,
-                 val staticModifier: StaticModifiers = StaticModifiers.NO,
-                 var parentClass: SmaliClass? = null) {}
-
-class SmaliClass() {
-
-    constructor(name: String,
-                accessModifier: AccessModifiers = AccessModifiers.PACKAGE_PRIVATE,
-                finalModifier: FinalModifiers = FinalModifiers.NO,
-                staticModifier: StaticModifiers = StaticModifiers.NO,
-                parentPackage: SmaliPackage? = null) : this() {
-        this.name = name
-        this.accessModifier = accessModifier
-        this.finalModifier = finalModifier
-        this.staticModifier = staticModifier
-        this.parentPackage = parentPackage
-    }
-
-    var modifier = 0
-
-    public fun setModifierBit(modifierBit: Int) {
-        modifier = modifier or modifierBit
-    }
-
-    val fullname: String
-        get() {
-            var result = "$name.smali"
-            var parent = parentPackage
-            while (parent != null) {
-                result = parent.name + "." + result
-                parent = parent.parentPackage
-            }
-            return result
-        }
-
-    var name: String = ""
-    var accessModifier: AccessModifiers = AccessModifiers.PACKAGE_PRIVATE
-    var finalModifier: FinalModifiers = FinalModifiers.NO
-    var staticModifier: StaticModifiers = StaticModifiers.NO
-    var parentPackage: SmaliPackage? = null
-        set(value) {
-            if (field != value) {
-                field?.classes?.remove(this)
-                value?.classes?.add(this)
-                field = value
-            }
-        }
-
-    val fields = mutableListOf<SmaliField>()
-    val methods = mutableListOf<SmaliMethod>()
-
-    public fun addField(smaliField: SmaliField) {
-        smaliField.parentClass = this
-        fields.add(smaliField)
-    }
-
-    public fun removeField(smaliField: SmaliField) {
-        smaliField.parentClass = null
-        fields.remove(smaliField)
-    }
-
-    public fun addMethod(smaliMethod: SmaliMethod) {
-        smaliMethod.parentClass = this
-        methods.add(smaliMethod)
-    }
-
-    public fun removeMethod(smaliMethod: SmaliMethod) {
-        smaliMethod.parentClass = null
-        methods.remove(smaliMethod)
-
-    }
-
-}
-
-enum class AccessModifiers(name: String) {
-    PUBLIC("public"),
-    PRIVATE("private"),
-    PROTECTED("protected"),
-    PACKAGE_PRIVATE("")
-}
-
-enum class StaticModifiers(name: String) {
-    STATIC("static"),
-    NO("")
-}
-
-enum class FinalModifiers(name: String) {
-    FINAL("final"),
-    NO("")
-}
-
-class SmaliAnalyzer(projectBaseFolder: File) {
+class SmaliAnalyzer(val projectBaseFolder: File) {
 
     val packages = mutableListOf<SmaliPackage>()
 
@@ -172,8 +25,50 @@ class SmaliAnalyzer(projectBaseFolder: File) {
         require(projectBaseFolder.isDirectory) { "SmaliAnalyzer requires a folder as constructor argument" }
         val smaliFolder = File(projectBaseFolder.absolutePath + File.separator + "smali")
         if (smaliFolder.exists() && smaliFolder.isDirectory) {
-            analyzePackages(smaliFolder)
+            generateMap(smaliFolder)
+            writeMapToFile(projectBaseFolder)
         }
+    }
+
+    private fun writeMapToFile(fileFolder: File) {
+        Thread {
+            FileWriter(File(fileFolder, "map.txt")).use {
+                it.write(forPackages(packages, StringBuilder(), 0).toString())
+            }
+        }.start()
+    }
+
+    private fun forPackages(packages: List<SmaliPackage>, builder: StringBuilder, level: Int): StringBuilder {
+        packages.forEach {
+            repeat(level) {
+                builder.append("\t")
+            }
+            builder.appendln("====Package $it=====")
+            forPackages(it.subpackages, builder, level + 1)
+            forClasses(it.classes, builder, level + 1)
+        }
+        return builder
+    }
+
+    private fun forClasses(classes: List<SmaliClass>, builder: StringBuilder, level: Int): StringBuilder {
+        classes.forEach {
+            repeat(level) {
+                builder.append("\t")
+            }
+            builder.appendln("==Class $it==")
+            forMethods(it.methods, builder, level + 1)
+        }
+        return builder
+    }
+
+    private fun forMethods(methods: List<SmaliMethod>, builder: StringBuilder, level: Int): StringBuilder {
+        methods.forEach {
+            repeat(level) {
+                builder.append("\t")
+            }
+            builder.appendln("--Method $it--")
+        }
+        return builder
     }
 
     public fun getOrCreatePackage(name: String): SmaliPackage {
@@ -193,6 +88,59 @@ class SmaliAnalyzer(projectBaseFolder: File) {
         }
     }
 
+    public fun getOrCreateClass(name: String): SmaliClass {
+
+        println("getOrCrClass $name")
+
+        // Primitive type or void
+        when (name) {
+            "V" -> return SmaliClass.Primitives.VOID
+            "I" -> return SmaliClass.Primitives.INT
+            "J" -> return SmaliClass.Primitives.LONG
+            "S" -> return SmaliClass.Primitives.SHORT
+            "B" -> return SmaliClass.Primitives.BYTE
+            "Z" -> return SmaliClass.Primitives.BOOLEAN
+            "C" -> return SmaliClass.Primitives.CHAR
+            "F" -> return SmaliClass.Primitives.FLOAT
+            "D" -> return SmaliClass.Primitives.DOUBLE
+        }
+
+        // Reference type
+        if (name.startsWith('L')) {
+            var referenceClassName = name.substring(1).replace('/', '.')
+            if (referenceClassName.endsWith(';'))
+               referenceClassName =  referenceClassName.substring(0, referenceClassName.lastIndex)
+
+            val classToReturn = findClass(packages, referenceClassName)
+            if (classToReturn != null)
+                return classToReturn
+
+            val lastDot = referenceClassName.lastIndexOf('.')
+            if (lastDot == -1) {
+                throw IllegalStateException("Class $name must be in package")
+            } else {
+                val parentPackageName = referenceClassName.substring(0, lastDot)
+                val className = referenceClassName.substring(lastDot + 1)
+
+                return SmaliClass(className, getOrCreatePackage(parentPackageName))
+            }
+        } else if (name.startsWith('[')) { // Array
+            val smaliClass = SmaliClass()
+            for (c in name) {
+                if (c == '[')
+                    smaliClass.arrayCount++
+                else
+                    break
+            }
+
+            smaliClass.parentClass = getOrCreateClass(name.substring(smaliClass.arrayCount))
+
+            return smaliClass
+        } else {
+            throw IllegalStateException("Unknown class type for $name")
+        }
+    }
+
     private fun getPackageByName(name: String, smaliFolder: File): SmaliPackage? {
         val usefulPart =
                 name.substring(smaliFolder.absolutePath.length + 1).replace(File.separatorChar, '.')
@@ -207,6 +155,20 @@ class SmaliAnalyzer(projectBaseFolder: File) {
                 return pack
             else if (relativeName.startsWith("$full.")) {
                 return findInPackages(pack.subpackages, relativeName)
+            }
+        }
+
+        return null
+    }
+
+    private fun findClass(packages: List<SmaliPackage>, relativeName: String): SmaliClass? {
+        for (pack in packages) {
+            for (cl in pack.classes) {
+                if (cl.fullname == relativeName)
+                    return cl
+            }
+            if (relativeName.startsWith("${pack.fullname}.")) {
+                return findClass(pack.subpackages, relativeName)
             }
         }
 
@@ -258,11 +220,25 @@ class SmaliAnalyzer(projectBaseFolder: File) {
     private fun printClasses(classes: List<SmaliClass>, level: Int) {
         classes.forEach {
             repeat(level) { print(' ') }
-            println(it.fullname)
+            println("==Class  $it")
+            printFields(it.fields, level + 1)
+            printMethods(it.methods, level + 1)
         }
     }
 
+    private fun printFields(classes: List<SmaliField>, level: Int) {
+        classes.forEach {
+            repeat(level) { print(' ') }
+            println("==Field  ${it}")
+        }
+    }
 
+    private fun printMethods(classes: List<SmaliMethod>, level: Int) {
+        classes.forEach {
+            repeat(level) { print(' ') }
+            println("==Method  ${it}")
+        }
+    }
 
     public fun analyzeFile(file: File): SmaliClass {
         require(!file.isDirectory) { "Method argument must be a file" }
@@ -282,58 +258,41 @@ class SmaliAnalyzer(projectBaseFolder: File) {
 //        return SmaliClass(file.name)
     }
 
-    fun getAccessibleMethods(file: File): List<SmaliMethod> {
-        val methods = mutableListOf<SmaliMethod>()
-        val pattern = Pattern.compile(TypeDetector.SMALI_METHOD_DECLARATION)
-        val fileText = file.readText()
-        val matcher = pattern.matcher(fileText)
-        while (matcher.find()) {
-            methods.add(extractToMethod(matcher, fileText))
+
+    public fun scanFile(file: File, writeInfo: Boolean = false): SmaliClass {
+        require(!file.isDirectory) { "Method argument must be a file" }
+
+
+        val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
+        val tokens = CommonTokenStream(lexer as TokenSource)
+        val parser = SmaliParser(tokens as TokenStream)
+        val tree = parser.parse()
+
+        val smaliClass = SmaliClass()
+
+        val visitor = SmaliShallowScanner(smaliClass, this)
+        visitor.visit(tree as ParseTree)
+        visitor.onlyClass = false
+        visitor.visit(tree as ParseTree)
+
+
+        if (writeInfo) {
+            printClasses(listOf(visitor.smaliClass), 0)
         }
-        return methods
+//        listener.clear()
+//        pastwk.walk(listener, tree as ParseTree)
+//
+
+
+//        return listener.parsedSmaliClass
+        return visitor.smaliClass
     }
 
-    private fun extractToMethod(matcher: Matcher, string: String): SmaliMethod {
-
-        val method = SmaliMethod(
-                matcher.group("NAME"),
-                "w",
-                getAccessModifierByName(matcher.group("ACCESS")),
-                getFinalModifierByName(matcher.group("FINAL")),
-                getStaticModifierByName(matcher.group("STATIC")))
-
-        return method
-    }
-
-    private fun getAccessModifierByName(string: String?): AccessModifiers {
-        if (string == null || string.isEmpty())
-            return AccessModifiers.PACKAGE_PRIVATE
-
-        return when (string) {
-            "public" -> AccessModifiers.PUBLIC
-            "protected" -> AccessModifiers.PROTECTED
-            "private" -> AccessModifiers.PRIVATE
-            else -> throw IllegalArgumentException("Unknown access modifier $string")
-        }
-    }
-
-    private fun getStaticModifierByName(string: String?): StaticModifiers {
-        if (string == null || string.isEmpty())
-            return StaticModifiers.NO
-
-        return when (string) {
-            "static" -> StaticModifiers.STATIC
-            else -> throw IllegalArgumentException("Unknown static modifier $string")
-        }
-    }
-
-    private fun getFinalModifierByName(string: String?): FinalModifiers {
-        if (string == null || string.isEmpty())
-            return FinalModifiers.NO
-
-        return when (string) {
-            "final" -> FinalModifiers.FINAL
-            else -> throw IllegalArgumentException("Unknown final modifier $string")
+    fun generateMap(smaliFolder: File) {
+        smaliFolder.walk().forEach {
+            if (!it.isDirectory) {
+                scanFile(it)
+            }
         }
     }
 }

@@ -6,6 +6,7 @@ import org.antlr.v4.runtime.tree.TerminalNode
 import ru.art2000.androraider.analyzer.antlr.SmaliParser
 import ru.art2000.androraider.analyzer.antlr.SmaliParser.*
 import ru.art2000.androraider.analyzer.antlr.SmaliParserListener
+import ru.art2000.androraider.analyzer.types.SmaliClass
 import java.io.File
 import java.lang.reflect.Modifier
 

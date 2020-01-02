@@ -348,7 +348,7 @@ constructor(project: File) : Window() {
                 override fun fileSelected(oldFile: File?, newFile: File) {
                     if (TypeDetector.isTextFile(newFile.name)) {
 //                        smaliAnalyzer.getAccessibleMethods(newFile)
-                        smaliAnalyzer.analyzeFile(newFile)
+                        smaliAnalyzer.scanFile(newFile, true)
                         editorArea.edit(newFile)
                         editorArea.requestFocus()
                     }
