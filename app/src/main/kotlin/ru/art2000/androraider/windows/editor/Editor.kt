@@ -1,6 +1,6 @@
 package ru.art2000.androraider.windows.editor
 
-//import VectorTools.Main
+import javafx.application.Platform
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.geometry.Insets
@@ -25,6 +25,7 @@ import ru.art2000.androraider.utils.*
 import ru.art2000.androraider.windows.Settings
 import java.io.File
 import java.io.IOException
+import java.util.function.Consumer
 
 
 class Editor @Throws(IOException::class)
@@ -35,7 +36,7 @@ constructor(project: File) : Window() {
     var editorStage = Stage()
     var vectorImageEditorStage : Stage? = null
 
-    val smaliAnalyzer = SmaliAnalyzer(baseFolder)
+    private val smaliAnalyzer = SmaliAnalyzer(baseFolder)
 
     init {
         val loader = javaClass.getLayout("editor.fxml")
@@ -52,6 +53,35 @@ constructor(project: File) : Window() {
 
     public override fun show() {
         editorStage.show()
+        generateProjectIndex()
+    }
+
+    private fun generateProjectIndex() {
+        val indexingDialog = Dialog<Unit>()
+        indexingDialog.title = "Indexing"
+        indexingDialog.width = 400.0
+        val mainLabel = Label("Starting indexing...")
+        indexingDialog.dialogPane = getBaseDialogPane(mainLabel)
+        indexingDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
+        (indexingDialog.dialogPane.lookupButton(ButtonType.CLOSE) as Button).isDisable = true
+
+        smaliAnalyzer.onProjectAnalyzeEnded.add (Runnable {
+            Platform.runLater {
+                indexingDialog.close()
+            }
+        })
+
+        smaliAnalyzer.onFileAnalyzeStarted.add(Consumer {
+            Platform.runLater {
+                mainLabel.text = "Indexing ${it.name}..."
+            }
+        })
+
+        Thread {
+            smaliAnalyzer.generateMap()
+        }.start()
+
+        indexingDialog.showAndWait()
     }
 
     inner class EditorLayoutController {
@@ -353,7 +383,7 @@ constructor(project: File) : Window() {
                 override fun fileSelected(oldFile: File?, newFile: File) {
                     if (TypeDetector.isTextFile(newFile.name)) {
 //                        smaliAnalyzer.getAccessibleMethods(newFile)
-                        smaliAnalyzer.scanFile(newFile, true)
+//                        smaliAnalyzer.scanFile(newFile, true)
                         editorArea.edit(newFile)
                         editorArea.requestFocus()
                     }

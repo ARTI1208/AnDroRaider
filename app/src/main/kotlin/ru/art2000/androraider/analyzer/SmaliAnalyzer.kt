@@ -15,18 +15,24 @@ import ru.art2000.androraider.analyzer.types.SmaliMethod
 import ru.art2000.androraider.analyzer.types.SmaliPackage
 import java.io.File
 import java.io.FileWriter
+import java.util.function.Consumer
 
 
-class SmaliAnalyzer(val projectBaseFolder: File) {
+class SmaliAnalyzer(private val projectBaseFolder: File) {
 
     val packages = mutableListOf<SmaliPackage>()
 
+    val onFileAnalyzeStarted = mutableListOf<Consumer<File>>()
+
+    val onProjectAnalyzeEnded = mutableListOf<Runnable>()
+
+    private val smaliFolder: File
+
     init {
         require(projectBaseFolder.isDirectory) { "SmaliAnalyzer requires a folder as constructor argument" }
-        val smaliFolder = File(projectBaseFolder.absolutePath + File.separator + "smali")
-        if (smaliFolder.exists() && smaliFolder.isDirectory) {
-            generateMap(smaliFolder)
-            writeMapToFile(projectBaseFolder)
+        smaliFolder = File(projectBaseFolder.absolutePath + File.separator + "smali")
+        require (smaliFolder.exists() && smaliFolder.isDirectory) {
+            "Smali folder not exists"
         }
     }
 
@@ -288,11 +294,17 @@ class SmaliAnalyzer(val projectBaseFolder: File) {
         return visitor.smaliClass
     }
 
-    fun generateMap(smaliFolder: File) {
-        smaliFolder.walk().forEach {
-            if (!it.isDirectory) {
-                scanFile(it)
+    fun generateMap() {
+        smaliFolder.walk().forEach { file ->
+            if (!file.isDirectory) {
+                onFileAnalyzeStarted.forEach {
+                    it.accept(file)
+                }
+                scanFile(file)
             }
+        }
+        onProjectAnalyzeEnded.forEach {
+            it.run()
         }
     }
 }
