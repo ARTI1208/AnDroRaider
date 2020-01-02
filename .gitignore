@@ -1,0 +1,6 @@
+/.gradle
+/gradle
+/__artifacts_temp
+/build
+/out
+/app/build
