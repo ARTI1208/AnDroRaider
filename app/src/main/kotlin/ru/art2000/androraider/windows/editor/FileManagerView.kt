@@ -61,6 +61,9 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
                         onTreeItemCreate(selectionModel.selectedItem)
                     }
                 }
+                KeyCode.F2 -> {
+                    onTreeItemRename(selectionModel.selectedItem)
+                }
             }
         }
     }
@@ -225,6 +228,57 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
             2 -> "${parentFolder.absolutePath}${File.separatorChar}${name}.smali"
             else -> "${parentFolder.absolutePath}${File.separatorChar}${name}"
         }
+    }
+
+    fun onTreeItemRename(treeItem: TreeItem<File>?) {
+        if (treeItem == null)
+            return
+
+        val parentFolder = treeItem.value.parentFile
+
+        val creationDialog = Dialog<Int>()
+        creationDialog.title = "Renaming dialog"
+        creationDialog.width = 400.0
+        val nameInput = TextField(treeItem.value.name)
+        nameInput.promptText = "Input new name"
+
+        val previousName = Label("Previous name: ${treeItem.value.name}")
+        previousName.textOverrun = OverrunStyle.LEADING_ELLIPSIS
+
+        nameInput.onKeyPressed = EventHandler {
+            if (it.code == KeyCode.ENTER) {
+                if (nameInput.text.isNullOrEmpty()) {
+                    return@EventHandler
+                }
+
+                var renameResult = false
+                try {
+                    renameResult = treeItem.value.renameTo(File(parentFolder, nameInput.text))
+                } catch (e: Exception) {
+
+                } finally {
+                    if (renameResult) {
+                        creationDialog.close()
+                    } else {
+                        showErrorMessage("Rename failed",
+                                "Rename of ${if (treeItem.value.isDirectory) "folder" else "file"} " +
+                                        "${treeItem.value.name} failed",
+                                scene.window
+                        )
+                    }
+                }
+
+            } else if (it.code == KeyCode.ESCAPE) {
+                creationDialog.close()
+            }
+        }
+
+        creationDialog.dialogPane = getBaseDialogPane(previousName, nameInput)
+        creationDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
+
+        nameInput.requestFocus()
+
+        creationDialog.showAndWait()
     }
 
     fun onTreeItemDelete(treeItem: TreeItem<File>?) {

@@ -30,24 +30,33 @@ class FileManagerTreeListItem : TreeCell<File>(), Initializable {
         close.fitHeight = 20.0
         disclosureNode = close
 
-        val menuItemDelete = MenuItem("Delete")
-        menuItemDelete.onAction = EventHandler<ActionEvent> {
-            val parentTreeView = treeView
-            if (parentTreeView is FileManagerView) {
-                parentTreeView.onTreeItemDelete(treeItem)
-            }
-        }
-
         val menuItemCreate = MenuItem("Create")
-        menuItemCreate.onAction = EventHandler<ActionEvent> {
+        menuItemCreate.onAction = EventHandler {
             val parentTreeView = treeView
             if (parentTreeView is FileManagerView) {
                 parentTreeView.onTreeItemCreate(treeItem)
             }
         }
 
+        val menuItemRename = MenuItem("Rename")
+        menuItemRename.onAction = EventHandler {
+            val parentTreeView = treeView
+            if (parentTreeView is FileManagerView) {
+                parentTreeView.onTreeItemRename(treeItem)
+            }
+        }
+
+        val menuItemDelete = MenuItem("Delete")
+        menuItemDelete.onAction = EventHandler {
+            val parentTreeView = treeView
+            if (parentTreeView is FileManagerView) {
+                parentTreeView.onTreeItemDelete(treeItem)
+            }
+        }
+
         fileContextMenu.items.addAll(
                 menuItemCreate,
+                menuItemRename,
                 menuItemDelete
         )
 
