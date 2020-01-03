@@ -96,8 +96,6 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
 
     public fun getOrCreateClass(name: String): SmaliClass {
 
-        println("getOrCrClass $name")
-
         // Primitive type or void
         when (name) {
             "V" -> return SmaliClass.Primitives.VOID

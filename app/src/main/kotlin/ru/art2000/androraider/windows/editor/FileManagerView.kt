@@ -5,7 +5,8 @@ import javafx.scene.control.*
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseButton
-import ru.art2000.androraider.*
+import ru.art2000.androraider.getBaseDialogPane
+import ru.art2000.androraider.showErrorMessage
 import ru.art2000.androraider.utils.getFileRelativePath
 import java.io.File
 
@@ -55,6 +56,11 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
                     if (it.isAltDown)
                         selectionModel.selectedItem?.isExpanded = true
                 }
+                KeyCode.N -> {
+                    if (it.isShortcutDown) {
+                        onTreeItemCreate(selectionModel.selectedItem)
+                    }
+                }
             }
         }
     }
@@ -95,7 +101,133 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
         fileHistory.add(0, file)
     }
 
-    private fun onTreeItemDelete(treeItem: TreeItem<File>?) {
+    fun onTreeItemCreate(treeItem: TreeItem<File>?) {
+        if (treeItem == null)
+            return
+
+        val parentFolder = if (treeItem.value.isDirectory) treeItem.value else treeItem.value.parentFile
+
+        val creationDialog = Dialog<Int>()
+        creationDialog.title = "Creation dialog"
+        creationDialog.width = 400.0
+        val nameInput = TextField()
+        nameInput.promptText = "Input folder name"
+
+        val folderLabel = Label("Input folder name")
+        folderLabel.labelFor = nameInput
+        folderLabel.textOverrun = OverrunStyle.LEADING_ELLIPSIS
+
+        val typeOptions = ListView<String>()
+        typeOptions.items.addAll("Folder", "XML", "Smali", "File")
+        typeOptions.fixedCellSize = 20.0
+        typeOptions.prefHeight = typeOptions.fixedCellSize * typeOptions.items.size
+
+        typeOptions.selectionModel.select(0)
+        typeOptions.selectionModel.selectedIndexProperty().addListener { _, _, n ->
+            val type = n.toInt()
+            val name = getNewFile(type, nameInput.text, parentFolder)
+
+            folderLabel.text = onInputOrTypeChanged(type, typeOptions.items[type], name)
+            nameInput.promptText = folderLabel.text
+        }
+
+        typeOptions.setOnMouseClicked {
+            nameInput.requestFocus()
+        }
+
+        nameInput.textProperty().addListener { _, _, newValue ->
+            val type = typeOptions.selectionModel.selectedIndex
+            val name = getNewFile(type, newValue, parentFolder)
+
+            folderLabel.text = onInputOrTypeChanged(type, typeOptions.items[type], name)
+            nameInput.promptText = folderLabel.text
+        }
+
+        typeOptions.onKeyPressed = EventHandler {
+            if (it.code == KeyCode.ENTER) {
+                if (nameInput.text.isNullOrEmpty()) {
+                    return@EventHandler
+                }
+
+                var creationResult = false
+                try {
+                    val newName = getNewFile(
+                            typeOptions.selectionModel.selectedIndex,
+                            nameInput.text,
+                            parentFolder
+                    ) ?: return@EventHandler
+
+                    creationResult = when (typeOptions.selectionModel.selectedIndex) {
+                        0 -> File(newName).mkdirs() // folder
+                        else -> File(newName).createNewFile() // file
+                    }
+                } catch (e: Exception) {
+
+                } finally {
+                    if (creationResult) {
+                        creationDialog.close()
+                    } else {
+                        showErrorMessage("Creation failed",
+                                "Creation of ${typeOptions.selectionModel.selectedItem.toLowerCase()} " +
+                                        "${getNewFile(
+                                                typeOptions.selectionModel.selectedIndex,
+                                                nameInput.text,
+                                                parentFolder
+                                        )} failed",
+                                scene.window
+                        )
+                    }
+                }
+
+            } else if (it.code == KeyCode.ESCAPE) {
+                creationDialog.close()
+            }
+        }
+
+        nameInput.onKeyPressed = EventHandler {
+            if (it.code == KeyCode.UP) {
+                if (typeOptions.selectionModel.selectedIndex != 0)
+                    typeOptions.selectionModel.selectPrevious()
+            } else if (it.code == KeyCode.DOWN) {
+                if (typeOptions.selectionModel.selectedIndex != typeOptions.items.lastIndex)
+                    typeOptions.selectionModel.selectNext()
+            } else {
+                typeOptions.onKeyPressed.handle(it)
+            }
+        }
+
+        creationDialog.dialogPane = getBaseDialogPane(folderLabel, nameInput, typeOptions)
+        creationDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
+
+        nameInput.requestFocus()
+
+        creationDialog.showAndWait()
+    }
+
+    private fun onInputOrTypeChanged(typeIndex: Int, typeValue: String, name: String?): String {
+        if (name.isNullOrEmpty()) {
+            return "Input ${typeValue.toLowerCase()} name"
+        }
+
+        return when (typeIndex) {
+            0 -> "Folder $name"
+            else -> "File $name"
+        } + " will be created"
+    }
+
+    private fun getNewFile(type: Int, name: String?, parentFolder: File): String? {
+        if (name.isNullOrEmpty()) {
+            return null
+        }
+
+        return when (type) {
+            1 -> "${parentFolder.absolutePath}${File.separatorChar}${name}.xml"
+            2 -> "${parentFolder.absolutePath}${File.separatorChar}${name}.smali"
+            else -> "${parentFolder.absolutePath}${File.separatorChar}${name}"
+        }
+    }
+
+    fun onTreeItemDelete(treeItem: TreeItem<File>?) {
         if (treeItem == null)
             return
 
@@ -193,4 +325,6 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
     override fun findPrevious() {
 
     }
+
+
 }

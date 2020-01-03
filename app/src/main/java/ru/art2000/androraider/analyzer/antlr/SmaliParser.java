@@ -21302,11 +21302,8 @@ public class SmaliParser extends Parser {
         @Override
         public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
             if ( visitor instanceof SmaliParserVisitor ) {
-                System.out.println("okk");
                 return ((SmaliParserVisitor<? extends T>)visitor).visitParse(this);
-            }
-            else {
-                System.out.println("notokk");
+            } else {
                 return visitor.visitChildren(this);
             }
         }

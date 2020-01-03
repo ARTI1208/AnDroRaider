@@ -229,7 +229,6 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
     fun parseCompound(string: String): List<String> {
         val list = mutableListOf<String>()
         var tmpString = string
-        println("Compound $string")
         while (tmpString.isNotEmpty()) {
             if (tmpString.startsWith('L')) {
                 val i = tmpString.indexOf(';')
@@ -268,11 +267,10 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
 
         if (ancestor is MethodDeclarationContextWrapper) {
             ancestor.smaliMethod.parametersInternal.addAll(parseCompound(ctx.text).also {
-
-                if (it.size > 1) {
-                    println("WWWWWWWWWWWWk")
-                    it.forEach { println(it) }
-                }
+//                if (it.size > 1) {
+//                    println("WWWWWWWWWWWWk")
+//                    it.forEach { println(it) }
+//                }
             }.map { analyzer.getOrCreateClass(it) })
         }
 
@@ -366,7 +364,6 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
     override fun visitMethodIdentifier(ctx: MethodIdentifierContext): SmaliClass {
         val grandfather = ctx.parent.parent
         if (grandfather is MethodDeclarationContextWrapper) {
-            println("weqqqqqqqqqqqqqqq")
             grandfather.smaliMethod.name = ctx.text
         }
 
@@ -496,7 +493,6 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
     override fun visitMethodModifier(ctx: MethodModifierContext): SmaliClass {
         val parent = ctx.getParent()
         if (parent is MethodDeclarationContextWrapper) {
-            println("asqqqqqqqqqqqqqqq")
             when (ctx.text) {
                 "public" -> parent.smaliMethod.setModifierBit(Modifier.PUBLIC)
                 "protected" -> parent.smaliMethod.setModifierBit(Modifier.PROTECTED)
@@ -1049,12 +1045,6 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
     }
 
     override fun visitClassName(ctx: ClassNameContext): SmaliClass {
-//        val (className, packageName) = fromFullName(ctx.text)
-//        smaliClass.name = className
-//        smaliClass.parentPackage = analyzer.getOrCreatePackage(packageName)
-
-        println("==Class ${ctx.text}")
-
         smaliClass = analyzer.getOrCreateClass(ctx.text)
         return smaliClass
     }
@@ -1401,9 +1391,7 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
 
     override fun visitFieldName(ctx: FieldNameContext): SmaliClass {
         val ancestor = ctx.parent.parent
-        println("fieldNameOut ")
         if (ancestor is FieldDeclarationContextWrapper) {
-            println("fieldNameIn ")
             ancestor.smaliField.name = ctx.text
         }
 
