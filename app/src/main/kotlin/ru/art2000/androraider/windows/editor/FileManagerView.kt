@@ -68,14 +68,9 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
         }
     }
 
-    public fun setupWithBaseFolder(baseFolder: File, expandFolders: Boolean = false) {
+    public fun setupWithBaseFolder(baseFolder: File) {
         this.baseFolder = baseFolder
-        root = TreeItem(baseFolder)
-        if (expandFolders)
-            root.isExpanded = true
-
-        addFileExplorerTreeItemChildren(root, expandFolders)
-        selectionModel.select(0)
+        updateFileList()
     }
 
     private fun onTreeItemClick(treeItem: TreeItem<File>?, byMouse: Boolean = false) {
@@ -321,9 +316,50 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
         return deleteFileDialog.showAndWait().get()
     }
 
-    private fun addFileExplorerTreeItemChildren(treeItem: TreeItem<File>, expandFolders: Boolean = false) {
-        val allFiles = treeItem.value.listFiles() ?: return
+    private fun saveStructure(): Map<String, Boolean> {
+        val map = mutableMapOf<String, Boolean>()
+        walkTree {
+            map[it.value.absolutePath] = it.isExpanded
+        }
+        return map
+    }
 
+    private fun restoreStructure(map: Map<String, Boolean>) {
+        walkTree {
+            it.isExpanded = map[it.value.absolutePath] ?: false
+        }
+    }
+
+    private fun <T> TreeView<T>.walkTree(func: (TreeItem<T>) -> Unit) {
+        walkExpandableNode(root, func)
+    }
+
+    private fun <T> TreeView<T>.walkExpandableNode(node: TreeItem<T>?, func: (TreeItem<T>) -> Unit) {
+        if (node == null)
+            return
+
+        func(node)
+        node.children.forEach {
+            walkExpandableNode(it, func)
+        }
+    }
+
+    fun updateFileList(fileToSelect: File? = null) {
+        val structure = saveStructure()
+        root = TreeItem(baseFolder)
+        val itemToSelect = addFileExplorerTreeItemChildren(root, fileToSelect)
+        restoreStructure(structure)
+
+        if (itemToSelect != null)
+            selectionModel.select(itemToSelect)
+        else
+            selectionModel.selectFirst()
+    }
+
+    private fun addFileExplorerTreeItemChildren(treeItem: TreeItem<File>, fileToSelect: File? = null): TreeItem<File>? {
+        val allFiles = treeItem.value.listFiles() ?: return null
+
+        var returnItem: TreeItem<File>? = null
         val dirs = mutableListOf<TreeItem<File>>()
         val files = mutableListOf<TreeItem<File>>()
 
@@ -331,18 +367,28 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
             if (it.isHidden)
                 return@forEach
 
-            if (searchResultsAsTree.size == 0 || searchResultsAsTree.contains(it) || searchResultsAsTree.contains(it.parentFile)) {
+            if (searchResultsAsTree.size == 0
+                    || searchResultsAsTree.contains(it)
+                    || searchResultsAsTree.contains(it.parentFile)) {
                 val treeSubItem = TreeItem(it)
+
+                if (it.absolutePath == fileToSelect?.absolutePath)
+                    returnItem = treeSubItem
+
                 if (it.isDirectory) {
                     dirs.add(treeSubItem)
-                    addFileExplorerTreeItemChildren(treeSubItem)
-                    treeSubItem.isExpanded = expandFolders
+
+                    if (returnItem == null)
+                        returnItem = addFileExplorerTreeItemChildren(treeSubItem)
+                    else
+                        addFileExplorerTreeItemChildren(treeSubItem)
                 } else files.add(treeSubItem)
             }
         }
 
         treeItem.children.setAll(dirs)
         treeItem.children.addAll(files)
+        return returnItem
     }
 
     override var currentSearchValue: String? = null
@@ -369,7 +415,7 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
             }
         }
 
-        setupWithBaseFolder(baseFolder, true)
+        setupWithBaseFolder(baseFolder)
     }
 
     override fun findNext() {

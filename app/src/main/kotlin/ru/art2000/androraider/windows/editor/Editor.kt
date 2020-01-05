@@ -25,6 +25,7 @@ import ru.art2000.androraider.utils.*
 import ru.art2000.androraider.windows.Settings
 import java.io.File
 import java.io.IOException
+import java.nio.file.StandardWatchEventKinds
 import java.util.function.Consumer
 
 
@@ -33,14 +34,18 @@ constructor(project: File) : Window() {
 
     val baseFolder: File = if (project.isDirectory) project else project.parentFile
 
+    val projectObserver: DirectoryObserver = DirectoryObserver(baseFolder)
+
     var editorStage = Stage()
     var vectorImageEditorStage : Stage? = null
 
     private val smaliAnalyzer = SmaliAnalyzer(baseFolder)
 
+    private val controller = EditorLayoutController()
+
     init {
         val loader = javaClass.getLayout("editor.fxml")
-        loader.setController(EditorLayoutController())
+        loader.setController(controller)
         val root = loader.load<Parent>()
 
         editorStage.apply {
@@ -48,6 +53,9 @@ constructor(project: File) : Window() {
             title = "${baseFolder.name} - Project Editor"
             scene = Scene(root, 900.0, 600.0)
             scene.stylesheets.add(this@Editor.javaClass.getStyle("code.css"))
+            onHiding = EventHandler {
+                controller.dispose()
+            }
         }
     }
 
@@ -140,6 +148,16 @@ constructor(project: File) : Window() {
             setupMenu()
             setupCodeArea()
             setupFileExplorerView()
+
+            onSetupFinished()
+        }
+
+        fun dispose() {
+            projectObserver.stop()
+        }
+
+        private fun onSetupFinished() {
+            projectObserver.start()
         }
 
         private fun createFileInfoDialog() {
@@ -193,6 +211,24 @@ constructor(project: File) : Window() {
             editorArea.observableCurrentEditingFile.addListener { _, _, fileNew ->
                 if (fileNew != null)
                     editorStage.title = "${getFileRelativePath(fileNew, baseFolder)} - Project Editor"
+            }
+            editorArea.beforeFileWrittenListeners.add(Consumer {
+                projectObserver.stop()
+            })
+            editorArea.afterFileWrittenListeners.add(Consumer {
+                projectObserver.resume()
+            })
+
+            projectObserver.addListener { file, kind ->
+                if (file.isDirectory)
+                    return@addListener
+
+                if (file.absolutePath == editorArea.currentEditingFile?.absolutePath) {
+                    when (kind) {
+                        StandardWatchEventKinds.ENTRY_DELETE -> editorArea.edit(null)
+                        StandardWatchEventKinds.ENTRY_MODIFY -> editorArea.edit(file, true)
+                    }
+                }
             }
         }
 
@@ -382,13 +418,14 @@ constructor(project: File) : Window() {
             fileManagerView.onFileSelectedListeners.add(object : FileManagerView.FileSelectedListener {
                 override fun fileSelected(oldFile: File?, newFile: File) {
                     if (TypeDetector.isTextFile(newFile.name)) {
-//                        smaliAnalyzer.getAccessibleMethods(newFile)
-//                        smaliAnalyzer.scanFile(newFile, true)
                         editorArea.edit(newFile)
                         editorArea.requestFocus()
                     }
                 }
             })
+            projectObserver.addListener { _, _ ->
+                fileManagerView.updateFileList()
+            }
         }
     }
 }

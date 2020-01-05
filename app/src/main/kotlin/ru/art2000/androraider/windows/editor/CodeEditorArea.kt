@@ -18,6 +18,7 @@ import java.io.File
 import java.nio.file.Files
 import java.time.Duration
 import java.util.*
+import java.util.function.Consumer
 import java.util.function.IntFunction
 import java.util.regex.Pattern
 import kotlin.collections.ArrayList
@@ -47,8 +48,8 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
         override fun getValue(): File? = currentEditingFile
     }
 
-    private var currentEditingFile: File? = null
-        set(value) {
+    public var currentEditingFile: File? = null
+        private set(value) {
             val previousValue = field
             field = value
             if (previousValue != value) {
@@ -67,6 +68,9 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     private val currentEditingFileChangeListeners = mutableListOf<ChangeListener<in File?>?>()
     private val currentEditingFileInvalidationListeners = mutableListOf<InvalidationListener?>()
+
+    val beforeFileWrittenListeners = mutableListOf<Consumer<File>>()
+    val afterFileWrittenListeners = mutableListOf<Consumer<File>>()
 
     private var isFileChanged = false
 
@@ -103,7 +107,9 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
                 return@addListener
             }
             if (currentEditingFile != null && oldValue.isNotEmpty()) {
+                beforeFileWrittenListeners.forEach { it.accept(currentEditingFile!!) }
                 Files.write(currentEditingFile!!.toPath(), newValue.toByteArray())
+                afterFileWrittenListeners.forEach { it.accept(currentEditingFile!!) }
             }
         }
         multiPlainChanges()
@@ -146,11 +152,17 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
         addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_END) { popup.hide() }
     }
 
-    public fun edit(file: File) {
+    public fun edit(file: File?, forceRead: Boolean = false) {
+        if (file == null || !file.exists()) {
+            currentEditingFile = null
+            replaceText("")
+            return
+        }
+
         if (file.isDirectory)
             return
 
-        if (file.absolutePath != currentEditingFile?.absolutePath) {
+        if (file.absolutePath != currentEditingFile?.absolutePath || forceRead) {
             currentEditingFile = file
             replaceText(String(Files.readAllBytes(file.toPath())))
             setStyleSpans(0, updateHighlighting())
