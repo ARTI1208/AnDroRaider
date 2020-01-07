@@ -20,9 +20,9 @@ import ru.art2000.androraider.*
 import ru.art2000.androraider.analyzer.SmaliAnalyzer
 import ru.art2000.androraider.apktool.ApkToolUtils
 import ru.art2000.androraider.apktool.ApktoolCommand
-import ru.art2000.androraider.windows.launcher.Launcher
 import ru.art2000.androraider.utils.*
 import ru.art2000.androraider.windows.Settings
+import ru.art2000.androraider.windows.launcher.Launcher
 import java.io.File
 import java.io.IOException
 import java.nio.file.StandardWatchEventKinds
@@ -30,66 +30,85 @@ import java.util.function.Consumer
 
 
 class Editor @Throws(IOException::class)
-constructor(project: File) : Window() {
+constructor(project: File, vararg runnables: Consumer<StreamOutput>) : Window() {
 
-    val baseFolder: File = if (project.isDirectory) project else project.parentFile
+    val baseFolder: File
 
-    val projectObserver: DirectoryObserver = DirectoryObserver(baseFolder)
+    val projectObserver: DirectoryObserver
 
     var editorStage = Stage()
-    var vectorImageEditorStage : Stage? = null
+    var vectorImageEditorStage: Stage? = null
 
-    private val smaliAnalyzer = SmaliAnalyzer(baseFolder)
+    private val smaliAnalyzer: SmaliAnalyzer
 
-    private val controller = EditorLayoutController()
+    private lateinit var controller: EditorLayoutController
+
+    private val onLoadRunnables = mutableListOf(*runnables)
+
+    val loadingLabel = Label()
+
+    val loadingDialog = getBaseDialog<Unit>(loadingLabel)
 
     init {
+//        onLoadRunnables.add(Consumer {
+//            generateProjectIndex()
+//        })
+
+        if (!project.exists())
+            println("creation " + project.mkdirs())
+
+        println("constr ${project.isDirectory}")
+
+        baseFolder = if (project.isDirectory) project else project.parentFile
+        smaliAnalyzer = SmaliAnalyzer(baseFolder)
+        projectObserver = DirectoryObserver(baseFolder)
+        editorStage.apply {
+            icons.add(App.LOGO)
+            title = "${baseFolder.name} - Project Editor"
+        }
+    }
+
+    public override fun show() {
         val loader = javaClass.getLayout("editor.fxml")
+
+        controller = EditorLayoutController()
         loader.setController(controller)
+
         val root = loader.load<Parent>()
 
         editorStage.apply {
-            icons.add(this@Editor.javaClass.getDrawable("logo.png"))
-            title = "${baseFolder.name} - Project Editor"
             scene = Scene(root, 900.0, 600.0)
             scene.stylesheets.add(this@Editor.javaClass.getStyle("code.css"))
             onHiding = EventHandler {
                 controller.dispose()
             }
         }
+
+        editorStage.show()
+        showLoadingDialog()
     }
 
-    public override fun show() {
-        editorStage.show()
-        generateProjectIndex()
+    private fun showLoadingDialog() {
+        loadingDialog.title = "Loading..."
+        loadingDialog.width = 400.0
+        loadingLabel.text = "Loading project..."
+        loadingDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
+        (loadingDialog.dialogPane.lookupButton(ButtonType.CLOSE) as Button).isDisable = true
+
+        loadingDialog.show()
     }
 
     private fun generateProjectIndex() {
-        val indexingDialog = Dialog<Unit>()
-        indexingDialog.title = "Indexing"
-        indexingDialog.width = 400.0
-        val mainLabel = Label("Starting indexing...")
-        indexingDialog.dialogPane = getBaseDialogPane(mainLabel)
-        indexingDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
-        (indexingDialog.dialogPane.lookupButton(ButtonType.CLOSE) as Button).isDisable = true
-
-        smaliAnalyzer.onProjectAnalyzeEnded.add (Runnable {
-            Platform.runLater {
-                indexingDialog.close()
-            }
-        })
-
+        Platform.runLater {
+            loadingLabel.text = "Indexing smali..."
+        }
         smaliAnalyzer.onFileAnalyzeStarted.add(Consumer {
             Platform.runLater {
-                mainLabel.text = "Indexing ${it.name}..."
+                loadingLabel.text = "Indexing ${it.name}..."
             }
         })
 
-        Thread {
-            smaliAnalyzer.generateMap()
-        }.start()
-
-        indexingDialog.showAndWait()
+        smaliAnalyzer.generateMap()
     }
 
     inner class EditorLayoutController {
@@ -116,6 +135,8 @@ constructor(project: File) : Window() {
         lateinit var fileManagerView: FileManagerView
         @FXML
         lateinit var editorArea: CodeEditorArea
+        @FXML
+        lateinit var console: ConsoleView
 
         private lateinit var searchField: TextField
 
@@ -141,12 +162,25 @@ constructor(project: File) : Window() {
                 fileManagerView.requestFocus()
             }
 
+            smaliAnalyzer.onProjectAnalyzeStarted.add(Runnable {
+                Platform.runLater {
+                    console.writeln("SmaliAnalyzer", "Analyze started")
+                }
+            })
+
+            smaliAnalyzer.onProjectAnalyzeEnded.add(Runnable {
+                Platform.runLater {
+                    console.writeln("SmaliAnalyzer", "Analyze ended")
+                }
+            })
+
             editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(fileManagerView.prefWidthProperty()))
             editorArea.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
             fileManagerView.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
 
             setupMenu()
             setupCodeArea()
+            setupConsoleView()
             setupFileExplorerView()
 
             onSetupFinished()
@@ -157,13 +191,33 @@ constructor(project: File) : Window() {
         }
 
         private fun onSetupFinished() {
-            projectObserver.start()
+            // TODO parallel?
+            println("setup ${baseFolder.isDirectory}")
+//            Thread.sleep(500)
+            ThreadHelper()
+                    .runOnWorkerThread(Runnable {
+                        onLoadRunnables.forEach {
+                            it.accept(console)
+                        }
+                    })
+                    .runOnFxThread(Runnable {
+                        fileManagerView.updateFileList()
+                        fileManagerView.root.isExpanded = true
+
+                    })
+                    .runOnWorkerThread(Runnable {
+                        generateProjectIndex()
+                    })
+                    .runOnFxThread(Runnable {
+                        loadingDialog.hide()
+                        projectObserver.start()
+                    })
+                    .start()
+
+//            projectObserver.start()
         }
 
         private fun createFileInfoDialog() {
-            val fileInfoDialog = Dialog<Unit>()
-            fileInfoDialog.title = getFileRelativePath(editorArea.observableCurrentEditingFile.value, baseFolder)
-                    ?: "No file is currently editing"
             val typeLabelTitle = Label("Type:")
             val typeLabelValue = Label(editorArea.observableCurrentEditingFile.value?.extension
                     ?: "No file or extension")
@@ -171,13 +225,14 @@ constructor(project: File) : Window() {
             typeBox.children.addAll(typeLabelTitle, typeLabelValue)
             typeBox.spacing = 40.0
 
-            val dialogPane = getBaseDialogPane(typeBox)
+            val fileInfoDialog = getBaseDialog<Unit>(typeBox)
+            fileInfoDialog.title = getFileRelativePath(editorArea.observableCurrentEditingFile.value, baseFolder)
+                    ?: "No file is currently editing"
 
             if (TypeDetector.Image.isVectorDrawable(editorArea.observableCurrentEditingFile.value) && false) {
                 val vectorImageLabelTitle = Label("Edit Vector Image:")
                 val vectorImageButtonValue = Button("Edit...")
                 vectorImageButtonValue.onAction = EventHandler {
-
 //                    if (vectorImageEditorStage == null) {
 //                        vectorImageEditorStage = Main.openWindow()
 //                    } else {
@@ -190,17 +245,15 @@ constructor(project: File) : Window() {
                 val vectorImageBox = HBox()
                 vectorImageBox.spacing = 40.0
                 vectorImageBox.children.addAll(vectorImageLabelTitle, vectorImageButtonValue)
-                (dialogPane.content as Pane).children.add(vectorImageBox)
+                (fileInfoDialog.dialogPane.content as Pane).children.add(vectorImageBox)
             }
 
-            fileInfoDialog.dialogPane = dialogPane
             fileInfoDialog.initOwner(editorStage)
             fileInfoDialog.dialogPane.buttonTypes.add(ButtonType.OK)
             fileInfoDialog.show()
         }
 
         private fun setupCodeArea() {
-            editorArea.editorWindow = this@Editor
             editorArea.onKeyPressed = EventHandler {
                 if (it.isControlDown && it.code == KeyCode.F) {
                     searchMenu.show()
@@ -228,6 +281,14 @@ constructor(project: File) : Window() {
                         StandardWatchEventKinds.ENTRY_DELETE -> editorArea.edit(null)
                         StandardWatchEventKinds.ENTRY_MODIFY -> editorArea.edit(file, true)
                     }
+                }
+            }
+        }
+
+        private fun setupConsoleView() {
+            projectObserver.addListener { file, kind ->
+                Platform.runLater {
+                    console.writeln("ProjectObserver", "File ${getFileRelativePath(file, baseFolder)} was $kind")
                 }
             }
         }
@@ -315,7 +376,7 @@ constructor(project: File) : Window() {
                 }
                 dialog.showAndWait()
                 if (selectedOptions.isNotEmpty()) {
-                    val apk = ApkToolUtils.recompile(baseFolder, *selectedOptions.toTypedArray())
+                    val apk = ApkToolUtils.recompile(baseFolder, console, *selectedOptions.toTypedArray())
                     if (apk == null) {
                         val errorDialog = Dialog<Unit>()
                         errorDialog.initOwner(editorStage)

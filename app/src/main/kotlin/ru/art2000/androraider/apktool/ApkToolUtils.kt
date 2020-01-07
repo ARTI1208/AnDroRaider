@@ -1,19 +1,9 @@
 package ru.art2000.androraider.apktool
 
 import javafx.application.Platform
-import javafx.event.EventHandler
-import javafx.geometry.Insets
-import javafx.scene.Scene
-import javafx.scene.control.Dialog
-import javafx.scene.control.DialogPane
-import javafx.scene.layout.VBox
-import javafx.scene.text.Text
-import javafx.stage.Stage
+import ru.art2000.androraider.StreamOutput
 import ru.art2000.androraider.windows.Settings
-import ru.art2000.androraider.StreamGobbler
-import ru.art2000.androraider.windows.editor.Editor
 import java.io.File
-import kotlin.collections.ArrayList
 
 fun <E> ArrayList<E>.addAll(vararg els: E) {
     els.forEach {
@@ -32,24 +22,24 @@ class ApkToolUtils {
             }
 
         @JvmStatic
-        fun decompile(apk: File, vararg options: ApktoolCommand): File? {
-            if (apktool == null) {
-                println("Apktool not found! Checkout its path in settings")
+        fun decompile(apk: File, streamOutput: StreamOutput, vararg options: ApktoolCommand): File? {
+            val apktoolFile = apktool
+            if (apktoolFile == null || !apktoolFile.exists()) {
+                streamOutput.writeln("ApkToolCheck", "Apktool not found! Checkout its path in settings")
                 return null
             }
-            val wind = Stage()
-            val message = Text("Decompiling ${apk.name}...")
-            val box = VBox()
-            box.children.add(message)
-            wind.scene = Scene(box, 900.0, 600.0)
             var appDecompileFolder: File? = null
-            val cmds = ArrayList<String>(listOf("java", "-jar", apktool!!.absolutePath, ApktoolCommand.Decompiler.TAG))
+            val cmds = ArrayList<String>(listOf("java", "-jar", apktoolFile.absolutePath, ApktoolCommand.Decompiler.TAG))
             for (apkCommand in options) {
                 cmds.add(apkCommand.tag)
                 if (apkCommand.value != null) {
                     cmds.add(apkCommand.value)
-                    if (apkCommand.tag == ApktoolCommand.General.OUTPUT)
+                    if (apkCommand.tag == ApktoolCommand.General.OUTPUT) {
                         appDecompileFolder = File(apkCommand.value)
+                        if (appDecompileFolder.exists() && appDecompileFolder.list().isNullOrEmpty()) {
+                            cmds.add(ApktoolCommand.Decompiler.OVERRIDE_FOLDER)
+                        }
+                    }
                 }
             }
             if (appDecompileFolder == null) {
@@ -57,37 +47,26 @@ class ApkToolUtils {
                 cmds.addAll(ApktoolCommand.General.OUTPUT, appDecompileFolder.absolutePath)
             }
             cmds.add(apk.absolutePath)
-            wind.show()
-            val t = Thread {
-                val process = ProcessBuilder(cmds).start()
-                val gobbler = StreamGobbler(process, message)
-                gobbler.start()
-                process.waitFor()
-                Platform.runLater {
-                    println("Decompilation ended")
-                    wind.hide()
-                    wind.close()
-                    Editor(appDecompileFolder).show()
-                }
-            }
-            t.start()
+
+            streamOutput.writeln("ApkTool", "Decompilation of ${apk.absolutePath} started!")
+            val process = ProcessBuilder(cmds).start()
+            streamOutput.startOutput("ApkTool", process.inputStream, process.errorStream)
+            process.waitFor()
+            streamOutput.writeln("ApkTool",
+                    "${apk.absolutePath} decompiled in ${appDecompileFolder.absolutePath}!")
+
             return appDecompileFolder
         }
 
         @JvmStatic
-        fun recompile(projectFolder: File, vararg options: ApktoolCommand): File? {
-            if (apktool == null) {
-                println("Apktool not found! Checkout its path in settings")
+        fun recompile(projectFolder: File, streamOutput: StreamOutput, vararg options: ApktoolCommand): File? {
+            val apktoolFile = apktool
+            if (apktoolFile == null || !apktoolFile.exists()) {
+                streamOutput.writeln("ApkToolCheck", "Apktool not found! Checkout its path in settings")
                 return null
             }
-            val dialog = Dialog<String>()
-            val pane = DialogPane()
-            val message = Text("Recompiling $projectFolder...")
-            pane.content = message
-            pane.padding = Insets(10.0, 10.0, 0.0, 10.0)
-            dialog.dialogPane = pane
             var apk: File? = null
-            val commands = ArrayList<String>(listOf("java", "-jar", apktool!!.absolutePath, ApktoolCommand.Compiler.TAG))
+            val commands = ArrayList<String>(listOf("java", "-jar", apktoolFile.absolutePath, ApktoolCommand.Compiler.TAG))
             for (apkCommand in options) {
                 commands.add(apkCommand.tag)
                 if (apkCommand.value != null) {
@@ -98,16 +77,16 @@ class ApkToolUtils {
             }
             commands.add(projectFolder.absolutePath)
             val builder = ProcessBuilder(commands)
-            val window = dialog.dialogPane.scene.window
-            window.onCloseRequest = EventHandler {
-                window.hide()
-            }
-            dialog.show()
             val myThread = Thread {
-                builder.start().waitFor()
                 Platform.runLater {
-                    window.hide()
-                    println("Recompiled!")
+                    streamOutput.writeln("ApkTool", "Recompilation of ${projectFolder.absolutePath} started!")
+                }
+                val process = builder.start()
+                streamOutput.startOutput("ApkTool", process.inputStream, process.errorStream)
+                process.waitFor()
+                Platform.runLater {
+                    streamOutput.writeln("ApkTool", "${apk?.absolutePath} recompiled!")
+                    streamOutput.stopOutput(process.inputStream, process.errorStream)
                 }
             }
             myThread.start()

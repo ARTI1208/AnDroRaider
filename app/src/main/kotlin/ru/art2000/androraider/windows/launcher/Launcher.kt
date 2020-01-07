@@ -20,8 +20,10 @@ import javafx.scene.text.Text
 import javafx.stage.DirectoryChooser
 import javafx.stage.FileChooser
 import javafx.stage.Stage
+import ru.art2000.androraider.App
 import ru.art2000.androraider.apktool.ApkToolUtils
 import ru.art2000.androraider.apktool.ApktoolCommand
+import ru.art2000.androraider.showErrorMessage
 import ru.art2000.androraider.windows.editor.Editor
 import ru.art2000.androraider.utils.getDrawable
 import ru.art2000.androraider.utils.getLayout
@@ -31,14 +33,12 @@ import ru.art2000.androraider.windows.Settings
 import java.io.File
 import java.net.URL
 import java.util.*
+import java.util.function.Consumer
 import kotlin.collections.ArrayList
 
 class Launcher : Application() {
 
     companion object {
-        const val APP_VERSION = "0.1"
-        const val APP_NAME = "AnDroRaider"
-        const val RELEASE_TYPE = "BETA"
         const val RECENTS_TAG = "recent_projects"
 
         private var items = FXCollections.observableArrayList<String>()
@@ -77,10 +77,11 @@ class Launcher : Application() {
 
         val loader = javaClass.getLayout("launcher.fxml")
         loader.setController(LaunchLayoutController())
+        getUserAgentStylesheet()
         setUserAgentStylesheet(javaClass.getStyle("application.css"))
         val root = loader.load<Parent>()
-        primaryStage.title = APP_NAME
-        primaryStage.icons.add(javaClass.getDrawable("logo.png"))
+        primaryStage.title = App.NAME
+        primaryStage.icons.add(App.LOGO)
         primaryStage.scene = Scene(root, 900.0, 600.0)
         primaryStage.isResizable = false
         primaryStage.show()
@@ -179,9 +180,9 @@ class Launcher : Application() {
         }
 
         override fun initialize(location: URL?, resources: ResourceBundle?) {
-            appNameText.text = APP_NAME
+            appNameText.text = App.NAME
             appNameText.font = Font(40.0)
-            appInfoText.text = "$RELEASE_TYPE $APP_VERSION"
+            appInfoText.text = "${App.RELEASE_TYPE} ${App.VERSION}"
             appInfoText.font = Font(20.0)
             appInfoText.fill = Color.valueOf("#666666")
             newProjectButton.text = "Decompile apk"
@@ -249,35 +250,33 @@ class Launcher : Application() {
                             decompileButton,
                             ButtonType.CANCEL)
                     val selectedOptions = ArrayList<ApktoolCommand>()
-                    var resultPath: String
+                    var resultPath: String? = null
                     dialog.setResultConverter { button ->
                         if (button == decompileButton) {
                             cont.goThrough(selectedOptions)
                             resultPath = folderPath.text + File.separator + folderName.text
+                            println(resultPath)
                             selectedOptions.add(ApktoolCommand(
                                     ApktoolCommand.General.OUTPUT, resultPath))
                             if (customFramework.isSelected)
                                 selectedOptions.add(ApktoolCommand(
                                         ApktoolCommand.General.FRAMEWORK_FOLDER_PATH,
                                         customFrameworkPath.text))
-                            for (cmd in selectedOptions) {
-                                println(cmd.tag)
-                            }
                         }
                     }
                     dialog.showAndWait()
                     if (selectedOptions.isEmpty())
                         return@EventHandler
-                    val folder = ApkToolUtils.decompile(app, *selectedOptions.toTypedArray())
-                    if (folder == null) {
-                        val errorDialog = Dialog<Unit>()
-                        errorDialog.initOwner(stage)
-                        errorDialog.contentText = "An error occurred while decompiling"
-                        errorDialog.dialogPane.buttonTypes.add(ButtonType.OK)
-                        errorDialog.show()
+                    if (resultPath == null) {
+                        showErrorMessage("Decompile Error", "An error occurred while decompiling", stage)
                     } else {
+                        println(resultPath)
+                        val folder = File(resultPath!!)
                         addToRecents(folder.absolutePath)
                         stage.hide()
+                        Editor(folder, Consumer {
+                            ApkToolUtils.decompile(app, it, *selectedOptions.toTypedArray())
+                        }).show()
                     }
                 }
             }
@@ -301,7 +300,7 @@ class Launcher : Application() {
                     return@EventHandler
                 openRecentProject()
             }
-            appLogoImageView.image = javaClass.getDrawable("logo.png")
+            appLogoImageView.image = App.LOGO
             items = Settings.getStringArray(RECENTS_TAG, items)
             items.removeIf { s -> s.isBlank() }
             for (s in items) {

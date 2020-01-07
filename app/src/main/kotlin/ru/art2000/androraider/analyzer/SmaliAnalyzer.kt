@@ -24,6 +24,8 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
 
     val onFileAnalyzeStarted = mutableListOf<Consumer<File>>()
 
+    val onProjectAnalyzeStarted = mutableListOf<Runnable>()
+
     val onProjectAnalyzeEnded = mutableListOf<Runnable>()
 
     private val smaliFolder: File
@@ -31,9 +33,6 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
     init {
         require(projectBaseFolder.isDirectory) { "SmaliAnalyzer requires a folder as constructor argument" }
         smaliFolder = File(projectBaseFolder.absolutePath + File.separator + "smali")
-        require (smaliFolder.exists() && smaliFolder.isDirectory) {
-            "Smali folder not exists"
-        }
     }
 
     private fun writeMapToFile(fileFolder: File) {
@@ -293,6 +292,9 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
     }
 
     fun generateMap() {
+        onProjectAnalyzeStarted.forEach {
+            it.run()
+        }
         smaliFolder.walk().forEach { file ->
             if (!file.isDirectory) {
                 onFileAnalyzeStarted.forEach {

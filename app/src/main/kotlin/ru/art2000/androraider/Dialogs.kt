@@ -6,16 +6,16 @@ import javafx.scene.control.ButtonType
 import javafx.scene.control.Dialog
 import javafx.scene.control.DialogPane
 import javafx.scene.control.Label
+import javafx.scene.image.ImageView
 import javafx.scene.layout.VBox
 import javafx.stage.Window
 
 @Suppress("SameParameterValue", "RedundantVisibilityModifier")
 public fun showErrorMessage(title: String, message: String, owner: Window?) {
-    val errorDialog = Dialog<Unit>()
-    errorDialog.title = title
     val mainLabel = Label(message)
 
-    errorDialog.dialogPane = getBaseDialogPane(mainLabel)
+    val errorDialog = getBaseDialog<Unit>(mainLabel)
+    errorDialog.title = title
     errorDialog.initOwner(owner)
     errorDialog.dialogPane.buttonTypes.addAll(ButtonType.OK)
     errorDialog.showAndWait()
@@ -33,4 +33,11 @@ public fun getBaseDialogPane(vararg node: Node): DialogPane {
     dialogPane.padding = Insets(10.0, 10.0, 10.0, 10.0)
 
     return dialogPane
+}
+
+public fun <R> getBaseDialog(vararg node: Node): Dialog<R> {
+    val dialog = Dialog<R>()
+    dialog.graphic = ImageView(App.LOGO)
+    dialog.dialogPane = getBaseDialogPane(*node)
+    return dialog
 }

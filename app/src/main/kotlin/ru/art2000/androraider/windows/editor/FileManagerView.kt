@@ -5,10 +5,12 @@ import javafx.scene.control.*
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseButton
+import ru.art2000.androraider.getBaseDialog
 import ru.art2000.androraider.getBaseDialogPane
 import ru.art2000.androraider.showErrorMessage
 import ru.art2000.androraider.utils.getFileRelativePath
 import java.io.File
+import java.nio.file.*
 
 @Suppress("RedundantVisibilityModifier")
 class FileManagerView : TreeView<File>(), Searchable<String?> {
@@ -23,8 +25,6 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
     private val fileHistory = mutableListOf<File>()
 
     private val searchResults = mutableListOf<File>()
-
-    private val searchResultsAsTree = mutableListOf<File>()
 
     private lateinit var baseFolder: File
 
@@ -105,9 +105,6 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
 
         val parentFolder = if (treeItem.value.isDirectory) treeItem.value else treeItem.value.parentFile
 
-        val creationDialog = Dialog<Int>()
-        creationDialog.title = "Creation dialog"
-        creationDialog.width = 400.0
         val nameInput = TextField()
         nameInput.promptText = "Input folder name"
 
@@ -119,6 +116,11 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
         typeOptions.items.addAll("Folder", "XML", "Smali", "File")
         typeOptions.fixedCellSize = 20.0
         typeOptions.prefHeight = typeOptions.fixedCellSize * typeOptions.items.size
+
+        val creationDialog = getBaseDialog<Unit>(folderLabel, nameInput, typeOptions)
+        creationDialog.title = "Creation dialog"
+        creationDialog.width = 400.0
+        creationDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
 
         typeOptions.selectionModel.select(0)
         typeOptions.selectionModel.selectedIndexProperty().addListener { _, _, n ->
@@ -194,8 +196,6 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
             }
         }
 
-        creationDialog.dialogPane = getBaseDialogPane(folderLabel, nameInput, typeOptions)
-        creationDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
 
         nameInput.requestFocus()
 
@@ -229,16 +229,16 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
         if (treeItem == null)
             return
 
-        val parentFolder = treeItem.value.parentFile
-
-        val creationDialog = Dialog<Int>()
-        creationDialog.title = "Renaming dialog"
-        creationDialog.width = 400.0
         val nameInput = TextField(treeItem.value.name)
         nameInput.promptText = "Input new name"
 
         val previousName = Label("Previous name: ${treeItem.value.name}")
         previousName.textOverrun = OverrunStyle.LEADING_ELLIPSIS
+
+        val renamingDialog = getBaseDialog<Unit>(previousName, nameInput)
+        renamingDialog.title = "Renaming dialog"
+        renamingDialog.width = 400.0
+        renamingDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
 
         nameInput.onKeyPressed = EventHandler {
             if (it.code == KeyCode.ENTER) {
@@ -246,14 +246,21 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
                     return@EventHandler
                 }
 
-                var renameResult = false
+                var renameResult = true
+                val originalPath = treeItem.value.toPath()
+                val newPath = originalPath.parent.resolve(nameInput.text).toAbsolutePath()
                 try {
-                    renameResult = treeItem.value.renameTo(File(parentFolder, nameInput.text))
+                    // TODO renaming of non-empty directory
+                    Files.move(originalPath, newPath)
+                } catch (dirNotEmptyException : DirectoryNotEmptyException) {
+                    // is not thrown dunno why
+                    renameResult = false
                 } catch (e: Exception) {
-
+                    renameResult = false
+                    e.printStackTrace()
                 } finally {
                     if (renameResult) {
-                        creationDialog.close()
+                        renamingDialog.close()
                     } else {
                         showErrorMessage("Rename failed",
                                 "Rename of ${if (treeItem.value.isDirectory) "folder" else "file"} " +
@@ -264,26 +271,20 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
                 }
 
             } else if (it.code == KeyCode.ESCAPE) {
-                creationDialog.close()
+                renamingDialog.close()
             }
         }
 
-        creationDialog.dialogPane = getBaseDialogPane(previousName, nameInput)
-        creationDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
-
         nameInput.requestFocus()
 
-        creationDialog.showAndWait()
+        renamingDialog.showAndWait()
     }
 
     fun onTreeItemDelete(treeItem: TreeItem<File>?) {
         if (treeItem == null)
             return
 
-        val deleted = onFileItemDelete(treeItem.value)
-        if (deleted) {
-            treeItem.parent.children.remove(treeItem)
-        }
+        onFileItemDelete(treeItem.value)
     }
 
     private fun onFileItemDelete(file: File): Boolean {
@@ -344,10 +345,13 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
         }
     }
 
-    fun updateFileList(fileToSelect: File? = null) {
+    public fun updateFileList(fileToSelect: File? = null) {
         val structure = saveStructure()
         root = TreeItem(baseFolder)
-        val itemToSelect = addFileExplorerTreeItemChildren(root, fileToSelect)
+        val itemToSelect = if (fileToSelect == null)
+            addFileExplorerTreeItemChildren(root, selectionModel.selectedItem?.value)
+        else
+            addFileExplorerTreeItemChildren(root, fileToSelect)
         restoreStructure(structure)
 
         if (itemToSelect != null)
@@ -367,9 +371,9 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
             if (it.isHidden)
                 return@forEach
 
-            if (searchResultsAsTree.size == 0
-                    || searchResultsAsTree.contains(it)
-                    || searchResultsAsTree.contains(it.parentFile)) {
+            if (searchResults.size == 0
+                    || searchResults.contains(it)
+                    || searchResults.contains(it.parentFile)) {
                 val treeSubItem = TreeItem(it)
 
                 if (it.absolutePath == fileToSelect?.absolutePath)
@@ -398,7 +402,7 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
     }
 
     override fun findAll(valueToFind: String?) {
-        searchResultsAsTree.clear()
+        searchResults.clear()
 
         if (valueToFind == null || valueToFind.isEmpty()) {
 
@@ -410,8 +414,8 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
 
             if (it.name.toLowerCase().contains(valueToFind.toLowerCase())
                     || it.extension.toLowerCase().contains(valueToFind.toLowerCase())
-                    || searchResultsAsTree.contains(it.parentFile)) {
-                searchResultsAsTree.add(it)
+                    || searchResults.contains(it.parentFile)) {
+                searchResults.add(it)
             }
         }
 

@@ -26,8 +26,6 @@ import kotlin.collections.ArrayList
 @Suppress("RedundantVisibilityModifier")
 class CodeEditorArea : CodeArea(), Searchable<String?> {
 
-    lateinit var editorWindow: Editor
-
     val observableCurrentEditingFile = object : ObservableValue<File?> {
         override fun removeListener(p0: ChangeListener<in File?>?) {
             currentEditingFileChangeListeners.remove(p0)
@@ -82,7 +80,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
                 field = value
                 showCaret = Caret.CaretVisibility.ON
                 displaceCaret(searchSpanList[value].last)
-                scrollYToPixel(currentParagraph.toDouble() * 15)
+                scrollYToPixel(currentParagraph * 20.0)
             } else {
                 field = -1
             }
@@ -90,16 +88,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     private val searchSpanList = SearchSpanList()
 
-    inner class LineNumber : IntFunction<Node> {
-        override fun apply(value: Int): Node {
-            return Label("${value + 1}")
-        }
-
-    }
-
     init {
-        styleClass.add("text-area")
-//        paragraphGraphicFactory = LineNumber()
         paragraphGraphicFactory = LineNumberFactory.get(this)
         textProperty().addListener { _, oldValue, newValue ->
             if (isFileChanged) {
@@ -117,7 +106,6 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
                 .subscribe {
                     setStyleSpans(0, updateHighlighting())
                 }
-
 
         val popup = Popup()
         val popupMsg = Label()

@@ -6,6 +6,7 @@
 <?import org.fxmisc.flowless.VirtualizedScrollPane?>
 <?import ru.art2000.androraider.windows.editor.CodeEditorArea?>
 <?import ru.art2000.androraider.windows.editor.FileManagerView?>
+<?import ru.art2000.androraider.windows.editor.ConsoleView?>
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml">
     <MenuBar>
@@ -15,18 +16,23 @@
             <MenuItem fx:id="recompile" text="Recompile"/>
         </Menu>
         <Menu fx:id="searchMenu" text="_Search">
-            <CustomMenuItem fx:id="search" />
+            <CustomMenuItem fx:id="search"/>
         </Menu>
         <Menu fx:id="miscMenu" text="_Misc">
             <MenuItem fx:id="examineFile" text="Examine file"/>
         </Menu>
     </MenuBar>
     <HBox fx:id="main">
-        <FileManagerView prefWidth="200" fx:id="fileManagerView" />
-        <VirtualizedScrollPane>
-            <content>
-                <CodeEditorArea fx:id="editorArea" />
-            </content>
-        </VirtualizedScrollPane>
+        <SplitPane>
+            <FileManagerView fx:id="fileManagerView"/>
+            <SplitPane orientation="VERTICAL">
+                <VirtualizedScrollPane minWidth="0" minHeight="0">
+                    <content>
+                        <CodeEditorArea fx:id="editorArea"/>
+                    </content>
+                </VirtualizedScrollPane>
+                <ConsoleView minWidth="0" minHeight="0" fx:id="console"/>
+            </SplitPane>
+        </SplitPane>
     </HBox>
 </VBox>
