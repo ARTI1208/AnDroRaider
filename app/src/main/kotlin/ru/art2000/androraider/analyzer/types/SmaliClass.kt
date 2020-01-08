@@ -1,6 +1,9 @@
 package ru.art2000.androraider.analyzer.types
 
+import org.antlr.v4.runtime.tree.ErrorNode
 
+
+@Suppress("RedundantVisibilityModifier")
 class SmaliClass() {
 
     object Primitives {
@@ -33,9 +36,9 @@ class SmaliClass() {
         get() {
 
             if (isArray) {
-                var array = ""
+                var array = parentClass?.fullname ?: ""
                 repeat(arrayCount) { array = "[$array" }
-                return array + parentClass?.fullname
+                return array
             }
 
             var result = name
@@ -78,6 +81,8 @@ class SmaliClass() {
 
     val fields = mutableListOf<SmaliField>()
     val methods = mutableListOf<SmaliMethod>()
+
+    val errors = mutableListOf<ErrorNode>()
 
     var arrayCount = 0
 

@@ -6,8 +6,11 @@ import ru.art2000.androraider.utils.getDrawable
 import ru.art2000.androraider.utils.getLayout
 import ru.art2000.androraider.utils.getStyle
 
-class App {
+class App private constructor(){
     companion object {
+
+        public val instance = App()
+
         public const val VERSION = "0.1"
         public const val NAME = "AnDroRaider"
         public const val RELEASE_TYPE = "BETA"
@@ -19,4 +22,6 @@ class App {
 
         public fun getStyle(name: String): String = ::App.javaClass.getStyle(name)
     }
+
+    public var currentStreamOutput: StreamOutput? = null
 }

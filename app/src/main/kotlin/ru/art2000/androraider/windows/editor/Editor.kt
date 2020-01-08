@@ -25,12 +25,13 @@ import ru.art2000.androraider.windows.Settings
 import ru.art2000.androraider.windows.launcher.Launcher
 import java.io.File
 import java.io.IOException
+import java.io.PrintStream
 import java.nio.file.StandardWatchEventKinds
 import java.util.function.Consumer
 
 
 class Editor @Throws(IOException::class)
-constructor(project: File, vararg runnables: Consumer<StreamOutput>) : Window() {
+constructor(project: File, vararg runnables: Runnable) : Window() {
 
     val baseFolder: File
 
@@ -50,10 +51,6 @@ constructor(project: File, vararg runnables: Consumer<StreamOutput>) : Window() 
     val loadingDialog = getBaseDialog<Unit>(loadingLabel)
 
     init {
-//        onLoadRunnables.add(Consumer {
-//            generateProjectIndex()
-//        })
-
         if (!project.exists())
             println("creation " + project.mkdirs())
 
@@ -103,6 +100,7 @@ constructor(project: File, vararg runnables: Consumer<StreamOutput>) : Window() 
             loadingLabel.text = "Indexing smali..."
         }
         smaliAnalyzer.onFileAnalyzeStarted.add(Consumer {
+            println("Indexing ${it.absolutePath}...")
             Platform.runLater {
                 loadingLabel.text = "Indexing ${it.name}..."
             }
@@ -197,7 +195,7 @@ constructor(project: File, vararg runnables: Consumer<StreamOutput>) : Window() 
             ThreadHelper()
                     .runOnWorkerThread(Runnable {
                         onLoadRunnables.forEach {
-                            it.accept(console)
+                            it.run()
                         }
                     })
                     .runOnFxThread(Runnable {
@@ -262,8 +260,12 @@ constructor(project: File, vararg runnables: Consumer<StreamOutput>) : Window() 
                 }
             }
             editorArea.observableCurrentEditingFile.addListener { _, _, fileNew ->
-                if (fileNew != null)
+                if (fileNew != null) {
                     editorStage.title = "${getFileRelativePath(fileNew, baseFolder)} - Project Editor"
+                    editorArea.currentSmaliClass = smaliAnalyzer.scanFile(fileNew)
+                } else {
+                    editorArea.currentSmaliClass = null
+                }
             }
             editorArea.beforeFileWrittenListeners.add(Consumer {
                 projectObserver.stop()
@@ -286,11 +288,14 @@ constructor(project: File, vararg runnables: Consumer<StreamOutput>) : Window() 
         }
 
         private fun setupConsoleView() {
+            App.instance.currentStreamOutput = console
             projectObserver.addListener { file, kind ->
                 Platform.runLater {
                     console.writeln("ProjectObserver", "File ${getFileRelativePath(file, baseFolder)} was $kind")
                 }
             }
+            System.setOut(PrintStream(console.getOutputStream()))
+            System.setErr(PrintStream(console.getErrorStream()))
         }
 
         private fun setupMenu() {
@@ -376,7 +381,7 @@ constructor(project: File, vararg runnables: Consumer<StreamOutput>) : Window() 
                 }
                 dialog.showAndWait()
                 if (selectedOptions.isNotEmpty()) {
-                    val apk = ApkToolUtils.recompile(baseFolder, console, *selectedOptions.toTypedArray())
+                    val apk = ApkToolUtils.recompile(baseFolder, *selectedOptions.toTypedArray())
                     if (apk == null) {
                         val errorDialog = Dialog<Unit>()
                         errorDialog.initOwner(editorStage)

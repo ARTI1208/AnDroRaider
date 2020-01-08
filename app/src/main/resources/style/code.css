@@ -39,3 +39,7 @@
 .search {
     -rtfx-background-color: yellow;
 }
+
+.error {
+    -rtfx-background-color: red;
+}

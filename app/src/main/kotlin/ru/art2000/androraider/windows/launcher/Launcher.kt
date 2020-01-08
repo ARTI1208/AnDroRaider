@@ -24,16 +24,14 @@ import ru.art2000.androraider.App
 import ru.art2000.androraider.apktool.ApkToolUtils
 import ru.art2000.androraider.apktool.ApktoolCommand
 import ru.art2000.androraider.showErrorMessage
-import ru.art2000.androraider.windows.editor.Editor
-import ru.art2000.androraider.utils.getDrawable
 import ru.art2000.androraider.utils.getLayout
 import ru.art2000.androraider.utils.getStyle
 import ru.art2000.androraider.utils.goThrough
 import ru.art2000.androraider.windows.Settings
+import ru.art2000.androraider.windows.editor.Editor
 import java.io.File
 import java.net.URL
 import java.util.*
-import java.util.function.Consumer
 import kotlin.collections.ArrayList
 
 class Launcher : Application() {
@@ -44,9 +42,6 @@ class Launcher : Application() {
         private var items = FXCollections.observableArrayList<String>()
 
         fun addToRecents(path: String) {
-            items.apply {
-                addAll()
-            }
             if (items.contains(path)) {
                 items.remove(path)
                 items.add(0, path)
@@ -274,8 +269,8 @@ class Launcher : Application() {
                         val folder = File(resultPath!!)
                         addToRecents(folder.absolutePath)
                         stage.hide()
-                        Editor(folder, Consumer {
-                            ApkToolUtils.decompile(app, it, *selectedOptions.toTypedArray())
+                        Editor(folder, Runnable {
+                            ApkToolUtils.decompile(app, *selectedOptions.toTypedArray())
                         }).show()
                     }
                 }
@@ -301,7 +296,7 @@ class Launcher : Application() {
                 openRecentProject()
             }
             appLogoImageView.image = App.LOGO
-            items = Settings.getStringArray(RECENTS_TAG, items)
+            items = FXCollections.observableArrayList(Settings.getStringArray(RECENTS_TAG, items))
             items.removeIf { s -> s.isBlank() }
             for (s in items) {
                 recentsListView.items.add(RecentProject(File(s)))

@@ -3,7 +3,6 @@ package ru.art2000.androraider.windows.editor
 import javafx.beans.InvalidationListener
 import javafx.beans.value.ChangeListener
 import javafx.beans.value.ObservableValue
-import javafx.scene.Node
 import javafx.scene.control.Label
 import javafx.stage.Popup
 import org.fxmisc.richtext.Caret
@@ -12,6 +11,7 @@ import org.fxmisc.richtext.LineNumberFactory
 import org.fxmisc.richtext.event.MouseOverTextEvent
 import org.fxmisc.richtext.model.StyleSpans
 import org.fxmisc.richtext.model.StyleSpansBuilder
+import ru.art2000.androraider.analyzer.types.SmaliClass
 import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.utils.contains
 import java.io.File
@@ -19,7 +19,6 @@ import java.nio.file.Files
 import java.time.Duration
 import java.util.*
 import java.util.function.Consumer
-import java.util.function.IntFunction
 import java.util.regex.Pattern
 import kotlin.collections.ArrayList
 
@@ -45,6 +44,8 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
         override fun getValue(): File? = currentEditingFile
     }
+
+    public var currentSmaliClass: SmaliClass? = null
 
     public var currentEditingFile: File? = null
         private set(value) {
@@ -211,12 +212,49 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
             lastKwEnd = matcher.end()
         }
         builder.add(Collections.emptyList(), text.length - lastKwEnd)
+
+        val errorStyle = listOf("error")
+        val code = text
+        lastKwEnd = 0
+        val smaliClassCopy = currentSmaliClass
+        if (smaliClassCopy == null) {
+            builder.add(emptyList(), 0)
+            return builder
+        }
+        smaliClassCopy.errors.forEach {
+            builder.add(emptyList(), it.symbol.startIndex - lastKwEnd)
+            builder.add(errorStyle, it.symbol.stopIndex - it.symbol.startIndex)
+            lastKwEnd = it.symbol.stopIndex
+        }
+        builder.add(emptyList(), code.length - lastKwEnd)
+
         return builder
     }
 
     private fun getSimpleHighlighting(): StyleSpansBuilder<Collection<String>> {
         val builder = StyleSpansBuilder<Collection<String>>()
         builder.add(Collections.emptyList(), 0)
+        return builder
+    }
+
+    private fun getErrorHighlighting(): StyleSpansBuilder<Collection<String>> {
+        val builder = StyleSpansBuilder<Collection<String>>()
+        val errorStyle = listOf("error")
+        val code = text
+        var segmentStart = 0
+        val smaliClassCopy = currentSmaliClass
+        if (smaliClassCopy == null) {
+            builder.add(emptyList(), 0)
+            println("NO SMALI")
+            return builder
+        }
+        smaliClassCopy.errors.forEach {
+//            println("Empty $segmentStart..${it.symbol.startIndex - 1}, error ${it.symbol.startIndex}..${it.symbol.stopIndex}")
+            builder.add(emptyList(), it.symbol.startIndex - segmentStart)
+            builder.add(errorStyle, it.symbol.stopIndex - it.symbol.startIndex + 1)
+            segmentStart = it.symbol.stopIndex + 1
+        }
+        builder.add(emptyList(), code.length - segmentStart)
         return builder
     }
 
@@ -249,7 +287,8 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
         println(pattern.pattern())
 
         var sp = when (currentEditingFile?.extension) {
-            "smali" -> getSmaliHighlighting(pattern, text)
+//            "smali" -> getSmaliHighlighting(pattern, text)
+            "smali" -> getErrorHighlighting()
             else -> getSimpleHighlighting()
         }.create()
 

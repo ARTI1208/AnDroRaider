@@ -1,7 +1,5 @@
 package ru.art2000.androraider.windows
 
-import javafx.collections.FXCollections
-import javafx.collections.ObservableList
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.scene.Parent
@@ -13,8 +11,8 @@ import javafx.scene.control.ToggleGroup
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import javafx.stage.Window
-import ru.art2000.androraider.windows.launcher.Launcher
 import ru.art2000.androraider.utils.getLayout
+import ru.art2000.androraider.windows.launcher.Launcher
 import java.util.prefs.Preferences
 
 class Settings(owner: Window) : Window() {
@@ -38,7 +36,7 @@ class Settings(owner: Window) : Window() {
         }
 
         @JvmStatic
-        fun putStringArray(key: String, array: ObservableList<String>) {
+        fun putStringArray(key: String, array: List<String>) {
             val stringBuilder = StringBuilder()
             for ((i, s) in array.withIndex()) {
                 stringBuilder.append(s)
@@ -49,9 +47,9 @@ class Settings(owner: Window) : Window() {
         }
 
         @JvmStatic
-        fun getStringArray(key: String, defaultArray: ObservableList<String>): ObservableList<String> {
+        fun getStringArray(key: String, defaultArray: List<String> = emptyList()): List<String> {
             val array = prefs.get(key, "")
-            return if (array != "") FXCollections.observableArrayList(array.split("|")) else defaultArray
+            return if (array != "") array.split("|") else defaultArray
         }
 
     }

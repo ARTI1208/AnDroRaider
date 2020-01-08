@@ -1,6 +1,7 @@
 package ru.art2000.androraider.analyzer
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
+import org.antlr.v4.runtime.tree.ErrorNode
 import ru.art2000.androraider.analyzer.antlr.SmaliParser.*
 import ru.art2000.androraider.analyzer.antlr.SmaliParserVisitor
 import ru.art2000.androraider.analyzer.types.SmaliClass
@@ -1042,6 +1043,12 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
 
     override fun visitCmpLongInstruction(ctx: CmpLongInstructionContext): SmaliClass {
         return visitChildren(ctx)
+    }
+
+    override fun visitErrorNode(node: ErrorNode): SmaliClass {
+        println("Error $node, line=${node.symbol.line} range=${node.symbol.startIndex}..${node.symbol.stopIndex} text=${node.text} for $smaliClass")
+        smaliClass.errors.find { it.symbol.startIndex == node.symbol.startIndex } ?: smaliClass.errors.add(node)
+        return super.visitErrorNode(node)
     }
 
     override fun visitClassName(ctx: ClassNameContext): SmaliClass {
