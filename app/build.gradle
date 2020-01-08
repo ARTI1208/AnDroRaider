@@ -37,6 +37,6 @@ compileTestKotlin {
 compileKotlin.destinationDir = compileJava.destinationDir
 
 javafx {
-    version = "12"
+    version = "13"
     modules = [ 'javafx.controls', 'javafx.fxml', 'javafx.graphics' ]
 }
