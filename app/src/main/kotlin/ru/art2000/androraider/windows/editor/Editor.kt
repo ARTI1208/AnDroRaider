@@ -1,5 +1,8 @@
 package ru.art2000.androraider.windows.editor
 
+import io.reactivex.Observable
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
+import io.reactivex.schedulers.Schedulers
 import javafx.application.Platform
 import javafx.event.EventHandler
 import javafx.fxml.FXML
@@ -16,16 +19,16 @@ import javafx.scene.paint.Paint
 import javafx.stage.DirectoryChooser
 import javafx.stage.Stage
 import javafx.stage.Window
-import ru.art2000.androraider.*
+import ru.art2000.androraider.App
 import ru.art2000.androraider.analyzer.SmaliAnalyzer
 import ru.art2000.androraider.apktool.ApkToolUtils
 import ru.art2000.androraider.apktool.ApktoolCommand
+import ru.art2000.androraider.getBaseDialog
 import ru.art2000.androraider.utils.*
 import ru.art2000.androraider.windows.Settings
 import ru.art2000.androraider.windows.launcher.Launcher
 import java.io.File
 import java.io.IOException
-import java.io.PrintStream
 import java.nio.file.StandardWatchEventKinds
 import java.util.function.Consumer
 
@@ -95,16 +98,14 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
         loadingDialog.show()
     }
 
-    private fun generateProjectIndex() {
-        Platform.runLater {
-            loadingLabel.text = "Indexing smali..."
-        }
+    private fun generateProjectIndex(analyzeEndedRunnable: Runnable) {
+        loadingLabel.text = "Indexing smali..."
+
         smaliAnalyzer.onFileAnalyzeStarted.add(Consumer {
-            println("Indexing ${it.absolutePath}...")
-            Platform.runLater {
-                loadingLabel.text = "Indexing ${it.name}..."
-            }
+            loadingLabel.text = "Indexing ${it.name}..."
         })
+
+        smaliAnalyzer.onProjectAnalyzeEnded.add(analyzeEndedRunnable)
 
         smaliAnalyzer.generateMap()
     }
@@ -161,15 +162,11 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
             }
 
             smaliAnalyzer.onProjectAnalyzeStarted.add(Runnable {
-                Platform.runLater {
-                    console.writeln("SmaliAnalyzer", "Analyze started")
-                }
+                console.writeln("SmaliAnalyzer", "Analyze started")
             })
 
             smaliAnalyzer.onProjectAnalyzeEnded.add(Runnable {
-                Platform.runLater {
-                    console.writeln("SmaliAnalyzer", "Analyze ended")
-                }
+                console.writeln("SmaliAnalyzer", "Analyze ended")
             })
 
             editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(fileManagerView.prefWidthProperty()))
@@ -189,30 +186,18 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
         }
 
         private fun onSetupFinished() {
-            // TODO parallel?
-            println("setup ${baseFolder.isDirectory}")
-//            Thread.sleep(500)
-            ThreadHelper()
-                    .runOnWorkerThread(Runnable {
-                        onLoadRunnables.forEach {
-                            it.run()
-                        }
-                    })
-                    .runOnFxThread(Runnable {
-                        fileManagerView.updateFileList()
-                        fileManagerView.root.isExpanded = true
-
-                    })
-                    .runOnWorkerThread(Runnable {
-                        generateProjectIndex()
-                    })
-                    .runOnFxThread(Runnable {
-                        loadingDialog.hide()
-                        projectObserver.start()
-                    })
-                    .start()
-
-//            projectObserver.start()
+            Observable
+                    .fromIterable(onLoadRunnables)
+                    .subscribeOn(Schedulers.io())
+                    .doOnNext { it.run() }
+                    .observeOn(JavaFxScheduler.platform())
+                    .doOnComplete {
+                        generateProjectIndex(Runnable {
+                            fileManagerView.updateFileList()
+                            loadingDialog.hide()
+                            projectObserver.start()
+                        })
+                    }.subscribe()
         }
 
         private fun createFileInfoDialog() {
@@ -231,7 +216,7 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
                 val vectorImageLabelTitle = Label("Edit Vector Image:")
                 val vectorImageButtonValue = Button("Edit...")
                 vectorImageButtonValue.onAction = EventHandler {
-//                    if (vectorImageEditorStage == null) {
+                    //                    if (vectorImageEditorStage == null) {
 //                        vectorImageEditorStage = Main.openWindow()
 //                    } else {
 //                        vectorImageEditorStage?.toFront().also {
@@ -294,8 +279,8 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
                     console.writeln("ProjectObserver", "File ${getFileRelativePath(file, baseFolder)} was $kind")
                 }
             }
-            System.setOut(PrintStream(console.getOutputStream()))
-            System.setErr(PrintStream(console.getErrorStream()))
+//            System.setOut(PrintStream(console.getOutputStream()))
+//            System.setErr(PrintStream(console.getErrorStream()))
         }
 
         private fun setupMenu() {

@@ -8,6 +8,8 @@ module app {
     requires kotlin.stdlib;
     requires org.antlr.antlr4.runtime;
     requires flowless;
+    requires io.reactivex.rxjava2;
+    requires rxjavafx;
 
     opens ru.art2000.androraider;
     exports ru.art2000.androraider;

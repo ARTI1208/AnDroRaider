@@ -10,7 +10,8 @@ import ru.art2000.androraider.getBaseDialogPane
 import ru.art2000.androraider.showErrorMessage
 import ru.art2000.androraider.utils.getFileRelativePath
 import java.io.File
-import java.nio.file.*
+import java.nio.file.DirectoryNotEmptyException
+import java.nio.file.Files
 
 @Suppress("RedundantVisibilityModifier")
 class FileManagerView : TreeView<File>(), Searchable<String?> {
@@ -252,7 +253,7 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
                 try {
                     // TODO renaming of non-empty directory
                     Files.move(originalPath, newPath)
-                } catch (dirNotEmptyException : DirectoryNotEmptyException) {
+                } catch (dirNotEmptyException: DirectoryNotEmptyException) {
                     // is not thrown dunno why
                     renameResult = false
                 } catch (e: Exception) {
@@ -356,8 +357,10 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
 
         if (itemToSelect != null)
             selectionModel.select(itemToSelect)
-        else
+        else {
             selectionModel.selectFirst()
+            root.isExpanded = true
+        }
     }
 
     private fun addFileExplorerTreeItemChildren(treeItem: TreeItem<File>, fileToSelect: File? = null): TreeItem<File>? {

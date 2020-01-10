@@ -1,6 +1,9 @@
 package ru.art2000.androraider.analyzer
 
 //import ru.art2000.androraider.analyzer.SmaliParserBaseListener
+import io.reactivex.Observable
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
+import io.reactivex.schedulers.Schedulers
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.TokenSource
@@ -76,7 +79,7 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
         return builder
     }
 
-    public fun getOrCreatePackage(name: String): SmaliPackage {
+    fun getOrCreatePackage(name: String): SmaliPackage {
         val packageToReturn = findInPackages(packages, name)
         if (packageToReturn != null)
             return packageToReturn
@@ -93,7 +96,7 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
         }
     }
 
-    public fun getOrCreateClass(name: String): SmaliClass {
+    fun getOrCreateClass(name: String): SmaliClass {
 
         // Primitive type or void
         when (name) {
@@ -112,7 +115,7 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
         if (name.startsWith('L')) {
             var referenceClassName = name.substring(1).replace('/', '.')
             if (referenceClassName.endsWith(';'))
-               referenceClassName =  referenceClassName.substring(0, referenceClassName.lastIndex)
+                referenceClassName = referenceClassName.substring(0, referenceClassName.lastIndex)
 
             val classToReturn = findClass(packages, referenceClassName)
             if (classToReturn != null)
@@ -243,7 +246,7 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
         }
     }
 
-    public fun analyzeFile(file: File): SmaliClass {
+    fun analyzeFile(file: File): SmaliClass {
         require(!file.isDirectory) { "Method argument must be a file" }
 
 
@@ -262,7 +265,7 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
     }
 
 
-    public fun scanFile(file: File, writeInfo: Boolean = false): SmaliClass {
+    fun scanFile(file: File, writeInfo: Boolean = false): SmaliClass {
         require(!file.isDirectory) { "Method argument must be a file" }
 
 
@@ -292,19 +295,26 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
     }
 
     fun generateMap() {
-        onProjectAnalyzeStarted.forEach {
-            it.run()
-        }
-        smaliFolder.walk().forEach { file ->
-            if (!file.isDirectory) {
-                onFileAnalyzeStarted.forEach {
-                    it.accept(file)
+        Observable
+                .fromIterable(smaliFolder.walk().asIterable().filter { !it.isDirectory })
+                .subscribeOn(Schedulers.io())
+                .doOnNext { file ->
+                    scanFile(file)
+                }.observeOn(JavaFxScheduler.platform())
+                .doOnSubscribe {
+                    onProjectAnalyzeStarted.forEach {
+                        it.run()
+                    }
                 }
-                scanFile(file)
-            }
-        }
-        onProjectAnalyzeEnded.forEach {
-            it.run()
-        }
+                .doOnNext { file ->
+                    onFileAnalyzeStarted.forEach {
+                        it.accept(file)
+                    }
+                }
+                .doOnComplete {
+                    onProjectAnalyzeEnded.forEach {
+                        it.run()
+                    }
+                }.subscribe()
     }
 }
