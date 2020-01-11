@@ -1,7 +1,9 @@
 /.gradle
-/.idea/
-!/.idea/runConfigurations/
-!/.idea/dictionaries/
+/.idea
+!.idea/
+.idea/*
+!.idea/runConfigurations
+!.idea/dictionaries
 /gradle
 /__artifacts_temp
 /build
