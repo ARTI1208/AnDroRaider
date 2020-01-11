@@ -9,8 +9,6 @@ import org.antlr.v4.runtime.TokenSource
 import org.antlr.v4.runtime.TokenStream
 import org.antlr.v4.runtime.tree.ParseTree
 import ru.art2000.androraider.analyzer.SyntaxAnalyzer
-import ru.art2000.androraider.analyzer.antlr.smali.SmaliLexer
-import ru.art2000.androraider.analyzer.antlr.smali.SmaliParser
 import ru.art2000.androraider.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.analyzer.smali.types.SmaliPackage
 import java.io.File

@@ -107,12 +107,10 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
                 .analyzeFilesInDir(smaliAnalyzer.filesRootDir)
                 .doOnNext {
                     loadingLabel.text = "Indexing ${it.associatedFile?.name ?: "unknown file"}..."
-                    println("Indexing ${it.associatedFile?.name ?: "unknown file"}...")
+//                    println("Indexing ${it.associatedFile?.name ?: "unknown file"}...")
                 }.doOnComplete {
                     loadingDialog.hide()
                 }
-
-
     }
 
     inner class EditorLayoutController {
