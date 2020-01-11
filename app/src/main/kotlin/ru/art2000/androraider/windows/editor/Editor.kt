@@ -1,7 +1,6 @@
 package ru.art2000.androraider.windows.editor
 
 import io.reactivex.Observable
-import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
 import javafx.application.Platform
 import javafx.event.EventHandler
@@ -21,6 +20,7 @@ import javafx.stage.Stage
 import javafx.stage.Window
 import ru.art2000.androraider.App
 import ru.art2000.androraider.analyzer.SmaliAnalyzer
+import ru.art2000.androraider.analyzer.types.SmaliClass
 import ru.art2000.androraider.apktool.ApkToolUtils
 import ru.art2000.androraider.apktool.ApktoolCommand
 import ru.art2000.androraider.getBaseDialog
@@ -29,6 +29,7 @@ import ru.art2000.androraider.windows.Settings
 import ru.art2000.androraider.windows.launcher.Launcher
 import java.io.File
 import java.io.IOException
+import java.io.PrintStream
 import java.nio.file.StandardWatchEventKinds
 import java.util.function.Consumer
 
@@ -41,7 +42,8 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
     val projectObserver: DirectoryObserver
 
     var editorStage = Stage()
-    var vectorImageEditorStage: Stage? = null
+
+//    var vectorImageEditorStage: Stage? = null
 
     private val smaliAnalyzer: SmaliAnalyzer
 
@@ -49,9 +51,9 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
 
     private val onLoadRunnables = mutableListOf(*runnables)
 
-    val loadingLabel = Label()
+    private val loadingLabel = Label()
 
-    val loadingDialog = getBaseDialog<Unit>(loadingLabel)
+    private val loadingDialog = getBaseDialog<Unit>(loadingLabel)
 
     init {
         if (!project.exists())
@@ -98,16 +100,17 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
         loadingDialog.show()
     }
 
-    private fun generateProjectIndex(analyzeEndedRunnable: Runnable) {
+    private fun generateProjectIndex(): Observable<SmaliClass> {
         loadingLabel.text = "Indexing smali..."
 
-        smaliAnalyzer.onFileAnalyzeStarted.add(Consumer {
-            loadingLabel.text = "Indexing ${it.name}..."
-        })
-
-        smaliAnalyzer.onProjectAnalyzeEnded.add(analyzeEndedRunnable)
-
-        smaliAnalyzer.generateMap()
+        return smaliAnalyzer
+                .analyzeFilesInDir(smaliAnalyzer.filesRootDir)
+                .doOnNext {
+                    loadingLabel.text = "Indexing ${it.name}..."
+                    println("Indexing ${it.name}...")
+                }.doOnComplete {
+                    loadingDialog.hide()
+                }
     }
 
     inner class EditorLayoutController {
@@ -161,14 +164,6 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
                 fileManagerView.requestFocus()
             }
 
-            smaliAnalyzer.onProjectAnalyzeStarted.add(Runnable {
-                console.writeln("SmaliAnalyzer", "Analyze started")
-            })
-
-            smaliAnalyzer.onProjectAnalyzeEnded.add(Runnable {
-                console.writeln("SmaliAnalyzer", "Analyze ended")
-            })
-
             editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(fileManagerView.prefWidthProperty()))
             editorArea.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
             fileManagerView.prefHeightProperty().bind(editorStage.heightProperty().multiply(1.0))
@@ -190,14 +185,19 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
                     .fromIterable(onLoadRunnables)
                     .subscribeOn(Schedulers.io())
                     .doOnNext { it.run() }
-                    .observeOn(JavaFxScheduler.platform())
                     .doOnComplete {
-                        generateProjectIndex(Runnable {
-                            fileManagerView.updateFileList()
-                            loadingDialog.hide()
-                            projectObserver.start()
-                        })
+                        generateProjectIndex()
+                                .doOnSubscribe {
+                                    console.writeln("SmaliAnalyzer", "Analyze started")
+                                }
+                                .doOnComplete {
+                                    console.writeln("SmaliAnalyzer", "Analyze ended")
+                                    fileManagerView.updateFileList()
+                                    projectObserver.start()
+                                }
+                                .subscribe()
                     }.subscribe()
+
         }
 
         private fun createFileInfoDialog() {
@@ -212,6 +212,7 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
             fileInfoDialog.title = getFileRelativePath(editorArea.observableCurrentEditingFile.value, baseFolder)
                     ?: "No file is currently editing"
 
+            @Suppress("SimplifyBooleanWithConstants") // not meaningful now
             if (TypeDetector.Image.isVectorDrawable(editorArea.observableCurrentEditingFile.value) && false) {
                 val vectorImageLabelTitle = Label("Edit Vector Image:")
                 val vectorImageButtonValue = Button("Edit...")
@@ -247,7 +248,8 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
             editorArea.observableCurrentEditingFile.addListener { _, _, fileNew ->
                 if (fileNew != null) {
                     editorStage.title = "${getFileRelativePath(fileNew, baseFolder)} - Project Editor"
-                    editorArea.currentSmaliClass = smaliAnalyzer.scanFile(fileNew)
+                    if (fileNew.extension == "smali")
+                        editorArea.currentSmaliClass = smaliAnalyzer.analyzeFile(fileNew)
                 } else {
                     editorArea.currentSmaliClass = null
                 }
@@ -279,8 +281,8 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
                     console.writeln("ProjectObserver", "File ${getFileRelativePath(file, baseFolder)} was $kind")
                 }
             }
-//            System.setOut(PrintStream(console.getOutputStream()))
-//            System.setErr(PrintStream(console.getErrorStream()))
+            System.setOut(PrintStream(console.getOutputStream()))
+            System.setErr(PrintStream(console.getErrorStream()))
         }
 
         private fun setupMenu() {

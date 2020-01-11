@@ -1,6 +1,5 @@
 package ru.art2000.androraider.analyzer
 
-//import ru.art2000.androraider.analyzer.SmaliParserBaseListener
 import io.reactivex.Observable
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
@@ -9,90 +8,41 @@ import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.TokenSource
 import org.antlr.v4.runtime.TokenStream
 import org.antlr.v4.runtime.tree.ParseTree
-import org.antlr.v4.runtime.tree.ParseTreeWalker
 import ru.art2000.androraider.analyzer.antlr.SmaliLexer
 import ru.art2000.androraider.analyzer.antlr.SmaliParser
 import ru.art2000.androraider.analyzer.types.SmaliClass
-import ru.art2000.androraider.analyzer.types.SmaliField
-import ru.art2000.androraider.analyzer.types.SmaliMethod
 import ru.art2000.androraider.analyzer.types.SmaliPackage
 import java.io.File
-import java.io.FileWriter
-import java.util.function.Consumer
 
 
-class SmaliAnalyzer(private val projectBaseFolder: File) {
+class SmaliAnalyzer(projectBaseFolder: File) : SyntaxAnalyzer<SmaliClass>() {
 
-    val packages = mutableListOf<SmaliPackage>()
-
-    val onFileAnalyzeStarted = mutableListOf<Consumer<File>>()
-
-    val onProjectAnalyzeStarted = mutableListOf<Runnable>()
-
-    val onProjectAnalyzeEnded = mutableListOf<Runnable>()
+    private val packages = mutableListOf<SmaliPackage>()
 
     private val smaliFolder: File
 
+    override val filesRootDir: File
+        get() = smaliFolder
+
     init {
         require(projectBaseFolder.isDirectory) { "SmaliAnalyzer requires a folder as constructor argument" }
-        smaliFolder = File(projectBaseFolder.absolutePath + File.separator + "smali")
-    }
-
-    private fun writeMapToFile(fileFolder: File) {
-        Thread {
-            FileWriter(File(fileFolder, "map.txt")).use {
-                it.write(forPackages(packages, StringBuilder(), 0).toString())
-            }
-        }.start()
-    }
-
-    private fun forPackages(packages: List<SmaliPackage>, builder: StringBuilder, level: Int): StringBuilder {
-        packages.forEach {
-            repeat(level) {
-                builder.append("\t")
-            }
-            builder.appendln("====Package $it=====")
-            forPackages(it.subpackages, builder, level + 1)
-            forClasses(it.classes, builder, level + 1)
-        }
-        return builder
-    }
-
-    private fun forClasses(classes: List<SmaliClass>, builder: StringBuilder, level: Int): StringBuilder {
-        classes.forEach {
-            repeat(level) {
-                builder.append("\t")
-            }
-            builder.appendln("==Class $it==")
-            forMethods(it.methods, builder, level + 1)
-        }
-        return builder
-    }
-
-    private fun forMethods(methods: List<SmaliMethod>, builder: StringBuilder, level: Int): StringBuilder {
-        methods.forEach {
-            repeat(level) {
-                builder.append("\t")
-            }
-            builder.appendln("--Method $it--")
-        }
-        return builder
+        smaliFolder = projectBaseFolder.resolve("smali")
     }
 
     fun getOrCreatePackage(name: String): SmaliPackage {
-        val packageToReturn = findInPackages(packages, name)
+        val packageToReturn = findPackage(packages, name)
         if (packageToReturn != null)
             return packageToReturn
 
         val lastDot = name.lastIndexOf('.')
-        if (lastDot == -1) {
+        return if (lastDot == -1) {
             val rootPackage = SmaliPackage(name)
             packages.add(rootPackage)
-            return rootPackage
+            rootPackage
         } else {
             val parentPackageName = name.substring(0, lastDot)
             val packageName = name.substring(lastDot + 1)
-            return SmaliPackage(packageName, getOrCreatePackage(parentPackageName))
+            SmaliPackage(packageName, getOrCreatePackage(parentPackageName))
         }
     }
 
@@ -147,20 +97,13 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
         }
     }
 
-    private fun getPackageByName(name: String, smaliFolder: File): SmaliPackage? {
-        val usefulPart =
-                name.substring(smaliFolder.absolutePath.length + 1).replace(File.separatorChar, '.')
-
-        return findInPackages(packages, usefulPart)
-    }
-
-    private fun findInPackages(packages: List<SmaliPackage>, relativeName: String): SmaliPackage? {
+    private fun findPackage(packages: List<SmaliPackage>, relativeName: String): SmaliPackage? {
         for (pack in packages) {
             val full = pack.fullname
             if (full == relativeName)
                 return pack
             else if (relativeName.startsWith("$full.")) {
-                return findInPackages(pack.subpackages, relativeName)
+                return findPackage(pack.subpackages, relativeName)
             }
         }
 
@@ -181,91 +124,7 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
         return null
     }
 
-    private fun analyzePackages(smaliFolder: File) {
-        smaliFolder.walk().forEach {
-
-            if (!it.isDirectory) {
-                analyzeFile(it)
-            }
-
-//            if (it.absolutePath == smaliFolder.absolutePath) {
-//
-//            } else if (it.parent == smaliFolder.absolutePath) {
-//                if (it.isDirectory) {
-//                    packages.add(SmaliPackage(it.name))
-//                } else {
-//                    throw IllegalStateException("File ${it.absolutePath} must be in package!")
-//                }
-//            } else {
-//                val parentPackage = getPackageByName(it.parent, smaliFolder)
-//                if (parentPackage == null) {
-//
-//                } else {
-//                    if (it.isDirectory) {
-//                        parentPackage.addSubPackage(SmaliPackage(it.name))
-//                    } else {
-//                        parentPackage.addClass(analyzeFile(it))
-//                    }
-//                }
-//            }
-        }
-
-        println("==================")
-        printPackages(packages, 0)
-    }
-
-    private fun printPackages(packages: List<SmaliPackage>, level: Int) {
-        packages.forEach {
-            repeat(level) { print(' ') }
-            println(it.fullname)
-            printPackages(it.subpackages, level + 1)
-            printClasses(it.classes, level + 1)
-        }
-    }
-
-    private fun printClasses(classes: List<SmaliClass>, level: Int) {
-        classes.forEach {
-            repeat(level) { print(' ') }
-            println("==Class  $it")
-            printFields(it.fields, level + 1)
-            printMethods(it.methods, level + 1)
-        }
-    }
-
-    private fun printFields(classes: List<SmaliField>, level: Int) {
-        classes.forEach {
-            repeat(level) { print(' ') }
-            println("==Field  ${it}")
-        }
-    }
-
-    private fun printMethods(classes: List<SmaliMethod>, level: Int) {
-        classes.forEach {
-            repeat(level) { print(' ') }
-            println("==Method  ${it}")
-        }
-    }
-
-    fun analyzeFile(file: File): SmaliClass {
-        require(!file.isDirectory) { "Method argument must be a file" }
-
-
-        val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
-        val tokens = CommonTokenStream(lexer as TokenSource)
-        val parser = SmaliParser(tokens as TokenStream)
-        val tree = parser.parse()
-
-        val pastwk = ParseTreeWalker()
-        val listener = SmaliParserBaseListener(this)
-        listener.clear()
-        pastwk.walk(listener, tree as ParseTree)
-//
-        return listener.parsedSmaliClass
-//        return SmaliClass(file.name)
-    }
-
-
-    fun scanFile(file: File, writeInfo: Boolean = false): SmaliClass {
+    override fun analyzeFile(file: File): SmaliClass {
         require(!file.isDirectory) { "Method argument must be a file" }
 
 
@@ -281,40 +140,15 @@ class SmaliAnalyzer(private val projectBaseFolder: File) {
         visitor.onlyClass = false
         visitor.visit(tree as ParseTree)
 
-
-        if (writeInfo) {
-            printClasses(listOf(visitor.smaliClass), 0)
-        }
-//        listener.clear()
-//        pastwk.walk(listener, tree as ParseTree)
-//
-
-
-//        return listener.parsedSmaliClass
-        return visitor.smaliClass
+        return visitor.smaliClass.apply { associatedFile = file }
     }
 
-    fun generateMap() {
-        Observable
-                .fromIterable(smaliFolder.walk().asIterable().filter { !it.isDirectory })
+    override fun analyzeFilesInDir(directory: File): Observable<SmaliClass> {
+        return Observable
+                .fromIterable(directory.walk().asIterable().filter { !it.isDirectory })
                 .subscribeOn(Schedulers.io())
-                .doOnNext { file ->
-                    scanFile(file)
+                .map {
+                    analyzeFile(it)
                 }.observeOn(JavaFxScheduler.platform())
-                .doOnSubscribe {
-                    onProjectAnalyzeStarted.forEach {
-                        it.run()
-                    }
-                }
-                .doOnNext { file ->
-                    onFileAnalyzeStarted.forEach {
-                        it.accept(file)
-                    }
-                }
-                .doOnComplete {
-                    onProjectAnalyzeEnded.forEach {
-                        it.run()
-                    }
-                }.subscribe()
     }
 }

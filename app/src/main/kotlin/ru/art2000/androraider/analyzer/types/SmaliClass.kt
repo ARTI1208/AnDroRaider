@@ -1,6 +1,7 @@
 package ru.art2000.androraider.analyzer.types
 
 import org.antlr.v4.runtime.tree.ErrorNode
+import java.io.File
 
 
 @Suppress("RedundantVisibilityModifier")
@@ -78,6 +79,8 @@ class SmaliClass() {
         }
 
     var parentClass: SmaliClass? = null
+
+    var associatedFile: File? = null
 
     val fields = mutableListOf<SmaliField>()
     val methods = mutableListOf<SmaliMethod>()

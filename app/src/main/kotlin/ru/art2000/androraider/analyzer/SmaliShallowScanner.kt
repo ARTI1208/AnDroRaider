@@ -42,7 +42,6 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
         if (grandfather is MethodDeclarationContextWrapper) {
             grandfather.smaliMethod.returnType = analyzer.getOrCreateClass(ctx.text)
         }
-
         return visitChildren(ctx)
     }
 
