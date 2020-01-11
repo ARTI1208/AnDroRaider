@@ -1,6 +1,10 @@
 /.gradle
+/.idea/
+!/.idea/runConfigurations/
+!/.idea/dictionaries/
 /gradle
 /__artifacts_temp
 /build
 /out
 /app/build
+local.properties
