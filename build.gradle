@@ -1,51 +1,24 @@
 plugins {
-
-    id 'java'
-    id 'antlr'
-    id 'org.openjfx.javafxplugin' version '0.0.8'
-    id 'application'
-
-    id 'org.jetbrains.kotlin.jvm' version '1.3.61'
+    id 'application' // to define mainClassName
+    id 'org.openjfx.javafxplugin' version '0.0.8' // dunno why but is needed in root gradle script
 }
-
-mainClassName = 'ru.art2000.androraider.windows.launcher.Launcher'
-
-apply plugin: 'idea'
-
 
 group 'ru.art2000'
 version 'BETA 0.1'
 
-repositories {
-    mavenCentral()
+allprojects {
+    repositories {
+        mavenCentral()
+    }
 }
 
-sourceCompatibility = 12
+mainClassName = 'ru.art2000.androraider.windows.launcher.Launcher'
 
-configurations {
-
+dependencies {
+    implementation project(':app')
 }
-
-compileKotlin.destinationDir = compileJava.destinationDir
 
 javafx {
     version = "13"
     modules = [ 'javafx.controls', 'javafx.fxml', 'javafx.graphics' ]
-}
-
-dependencies {
-
-    antlr "org.antlr:antlr4:4.7.2"
-    compile project(':app')
-//    compile project(':AntlrAnalyzer')
-
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-
-}
-
-compileKotlin {
-    kotlinOptions.jvmTarget = "12"
-}
-compileTestKotlin {
-    kotlinOptions.jvmTarget = "12"
 }
