@@ -1,13 +1,11 @@
-package ru.art2000.androraider.analyzer
+package ru.art2000.androraider.analyzer.smali
 
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.tree.ErrorNode
 import org.antlr.v4.runtime.tree.TerminalNode
-import ru.art2000.androraider.analyzer.antlr.SmaliParser
-import ru.art2000.androraider.analyzer.antlr.SmaliParser.*
-import ru.art2000.androraider.analyzer.antlr.SmaliParserListener
-import ru.art2000.androraider.analyzer.types.SmaliClass
-import java.io.File
+import ru.art2000.androraider.analyzer.antlr.smali.SmaliParser.*
+import ru.art2000.androraider.analyzer.antlr.smali.SmaliParserListener
+import ru.art2000.androraider.analyzer.smali.types.SmaliClass
 import java.lang.reflect.Modifier
 
 // Generated from D:\Coding\Antlr\SmaliParser.g4 by ANTLR 4.1

@@ -1,4 +1,4 @@
-package ru.art2000.androraider.analyzer.types
+package ru.art2000.androraider.analyzer.smali.types
 
 import org.antlr.v4.runtime.tree.ErrorNode
 import java.io.File

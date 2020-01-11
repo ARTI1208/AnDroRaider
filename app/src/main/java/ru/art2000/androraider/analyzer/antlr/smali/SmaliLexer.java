@@ -1,8 +1,7 @@
-package ru.art2000.androraider.analyzer.antlr;// Generated from D:\Coding\Antlr\SmaliLexer.g4 by ANTLR 4.1
+package ru.art2000.androraider.analyzer.antlr.smali;// Generated from D:\Coding\Antlr\SmaliLexer.g4 by ANTLR 4.1
+
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;

@@ -1,4 +1,4 @@
-package ru.art2000.androraider.analyzer.antlr;// Generated from D:\Coding\Antlr\SmaliParser.g4 by ANTLR 4.1
+package ru.art2000.androraider.analyzer.antlr.smali;// Generated from D:\Coding\Antlr\SmaliParser.g4 by ANTLR 4.1
 
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;

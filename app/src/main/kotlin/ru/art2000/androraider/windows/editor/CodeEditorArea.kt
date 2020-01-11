@@ -11,7 +11,7 @@ import org.fxmisc.richtext.LineNumberFactory
 import org.fxmisc.richtext.event.MouseOverTextEvent
 import org.fxmisc.richtext.model.StyleSpans
 import org.fxmisc.richtext.model.StyleSpansBuilder
-import ru.art2000.androraider.analyzer.types.SmaliClass
+import ru.art2000.androraider.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.utils.contains
 import java.io.File

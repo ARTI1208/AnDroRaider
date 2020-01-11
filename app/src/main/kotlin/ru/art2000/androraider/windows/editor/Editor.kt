@@ -19,8 +19,8 @@ import javafx.stage.DirectoryChooser
 import javafx.stage.Stage
 import javafx.stage.Window
 import ru.art2000.androraider.App
-import ru.art2000.androraider.analyzer.SmaliAnalyzer
-import ru.art2000.androraider.analyzer.types.SmaliClass
+import ru.art2000.androraider.analyzer.smali.SmaliAnalyzer
+import ru.art2000.androraider.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.apktool.ApkToolUtils
 import ru.art2000.androraider.apktool.ApktoolCommand
 import ru.art2000.androraider.getBaseDialog
@@ -106,11 +106,13 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
         return smaliAnalyzer
                 .analyzeFilesInDir(smaliAnalyzer.filesRootDir)
                 .doOnNext {
-                    loadingLabel.text = "Indexing ${it.name}..."
-                    println("Indexing ${it.name}...")
+                    loadingLabel.text = "Indexing ${it.associatedFile?.name ?: "unknown file"}..."
+                    println("Indexing ${it.associatedFile?.name ?: "unknown file"}...")
                 }.doOnComplete {
                     loadingDialog.hide()
                 }
+
+
     }
 
     inner class EditorLayoutController {

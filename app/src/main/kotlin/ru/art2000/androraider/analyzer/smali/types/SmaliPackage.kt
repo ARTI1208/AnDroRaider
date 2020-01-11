@@ -1,4 +1,4 @@
-package ru.art2000.androraider.analyzer.types
+package ru.art2000.androraider.analyzer.smali.types
 
 class SmaliPackage(val name: String, var parentPackage: SmaliPackage? = null) {
 
