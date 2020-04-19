@@ -11,6 +11,6 @@ module app {
     requires io.reactivex.rxjava2;
     requires rxjavafx;
 
-    opens ru.art2000.androraider;
-    exports ru.art2000.androraider;
+    opens ru.art2000.androraider.windows.launcher;
+    exports ru.art2000.androraider.windows.launcher;
 }
