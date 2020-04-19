@@ -133,6 +133,8 @@ class SmaliAnalyzer(projectBaseFolder: File) : SyntaxAnalyzer<SmaliClass>() {
         val tree = parser.parse()
 
         val smaliClass = SmaliClass()
+        println("In new: ${smaliClass.errors.size}")
+
 
         val visitor = SmaliShallowScanner(smaliClass, this)
         visitor.visit(tree as ParseTree)

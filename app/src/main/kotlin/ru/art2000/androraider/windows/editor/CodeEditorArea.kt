@@ -11,6 +11,8 @@ import org.fxmisc.richtext.LineNumberFactory
 import org.fxmisc.richtext.event.MouseOverTextEvent
 import org.fxmisc.richtext.model.StyleSpans
 import org.fxmisc.richtext.model.StyleSpansBuilder
+import ru.art2000.androraider.analyzer.SyntaxAnalyzer
+import ru.art2000.androraider.analyzer.smali.SmaliAnalyzer
 import ru.art2000.androraider.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.utils.contains
@@ -47,6 +49,8 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     public var currentSmaliClass: SmaliClass? = null
 
+    public var syntaxAnalyzer: SyntaxAnalyzer<*>? = null
+
     public var currentEditingFile: File? = null
         private set(value) {
             val previousValue = field
@@ -67,6 +71,8 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     private val currentEditingFileChangeListeners = mutableListOf<ChangeListener<in File?>?>()
     private val currentEditingFileInvalidationListeners = mutableListOf<InvalidationListener?>()
+
+    public val onInputListeners = mutableListOf<Consumer<File?>>()
 
     val beforeFileWrittenListeners = mutableListOf<Consumer<File>>()
     val afterFileWrittenListeners = mutableListOf<Consumer<File>>()
@@ -105,6 +111,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
         multiPlainChanges()
                 .successionEnds(Duration.ofMillis(100))
                 .subscribe {
+                    onInputListeners.forEach { it.accept(currentEditingFile) }
                     setStyleSpans(0, updateHighlighting())
                 }
 
@@ -242,17 +249,33 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
         val errorStyle = listOf("error")
         val code = text
         var segmentStart = 0
+
+        val analyzer = syntaxAnalyzer as? SmaliAnalyzer ?: return builder
+
+        if (currentEditingFile == null)
+            return builder;
+
+        currentSmaliClass = analyzer.analyzeFile(currentEditingFile!!)
+
         val smaliClassCopy = currentSmaliClass
         if (smaliClassCopy == null) {
             builder.add(emptyList(), 0)
             println("NO SMALI")
             return builder
         }
+
+        println("Errors in ${smaliClassCopy.name}: ${smaliClassCopy.errors.size}")
+
+        smaliClassCopy.errors.sortBy { it.symbol.startIndex }
+
         smaliClassCopy.errors.forEach {
-//            println("Empty $segmentStart..${it.symbol.startIndex - 1}, error ${it.symbol.startIndex}..${it.symbol.stopIndex}")
-            builder.add(emptyList(), it.symbol.startIndex - segmentStart)
-            builder.add(errorStyle, it.symbol.stopIndex - it.symbol.startIndex + 1)
-            segmentStart = it.symbol.stopIndex + 1
+            println(it.symbol.text)
+            if (it.symbol.startIndex >= segmentStart) {
+                println("Empty $segmentStart..${it.symbol.startIndex - 1}, error ${it.symbol.startIndex}..${it.symbol.stopIndex}, no err len = ${it.symbol.startIndex - segmentStart}")
+                builder.add(emptyList(), it.symbol.startIndex - segmentStart)
+                builder.add(errorStyle, it.symbol.stopIndex - it.symbol.startIndex + 1)
+                segmentStart = it.symbol.stopIndex + 1
+            }
         }
         builder.add(emptyList(), code.length - segmentStart)
         return builder

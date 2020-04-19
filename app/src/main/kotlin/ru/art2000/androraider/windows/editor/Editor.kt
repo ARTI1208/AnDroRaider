@@ -261,6 +261,16 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
                 projectObserver.resume()
             })
 
+            editorArea.syntaxAnalyzer = smaliAnalyzer
+
+//            editorArea.onInputListeners.add(Consumer {
+//                if (it == null) {
+//                    editorArea.currentSmaliClass = null
+//                } else {
+//                    editorArea.currentSmaliClass = smaliAnalyzer.analyzeFile(it)
+//                }
+//            })
+
             projectObserver.addListener { file, kind ->
                 if (file.isDirectory)
                     return@addListener
@@ -282,7 +292,7 @@ constructor(project: File, vararg runnables: Runnable) : Window() {
                 }
             }
             System.setOut(PrintStream(console.getOutputStream()))
-            System.setErr(PrintStream(console.getErrorStream()))
+//            System.setErr(PrintStream(console.getErrorStream()))
         }
 
         private fun setupMenu() {

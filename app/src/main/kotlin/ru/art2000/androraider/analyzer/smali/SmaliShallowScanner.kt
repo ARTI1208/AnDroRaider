@@ -1051,6 +1051,7 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
 
     override fun visitClassName(ctx: ClassNameContext): SmaliClass {
         smaliClass = analyzer.getOrCreateClass(ctx.text)
+        smaliClass.errors.clear()
         return smaliClass
     }
 

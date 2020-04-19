@@ -36,7 +36,7 @@ class FileObserver(private val file: File) {
         val thread = Thread {
             val path = file.toPath()
             val watcher = FileSystems.getDefault().newWatchService()
-            path.register(watcher,
+            val watchKey = path.register(watcher,
                     StandardWatchEventKinds.ENTRY_CREATE,
                     StandardWatchEventKinds.ENTRY_MODIFY,
                     StandardWatchEventKinds.ENTRY_DELETE)
@@ -69,6 +69,7 @@ class FileObserver(private val file: File) {
             }
             shouldStop.set(false)
             isRunning.set(false)
+            watchKey.cancel()
         }
 
         thread.isDaemon = true
