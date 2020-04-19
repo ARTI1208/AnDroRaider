@@ -73,7 +73,7 @@ identifier:
         | NATIVE
         | VARARGS
         | SYNTHETIC
-    )+
+    )
     ;
 
 // Types
@@ -944,7 +944,7 @@ fieldInvocationTarget:          referenceOrArrayType ARROW fieldNameAndType;
 
 fieldName:                  identifier;
 
-fieldType:                  anyType;
+fieldType:                  nonVoidType;
 
 fieldNameAndType:           fieldName COLON fieldType;
 

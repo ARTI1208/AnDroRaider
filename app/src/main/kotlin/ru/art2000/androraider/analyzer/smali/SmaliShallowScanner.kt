@@ -1,11 +1,14 @@
 package ru.art2000.androraider.analyzer.smali
 
+import org.antlr.v4.runtime.misc.Interval
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
 import org.antlr.v4.runtime.tree.ErrorNode
 import ru.art2000.androraider.analyzer.smali.SmaliParser.*
 import ru.art2000.androraider.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.analyzer.smali.types.SmaliField
 import ru.art2000.androraider.analyzer.smali.types.SmaliMethod
+import ru.art2000.androraider.model.editor.Error
+import ru.art2000.androraider.utils.textInterval
 import java.lang.reflect.Modifier
 
 // Generated from D:\Coding\Antlr\SmaliParser.g4 by ANTLR 4.1
@@ -21,7 +24,7 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
         AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
 
     override fun visitClassDirective(ctx: ClassDirectiveContext): SmaliClass {
-        if(!onlyClass)
+        if (!onlyClass)
             return smaliClass
 
         return visitChildren(ctx)
@@ -39,7 +42,18 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
 
         val grandfather = ctx.parent.parent
         if (grandfather is MethodDeclarationContextWrapper) {
-            grandfather.smaliMethod.returnType = analyzer.getOrCreateClass(ctx.text)
+            val returnType = analyzer.getOrCreateClass(ctx.text)
+
+            if (returnType == null) {
+                val message = if (ctx.text.isNullOrEmpty())
+                    "No return type provided"
+                else
+                    "Unknown return type \"${ctx.text}\""
+
+                smaliClass.errors.add(Error(ctx.textInterval, message))
+            } else {
+                grandfather.smaliMethod.returnType = returnType
+            }
         }
         return visitChildren(ctx)
     }
@@ -154,7 +168,7 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
     }
 
     override fun visitSuperDirective(ctx: SuperDirectiveContext): SmaliClass {
-        if(!onlyClass)
+        if (!onlyClass)
             return smaliClass
 
         return visitChildren(ctx)
@@ -219,13 +233,24 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
     override fun visitFieldType(ctx: FieldTypeContext): SmaliClass {
         val grandfather = ctx.parent.parent
         if (grandfather is FieldDeclarationContextWrapper) {
-            grandfather.smaliField.type = analyzer.getOrCreateClass(ctx.text)
+            val fieldType = analyzer.getOrCreateClass(ctx.text)
+
+            if (fieldType == null) {
+                val message = if (ctx.text.isNullOrEmpty())
+                    "No field type provided"
+                else
+                    "Unknown field type \"${ctx.text}\""
+
+                smaliClass.errors.add(Error(ctx.textInterval, message))
+            } else {
+                grandfather.smaliField.type = fieldType
+            }
         }
 
         return visitChildren(ctx)
     }
 
-    fun parseCompound(string: String): List<String> {
+    private fun parseCompound(string: String): List<String> {
         val list = mutableListOf<String>()
         var tmpString = string
         while (tmpString.isNotEmpty()) {
@@ -265,12 +290,20 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
         val ancestor = ctx.parent.parent.parent
 
         if (ancestor is MethodDeclarationContextWrapper) {
+            var offset = ctx.start.startIndex
             ancestor.smaliMethod.parametersInternal.addAll(parseCompound(ctx.text).also {
 //                if (it.size > 1) {
 //                    println("WWWWWWWWWWWWk")
 //                    it.forEach { println(it) }
 //                }
-            }.map { analyzer.getOrCreateClass(it) })
+            }.mapNotNull {
+                val parameterType = analyzer.getOrCreateClass(it)
+                if (parameterType == null) {
+                    smaliClass.errors.add(Error(Interval(offset, offset + it.length - 1), "Unknown type \"$it\""))
+                }
+                offset += it.length
+                parameterType
+            })
         }
 
         return smaliClass
@@ -1045,13 +1078,19 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
 
     override fun visitErrorNode(node: ErrorNode): SmaliClass {
         println("Error $node, line=${node.symbol.line} range=${node.symbol.startIndex}..${node.symbol.stopIndex} text=${node.text} for $smaliClass")
-        smaliClass.errors.find { it.symbol.startIndex == node.symbol.startIndex } ?: smaliClass.errors.add(node)
+        smaliClass.errors.find { it.interval.a == node.symbol.startIndex } ?: smaliClass.errors.add(Error.from(node))
         return super.visitErrorNode(node)
     }
 
     override fun visitClassName(ctx: ClassNameContext): SmaliClass {
-        smaliClass = analyzer.getOrCreateClass(ctx.text)
-        smaliClass.errors.clear()
+        val currentClass = analyzer.getOrCreateClass(ctx.text)
+        if (currentClass == null) {
+            smaliClass.errors.add(Error(ctx.textInterval, "Class name ${ctx.text} is invalid"))
+        } else {
+            smaliClass = currentClass
+            smaliClass.errors.clear()
+        }
+
         return smaliClass
     }
 

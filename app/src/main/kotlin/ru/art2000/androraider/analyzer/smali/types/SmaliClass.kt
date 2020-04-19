@@ -1,8 +1,7 @@
 package ru.art2000.androraider.analyzer.smali.types
 
-import org.antlr.v4.runtime.tree.ErrorNode
+import ru.art2000.androraider.model.editor.Error
 import java.io.File
-
 
 @Suppress("RedundantVisibilityModifier")
 class SmaliClass() {
@@ -85,7 +84,7 @@ class SmaliClass() {
     val fields = mutableListOf<SmaliField>()
     val methods = mutableListOf<SmaliMethod>()
 
-    val errors = mutableListOf<ErrorNode>()
+    val errors = mutableListOf<Error>()
 
     var arrayCount = 0
 

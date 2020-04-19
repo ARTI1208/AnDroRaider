@@ -3,10 +3,7 @@ package ru.art2000.androraider.analyzer.smali
 import io.reactivex.Observable
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
-import org.antlr.v4.runtime.CharStreams
-import org.antlr.v4.runtime.CommonTokenStream
-import org.antlr.v4.runtime.TokenSource
-import org.antlr.v4.runtime.TokenStream
+import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.tree.ParseTree
 import ru.art2000.androraider.analyzer.SyntaxAnalyzer
 import ru.art2000.androraider.analyzer.smali.types.SmaliClass
@@ -45,7 +42,7 @@ class SmaliAnalyzer(projectBaseFolder: File) : SyntaxAnalyzer<SmaliClass>() {
         }
     }
 
-    fun getOrCreateClass(name: String): SmaliClass {
+    fun getOrCreateClass(name: String): SmaliClass? {
 
         // Primitive type or void
         when (name) {
@@ -72,7 +69,10 @@ class SmaliAnalyzer(projectBaseFolder: File) : SyntaxAnalyzer<SmaliClass>() {
 
             val lastDot = referenceClassName.lastIndexOf('.')
             if (lastDot == -1) {
-                throw IllegalStateException("Class $name must be in package")
+//                throw IllegalStateException("Class $name must be in package")
+
+
+                return null
             } else {
                 val parentPackageName = referenceClassName.substring(0, lastDot)
                 val className = referenceClassName.substring(lastDot + 1)
@@ -92,7 +92,8 @@ class SmaliAnalyzer(projectBaseFolder: File) : SyntaxAnalyzer<SmaliClass>() {
 
             return smaliClass
         } else {
-            throw IllegalStateException("Unknown class type for $name")
+//            throw IllegalStateException("Unknown class type for $name")
+            return null
         }
     }
 
@@ -133,8 +134,6 @@ class SmaliAnalyzer(projectBaseFolder: File) : SyntaxAnalyzer<SmaliClass>() {
         val tree = parser.parse()
 
         val smaliClass = SmaliClass()
-        println("In new: ${smaliClass.errors.size}")
-
 
         val visitor = SmaliShallowScanner(smaliClass, this)
         visitor.visit(tree as ParseTree)

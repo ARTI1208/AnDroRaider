@@ -95,6 +95,8 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     private val searchSpanList = SearchSpanList()
 
+    private lateinit var currentHighlighting: StyleSpans<Collection<String>>
+
     init {
         paragraphGraphicFactory = LineNumberFactory.get(this)
         textProperty().addListener { _, oldValue, newValue ->
@@ -126,6 +128,20 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
         addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_BEGIN) { e ->
             val chIdx = e.characterIndex
             val pos = e.screenPosition
+
+            val smaliCopy = currentSmaliClass
+            if (smaliCopy != null) {
+                val error = smaliCopy.errors.find {
+                    return@find chIdx in it.interval
+                }
+
+                if (error != null) {
+                    popupMsg.text = error.description
+                    popup.show(this, pos.x, pos.y + 10)
+                    return@addEventHandler
+                }
+            }
+
             val pre = text.substring(0, chIdx).lastIndexOf(" ")
             val aft = text.substring(chIdx).indexOf(" ") + chIdx
             val sub = text.substring(pre + 1, aft)
@@ -229,9 +245,9 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
             return builder
         }
         smaliClassCopy.errors.forEach {
-            builder.add(emptyList(), it.symbol.startIndex - lastKwEnd)
-            builder.add(errorStyle, it.symbol.stopIndex - it.symbol.startIndex)
-            lastKwEnd = it.symbol.stopIndex
+            builder.add(emptyList(), it.interval.a - lastKwEnd)
+            builder.add(errorStyle, it.interval.b - it.interval.a)
+            lastKwEnd = it.interval.b
         }
         builder.add(emptyList(), code.length - lastKwEnd)
 
@@ -266,15 +282,17 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
         println("Errors in ${smaliClassCopy.name}: ${smaliClassCopy.errors.size}")
 
-        smaliClassCopy.errors.sortBy { it.symbol.startIndex }
+        smaliClassCopy.errors.sortBy { it.interval.a }
 
-        smaliClassCopy.errors.forEach {
-            println(it.symbol.text)
-            if (it.symbol.startIndex >= segmentStart) {
-                println("Empty $segmentStart..${it.symbol.startIndex - 1}, error ${it.symbol.startIndex}..${it.symbol.stopIndex}, no err len = ${it.symbol.startIndex - segmentStart}")
-                builder.add(emptyList(), it.symbol.startIndex - segmentStart)
-                builder.add(errorStyle, it.symbol.stopIndex - it.symbol.startIndex + 1)
-                segmentStart = it.symbol.stopIndex + 1
+        smaliClassCopy.errors.forEach { error ->
+            if (error.interval.a >= segmentStart) {
+                if (error.interval.b < error.interval.a)
+                    error.interval.a = error.interval.b.also { error.interval.b = error.interval.a }
+
+                println("Empty $segmentStart..${error.interval.a - 1}, error ${error.interval.a}..${error.interval.b}, no err len = ${error.interval.a - segmentStart}")
+                builder.add(emptyList(), error.interval.a - segmentStart)
+                builder.add(errorStyle, error.interval.b - error.interval.a + 1)
+                segmentStart = error.interval.b + 1
             }
         }
         builder.add(emptyList(), code.length - segmentStart)
@@ -314,6 +332,8 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
             "smali" -> getErrorHighlighting()
             else -> getSimpleHighlighting()
         }.create()
+
+        currentHighlighting = sp
 
         if (!currentSearchValue.isNullOrEmpty()) {
             sp = sp.overlay(getSearchHighlighting(currentSearchValue, text)) { first, second ->

@@ -2,6 +2,8 @@ package ru.art2000.androraider.utils
 
 import javafx.scene.control.CheckBox
 import javafx.scene.layout.Pane
+import org.antlr.v4.runtime.ParserRuleContext
+import org.antlr.v4.runtime.misc.Interval
 import ru.art2000.androraider.apktool.ApktoolCommand
 import java.io.File
 import java.util.regex.Matcher
@@ -25,4 +27,13 @@ public fun getFileRelativePath(file: File?, folder: File?): String? {
         return null
 
     return file.absolutePath.removePrefix(folder.parent + "\\")
+}
+
+public val ParserRuleContext.textInterval : Interval
+get() {
+    return Interval.of(start.startIndex, stop.stopIndex)
+}
+
+public operator fun Interval.contains(i : Int): Boolean {
+    return i in a..b
 }
