@@ -3,7 +3,7 @@ package ru.art2000.androraider.analyzer
 import io.reactivex.Observable
 import java.io.File
 
-abstract class SyntaxAnalyzer<BAR> {
+abstract class SyntaxAnalyzer<BAR : FileAnalyzeResult> {
 
     /*
     Has a return type since we analyze file fully and sequentially

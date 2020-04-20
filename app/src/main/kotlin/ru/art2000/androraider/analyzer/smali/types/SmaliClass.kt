@@ -1,10 +1,12 @@
 package ru.art2000.androraider.analyzer.smali.types
 
+import ru.art2000.androraider.analyzer.FileAnalyzeResult
+import ru.art2000.androraider.analyzer.RangeAnalyzeStatus
 import ru.art2000.androraider.model.editor.Error
 import java.io.File
 
 @Suppress("RedundantVisibilityModifier")
-class SmaliClass() {
+class SmaliClass() : FileAnalyzeResult {
 
     object Primitives {
 
@@ -111,6 +113,9 @@ class SmaliClass() {
         methods.remove(smaliMethod)
 
     }
+
+    override val rangeStatuses: List<RangeAnalyzeStatus>
+        get() = errors
 
     override fun toString(): String {
         return "SmaliClass(modifier=$modifier, name='$name', parentPackage=${parentPackage?.fullname}, parentClass=${parentClass?.fullname})"

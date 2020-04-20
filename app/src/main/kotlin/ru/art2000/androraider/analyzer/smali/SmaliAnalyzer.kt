@@ -131,11 +131,16 @@ class SmaliAnalyzer(projectBaseFolder: File) : SyntaxAnalyzer<SmaliClass>() {
         val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
         val tokens = CommonTokenStream(lexer as TokenSource)
         val parser = SmaliParser(tokens as TokenStream)
+        parser.removeErrorListeners()
+
         val tree = parser.parse()
 
         val smaliClass = SmaliClass()
 
         val visitor = SmaliShallowScanner(smaliClass, this)
+
+        parser.addErrorListener(visitor)
+
         visitor.visit(tree as ParseTree)
         visitor.onlyClass = false
         visitor.visit(tree as ParseTree)

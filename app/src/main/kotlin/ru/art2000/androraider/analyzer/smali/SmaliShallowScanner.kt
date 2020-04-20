@@ -1,6 +1,8 @@
 package ru.art2000.androraider.analyzer.smali
 
-import org.antlr.v4.runtime.misc.Interval
+import org.antlr.v4.runtime.*
+import org.antlr.v4.runtime.atn.ATNConfigSet
+import org.antlr.v4.runtime.dfa.DFA
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
 import org.antlr.v4.runtime.tree.ErrorNode
 import ru.art2000.androraider.analyzer.smali.SmaliParser.*
@@ -8,8 +10,9 @@ import ru.art2000.androraider.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.analyzer.smali.types.SmaliField
 import ru.art2000.androraider.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.model.editor.Error
-import ru.art2000.androraider.utils.textInterval
+import ru.art2000.androraider.utils.textRange
 import java.lang.reflect.Modifier
+import java.util.*
 
 // Generated from D:\Coding\Antlr\SmaliParser.g4 by ANTLR 4.1
 /**
@@ -21,7 +24,7 @@ import java.lang.reflect.Modifier
  * operations with no return type.
 </T> */
 class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyzer, var onlyClass: Boolean = true) :
-        AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
+        AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass>, ANTLRErrorListener {
 
     override fun visitClassDirective(ctx: ClassDirectiveContext): SmaliClass {
         if (!onlyClass)
@@ -50,7 +53,7 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
                 else
                     "Unknown return type \"${ctx.text}\""
 
-                smaliClass.errors.add(Error(ctx.textInterval, message))
+                smaliClass.errors.add(Error(ctx.textRange, message))
             } else {
                 grandfather.smaliMethod.returnType = returnType
             }
@@ -241,7 +244,7 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
                 else
                     "Unknown field type \"${ctx.text}\""
 
-                smaliClass.errors.add(Error(ctx.textInterval, message))
+                smaliClass.errors.add(Error(ctx.textRange, message))
             } else {
                 grandfather.smaliField.type = fieldType
             }
@@ -299,7 +302,7 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
             }.mapNotNull {
                 val parameterType = analyzer.getOrCreateClass(it)
                 if (parameterType == null) {
-                    smaliClass.errors.add(Error(Interval(offset, offset + it.length - 1), "Unknown type \"$it\""))
+                    smaliClass.errors.add(Error(offset until offset + it.length, "Unknown type \"$it\""))
                 }
                 offset += it.length
                 parameterType
@@ -730,10 +733,6 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
         return visitChildren(ctx)
     }
 
-    override fun visitStatement(ctx: StatementContext): SmaliClass {
-        return visitChildren(ctx)
-    }
-
     // TODO implement synthetic, transient, volatile, enum
     override fun visitFieldModifier(ctx: FieldModifierContext): SmaliClass {
         val parent = ctx.parent
@@ -1077,15 +1076,16 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
     }
 
     override fun visitErrorNode(node: ErrorNode): SmaliClass {
-        println("Error $node, line=${node.symbol.line} range=${node.symbol.startIndex}..${node.symbol.stopIndex} text=${node.text} for $smaliClass")
-        smaliClass.errors.find { it.interval.a == node.symbol.startIndex } ?: smaliClass.errors.add(Error.from(node))
+//        println("Error $node, line=${node.symbol.line} range=${node.symbol.startIndex}..${node.symbol.stopIndex} text=${node.text} for $smaliClass")
+        smaliClass.errors.find { it.range.first == node.symbol.startIndex }
+                ?: smaliClass.errors.add(Error.from(node))
         return super.visitErrorNode(node)
     }
 
     override fun visitClassName(ctx: ClassNameContext): SmaliClass {
         val currentClass = analyzer.getOrCreateClass(ctx.text)
         if (currentClass == null) {
-            smaliClass.errors.add(Error(ctx.textInterval, "Class name ${ctx.text} is invalid"))
+            smaliClass.errors.add(Error(ctx.textRange, "Class name ${ctx.text} is invalid"))
         } else {
             smaliClass = currentClass
             smaliClass.errors.clear()
@@ -1605,6 +1605,27 @@ class SmaliShallowScanner(var smaliClass: SmaliClass, val analyzer: SmaliAnalyze
 
     override fun visitNullLiteral(ctx: NullLiteralContext): SmaliClass {
         return smaliClass
+    }
+
+    override fun reportAttemptingFullContext(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, conflictingAlts: BitSet?, configs: ATNConfigSet?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String, e: RecognitionException?) {
+        if (offendingSymbol == null)
+            return
+
+        offendingSymbol as Token
+
+        smaliClass.errors.add(Error(offendingSymbol.startIndex..offendingSymbol.stopIndex, msg))
+    }
+
+    override fun reportAmbiguity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, exact: Boolean, ambigAlts: BitSet?, configs: ATNConfigSet?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun reportContextSensitivity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, prediction: Int, configs: ATNConfigSet?) {
+        TODO("Not yet implemented")
     }
 
 }

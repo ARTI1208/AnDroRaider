@@ -1,5 +1,8 @@
 package ru.art2000.androraider.windows.editor
 
+import io.reactivex.Single
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
+import io.reactivex.schedulers.Schedulers
 import javafx.beans.InvalidationListener
 import javafx.beans.value.ChangeListener
 import javafx.beans.value.ObservableValue
@@ -9,20 +12,15 @@ import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
 import org.fxmisc.richtext.LineNumberFactory
 import org.fxmisc.richtext.event.MouseOverTextEvent
-import org.fxmisc.richtext.model.StyleSpans
-import org.fxmisc.richtext.model.StyleSpansBuilder
 import ru.art2000.androraider.analyzer.SyntaxAnalyzer
-import ru.art2000.androraider.analyzer.smali.SmaliAnalyzer
 import ru.art2000.androraider.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.utils.contains
 import java.io.File
 import java.nio.file.Files
 import java.time.Duration
-import java.util.*
 import java.util.function.Consumer
 import java.util.regex.Pattern
-import kotlin.collections.ArrayList
 
 @Suppress("RedundantVisibilityModifier")
 class CodeEditorArea : CodeArea(), Searchable<String?> {
@@ -72,8 +70,6 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
     private val currentEditingFileChangeListeners = mutableListOf<ChangeListener<in File?>?>()
     private val currentEditingFileInvalidationListeners = mutableListOf<InvalidationListener?>()
 
-    public val onInputListeners = mutableListOf<Consumer<File?>>()
-
     val beforeFileWrittenListeners = mutableListOf<Consumer<File>>()
     val afterFileWrittenListeners = mutableListOf<Consumer<File>>()
 
@@ -95,7 +91,6 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     private val searchSpanList = SearchSpanList()
 
-    private lateinit var currentHighlighting: StyleSpans<Collection<String>>
 
     init {
         paragraphGraphicFactory = LineNumberFactory.get(this)
@@ -110,11 +105,11 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
                 afterFileWrittenListeners.forEach { it.accept(currentEditingFile!!) }
             }
         }
+
         multiPlainChanges()
                 .successionEnds(Duration.ofMillis(100))
                 .subscribe {
-                    onInputListeners.forEach { it.accept(currentEditingFile) }
-                    setStyleSpans(0, updateHighlighting())
+                    updateHighlighting()
                 }
 
         val popup = Popup()
@@ -132,7 +127,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
             val smaliCopy = currentSmaliClass
             if (smaliCopy != null) {
                 val error = smaliCopy.errors.find {
-                    return@find chIdx in it.interval
+                    return@find chIdx in it.range
                 }
 
                 if (error != null) {
@@ -176,9 +171,17 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
         if (file.absolutePath != currentEditingFile?.absolutePath || forceRead) {
             currentEditingFile = file
-            replaceText(String(Files.readAllBytes(file.toPath())))
-            setStyleSpans(0, updateHighlighting())
-            displaceCaret(0)
+            Single
+                    .fromCallable {
+                        String(Files.readAllBytes(file.toPath()))
+                    }.subscribeOn(Schedulers.io())
+                    .observeOn(JavaFxScheduler.platform())
+                    .doOnSuccess {
+                        replaceText(it)
+                        updateHighlighting()
+                        displaceCaret(0)
+                    }.subscribe()
+//            setStyleSpans(0, updateHighlighting())
         }
     }
 
@@ -188,7 +191,8 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     public override fun findAll(valueToFind: String?) {
         currentSearchValue = valueToFind
-        setStyleSpans(0, updateHighlighting())
+//        setStyleSpans(0, updateHighlighting())
+        updateHighlighting()
         currentSearchCursor = 0
     }
 
@@ -214,137 +218,54 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
         displaceCaret(searchSpanList[currentSearchCursor].last)
     }
 
-    private fun getSmaliHighlighting(pattern: Pattern, text: String): StyleSpansBuilder<Collection<String>> {
-        val builder = StyleSpansBuilder<Collection<String>>()
-        val matcher = pattern.matcher(text)
-        var lastKwEnd = 0
-        while (matcher.find()) {
-            val styleClass = (when {
-                matcher.contains("LOCAL") -> "local"
-                matcher.contains("PARAM") -> "param"
-                matcher.contains("CALL") -> "call"
-                matcher.contains("NUMBER") -> "number"
-                matcher.contains("KEYWORD") -> "keyword"
-                matcher.contains("COMMENT") -> "comment"
-                matcher.contains("BRACKET") -> "bracket"
-                matcher.contains("STRING") -> "string"
-                else -> return builder
-            })
-            builder.add(Collections.emptyList(), matcher.start() - lastKwEnd)
-            builder.add(Collections.singleton(styleClass), matcher.end() - matcher.start())
-            lastKwEnd = matcher.end()
-        }
-        builder.add(Collections.emptyList(), text.length - lastKwEnd)
+    private fun updateHighlighting() {
+        Single
+                .fromCallable {
+                    syntaxAnalyzer?.analyzeFile(currentEditingFile!!)
+                }.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .doOnSuccess { result ->
+                    if (result == null)
+                        return@doOnSuccess
 
-        val errorStyle = listOf("error")
-        val code = text
-        lastKwEnd = 0
-        val smaliClassCopy = currentSmaliClass
-        if (smaliClassCopy == null) {
-            builder.add(emptyList(), 0)
-            return builder
-        }
-        smaliClassCopy.errors.forEach {
-            builder.add(emptyList(), it.interval.a - lastKwEnd)
-            builder.add(errorStyle, it.interval.b - it.interval.a)
-            lastKwEnd = it.interval.b
-        }
-        builder.add(emptyList(), code.length - lastKwEnd)
+                    clearStyle(0, text.length)
 
-        return builder
-    }
+                    val patternString = TypeDetector.getPatternForExtension(currentEditingFile?.extension)
+                    val syntaxElementsMatcher = Pattern.compile(patternString).matcher(text)
 
-    private fun getSimpleHighlighting(): StyleSpansBuilder<Collection<String>> {
-        val builder = StyleSpansBuilder<Collection<String>>()
-        builder.add(Collections.emptyList(), 0)
-        return builder
-    }
+                    while (syntaxElementsMatcher.find()) {
+                        val styleClass = (when {
+                            syntaxElementsMatcher.contains("LOCAL") -> "local"
+                            syntaxElementsMatcher.contains("PARAM") -> "param"
+                            syntaxElementsMatcher.contains("CALL") -> "call"
+                            syntaxElementsMatcher.contains("NUMBER") -> "number"
+                            syntaxElementsMatcher.contains("KEYWORD") -> "keyword"
+                            syntaxElementsMatcher.contains("COMMENT") -> "comment"
+                            syntaxElementsMatcher.contains("BRACKET") -> "bracket"
+                            syntaxElementsMatcher.contains("STRING") -> "string"
+                            else -> ""
+                        })
+                        setStyle(syntaxElementsMatcher.start(), syntaxElementsMatcher.end(), listOf(styleClass))
+                    }
 
-    private fun getErrorHighlighting(): StyleSpansBuilder<Collection<String>> {
-        val builder = StyleSpansBuilder<Collection<String>>()
-        val errorStyle = listOf("error")
-        val code = text
-        var segmentStart = 0
 
-        val analyzer = syntaxAnalyzer as? SmaliAnalyzer ?: return builder
+                    result.rangeStatuses.forEach { status ->
+                        setStyle(status.range.first, status.range.last + 1, status.style)
+                    }
 
-        if (currentEditingFile == null)
-            return builder;
-
-        currentSmaliClass = analyzer.analyzeFile(currentEditingFile!!)
-
-        val smaliClassCopy = currentSmaliClass
-        if (smaliClassCopy == null) {
-            builder.add(emptyList(), 0)
-            println("NO SMALI")
-            return builder
-        }
-
-        println("Errors in ${smaliClassCopy.name}: ${smaliClassCopy.errors.size}")
-
-        smaliClassCopy.errors.sortBy { it.interval.a }
-
-        smaliClassCopy.errors.forEach { error ->
-            if (error.interval.a >= segmentStart) {
-                if (error.interval.b < error.interval.a)
-                    error.interval.a = error.interval.b.also { error.interval.b = error.interval.a }
-
-                println("Empty $segmentStart..${error.interval.a - 1}, error ${error.interval.a}..${error.interval.b}, no err len = ${error.interval.a - segmentStart}")
-                builder.add(emptyList(), error.interval.a - segmentStart)
-                builder.add(errorStyle, error.interval.b - error.interval.a + 1)
-                segmentStart = error.interval.b + 1
-            }
-        }
-        builder.add(emptyList(), code.length - segmentStart)
-        return builder
-    }
-
-    private fun getSearchHighlighting(toSearch: String?, text: String): StyleSpans<Collection<String>> {
-        searchSpanList.searchString = toSearch
-        val pattern = Pattern.compile("(?<SEARCH>$toSearch)")
-        val builder = StyleSpansBuilder<Collection<String>>()
-        val matcher = pattern.matcher(text)
-        var lastKwEnd = 0
-        if (pattern.pattern().isNotEmpty()) {
-            while (matcher.find()) {
-                val styleClass = (when {
-                    matcher.contains("SEARCH") -> "search"
-                    else -> return builder.create()
-                })
-                builder.add(Collections.emptyList(), matcher.start() - lastKwEnd)
-                builder.add(Collections.singleton(styleClass), matcher.end() - matcher.start())
-                searchSpanList.add(IntRange(matcher.start(), matcher.end()))
-                lastKwEnd = matcher.end()
-            }
-        }
-        builder.add(Collections.emptyList(), text.length - lastKwEnd)
-        return builder.create()
-    }
-
-    private fun updateHighlighting(): StyleSpans<Collection<String>> {
-        clearStyle(0, text.length)
-        val p = TypeDetector.getPatternForExtension(currentEditingFile?.extension)
-        val pattern = Pattern.compile(p, Pattern.MULTILINE)
-        println(pattern.pattern())
-
-        var sp = when (currentEditingFile?.extension) {
-//            "smali" -> getSmaliHighlighting(pattern, text)
-            "smali" -> getErrorHighlighting()
-            else -> getSimpleHighlighting()
-        }.create()
-
-        currentHighlighting = sp
-
-        if (!currentSearchValue.isNullOrEmpty()) {
-            sp = sp.overlay(getSearchHighlighting(currentSearchValue, text)) { first, second ->
-                val list = ArrayList<String>()
-                list.addAll(first)
-                list.addAll(second)
-                return@overlay list
-            }
-        }
-
-        return sp
+                    searchSpanList.searchString = currentSearchValue
+                    if (!currentSearchValue.isNullOrEmpty()) {
+                        val pattern = Pattern.compile("(?<SEARCH>$currentSearchValue)")
+                        val searchMatcher = pattern.matcher(text)
+                        if (pattern.pattern().isNotEmpty()) {
+                            while (searchMatcher.find()) {
+                                searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
+                                setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
+                            }
+                        }
+                    }
+                }
+                .subscribe()
     }
 
 }

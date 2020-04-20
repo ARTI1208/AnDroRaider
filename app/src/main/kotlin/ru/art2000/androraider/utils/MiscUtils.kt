@@ -29,9 +29,9 @@ public fun getFileRelativePath(file: File?, folder: File?): String? {
     return file.absolutePath.removePrefix(folder.parent + "\\")
 }
 
-public val ParserRuleContext.textInterval : Interval
+public val ParserRuleContext.textRange : IntRange
 get() {
-    return Interval.of(start.startIndex, stop.stopIndex)
+    return start.startIndex..stop.stopIndex
 }
 
 public operator fun Interval.contains(i : Int): Boolean {
