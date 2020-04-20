@@ -1064,14 +1064,6 @@ sparseSwitchDirectiveValue: numericLiteral ARROW label;
 
 sparseSwitchDirective:      SPARSE_SWITCH_DIRECTIVE sparseSwitchDirectiveValue* SPARSE_SWITCH_END_DIRECTIVE;
 
-statement:
-    classDirective
-    | superDirective
-    | sourceDirective
-    | fieldDirective
-    | methodDirective
-    ;
-
 parse:
-    statement+
+    classDirective superDirective sourceDirective? fieldDirective* methodDirective*
     ;

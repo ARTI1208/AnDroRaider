@@ -51,22 +51,6 @@ COMPOUND_METHOD_ARG_LITERAL:
     )+ QUALIFIED_TYPE_NAME
     ;
 
-LBRACK:                     '[';
-RBRACK:                     ']';
-LPAREN:                     '(';
-RPAREN:                     ')';
-LBRACE:                     '{';
-RBRACE:                     '}';
-COLON:                      ':';
-ASSIGN:                     '=';
-DOT:                        '.';
-SUB:                        '-';
-COMMA:                      ',';
-SLASH:                      '/';
-LT:                         '<';
-GT:                         '>';
-ARROW:                      '->';
-SEMI:                       ';';
 // Directives
 
 METHOD_DIRECTIVE:               '.method';
@@ -368,6 +352,24 @@ OP_CONST_METHOD_TYPE:           'const-method-type';
 
 OP_PACKED_SWITCH:               'packed-switch';
 OP_SPARSE_SWITCH:               'sparse-switch';
+
+
+LBRACK:                     '[';
+RBRACK:                     ']';
+LPAREN:                     '(';
+RPAREN:                     ')';
+LBRACE:                     '{';
+RBRACE:                     '}';
+COLON:                      ':';
+ASSIGN:                     '=';
+DOT:                        [.];
+SUB:                        '-';
+COMMA:                      ',';
+SLASH:                      '/';
+LT:                         '<';
+GT:                         '>';
+ARROW:                      '->';
+SEMI:                       ';';
 
 // Literals
 
