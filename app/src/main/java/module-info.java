@@ -2,7 +2,7 @@ module app {
     requires javafx.controls;
     requires javafx.fxml;
     requires javafx.graphics;
-    requires richtextfx;
+    requires org.fxmisc.richtext;
     requires reactfx;
     requires java.prefs;
     requires kotlin.stdlib;
