@@ -72,7 +72,6 @@ class Launcher : Application() {
 
         val loader = javaClass.getLayout("launcher.fxml")
         loader.setController(LaunchLayoutController())
-        getUserAgentStylesheet()
         setUserAgentStylesheet(javaClass.getStyle("application.css"))
         val root = loader.load<Parent>()
         primaryStage.title = App.NAME
