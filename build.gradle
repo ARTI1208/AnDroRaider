@@ -12,7 +12,7 @@ allprojects {
     }
 }
 
-mainClassName = 'ru.art2000.androraider.windows.launcher.Launcher'
+mainClassName = 'ru.art2000.androraider.view.launcher.Launcher'
 
 dependencies {
     implementation project(':app')

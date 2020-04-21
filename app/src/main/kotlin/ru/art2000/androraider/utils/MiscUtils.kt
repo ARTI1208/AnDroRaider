@@ -4,7 +4,7 @@ import javafx.scene.control.CheckBox
 import javafx.scene.layout.Pane
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.misc.Interval
-import ru.art2000.androraider.apktool.ApktoolCommand
+import ru.art2000.androraider.model.apktool.ApktoolCommand
 import java.io.File
 import java.util.regex.Matcher
 

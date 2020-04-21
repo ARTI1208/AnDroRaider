@@ -30,7 +30,7 @@ tasks.compileKotlin.dependsOn(generateGrammarSource)
 
 generateGrammarSource {
     arguments += ["-visitor"]
-    outputDirectory = new File("${project.buildDir}/generated-src/antlr/main/ru/art2000/androraider/analyzer/smali".toString())
+    outputDirectory = new File("${project.buildDir}/generated-src/antlr/main/ru/art2000/androraider/model/analyzer/smali".toString())
 }
 
 javafx {

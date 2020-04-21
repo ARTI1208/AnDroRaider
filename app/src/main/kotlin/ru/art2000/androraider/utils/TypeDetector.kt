@@ -1,6 +1,6 @@
 package ru.art2000.androraider.utils
 
-import ru.art2000.androraider.apktool.addAll
+import ru.art2000.androraider.model.apktool.addAll
 import java.io.File
 
 class TypeDetector {
