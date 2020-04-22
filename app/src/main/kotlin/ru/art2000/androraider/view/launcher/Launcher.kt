@@ -20,14 +20,14 @@ import ru.art2000.androraider.model.launcher.RecentProject
 import ru.art2000.androraider.presenter.launcher.LauncherPresenter
 import ru.art2000.androraider.utils.getLayout
 import ru.art2000.androraider.utils.getStyle
-import ru.art2000.androraider.view.WindowView
+import ru.art2000.androraider.view.View
 import ru.art2000.androraider.view.dialogs.DecompileDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.editor.Editor
 import ru.art2000.androraider.view.settings.Settings
 import java.io.File
 
-class Launcher : Application(), WindowView {
+class Launcher : Application(), View {
 
     companion object {
 
@@ -55,6 +55,13 @@ class Launcher : Application(), WindowView {
         setupApplicationInfo()
         setupRecentsListView()
         setupButtons()
+
+        Regex("(?<COMMENT>#[\\S \\t]*)").findAll("# static fieldshgghghgjj\nt").forEach {
+            println("matcgres:" + it.value)
+            it.groups.forEach {
+                println("group: " + it?.value)
+            }
+        }
 
         primaryStage.title = App.NAME
         primaryStage.icons.add(App.LOGO)

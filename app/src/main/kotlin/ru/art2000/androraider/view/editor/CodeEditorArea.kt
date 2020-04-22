@@ -12,7 +12,7 @@ import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
 import org.fxmisc.richtext.LineNumberFactory
 import org.fxmisc.richtext.event.MouseOverTextEvent
-import ru.art2000.androraider.model.analyzer.SyntaxAnalyzer
+import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.editor.SearchSpanList
 import ru.art2000.androraider.utils.TypeDetector
@@ -48,7 +48,9 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     public var currentSmaliClass: SmaliClass? = null
 
-    public var syntaxAnalyzer: SyntaxAnalyzer<*>? = null
+    public lateinit var project: ProjectAnalyzeResult
+
+//    public var syntaxAnalyzer: SyntaxAnalyzer<*>? = null
 
     public var currentEditingFile: File? = null
         private set(value) {
@@ -108,7 +110,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
         }
 
         multiPlainChanges()
-                .successionEnds(Duration.ofMillis(100))
+                .successionEnds(Duration.ofMillis(200))
                 .subscribe {
                     updateHighlighting()
                 }
@@ -127,7 +129,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
             val smaliCopy = currentSmaliClass
             if (smaliCopy != null) {
-                val error = smaliCopy.errors.find {
+                val error = smaliCopy.ranges.find {
                     return@find chIdx in it.range
                 }
 
@@ -222,7 +224,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
     private fun updateHighlighting() {
         Single
                 .fromCallable {
-                    syntaxAnalyzer?.analyzeFile(currentEditingFile!!)
+                    project.analyzeFile(currentEditingFile!!)
                 }.subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .doOnSuccess { result ->
@@ -234,7 +236,9 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
                     val patternString = TypeDetector.getPatternForExtension(currentEditingFile?.extension)
                     val syntaxElementsMatcher = Pattern.compile(patternString).matcher(text)
 
-                    while (syntaxElementsMatcher.find()) {
+                    syntaxElementsMatcher.results().forEach {
+
+
                         val styleClass = (when {
                             syntaxElementsMatcher.contains("LOCAL") -> "local"
                             syntaxElementsMatcher.contains("PARAM") -> "param"
@@ -246,9 +250,11 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
                             syntaxElementsMatcher.contains("STRING") -> "string"
                             else -> ""
                         })
-                        setStyle(syntaxElementsMatcher.start(), syntaxElementsMatcher.end(), listOf(styleClass))
+                        setStyle(it.start(), it.end(), listOf(styleClass))
                     }
 
+
+                    println(result.rangeStatuses.size)
 
                     result.rangeStatuses.forEach { status ->
                         setStyle(status.range.first, status.range.last + 1, status.style)

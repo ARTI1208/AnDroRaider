@@ -8,9 +8,9 @@ import javafx.stage.Stage
 import javafx.stage.Window
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
 import ru.art2000.androraider.utils.getLayout
-import ru.art2000.androraider.view.WindowView
+import ru.art2000.androraider.view.View
 
-class Settings(owner: Window) : Window(), WindowView {
+class Settings(owner: Window) : Window(), View {
 
     private val settingsStage = Stage()
 

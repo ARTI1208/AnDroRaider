@@ -26,7 +26,7 @@ public fun getFileRelativePath(file: File?, folder: File?): String? {
     if (file == null || folder == null)
         return null
 
-    return file.absolutePath.removePrefix(folder.parent + "\\")
+    return file.absolutePath.removePrefix(folder.parent + File.separator)
 }
 
 public val ParserRuleContext.textRange : IntRange

@@ -4,8 +4,10 @@ class SearchSpanList() : ArrayList<IntRange>() {
 
     var searchString: String? = null
         set(value) {
-            clear()
-            field = value
+            if (field != value) {
+                clear()
+                field = value
+            }
         }
 
     override fun clear() {

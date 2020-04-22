@@ -69,12 +69,10 @@ class ConsoleView : ScrollPane(), StreamOutput {
 
             override fun flush() {
                 if (Platform.isFxApplicationThread()) {
-                    text.appendText("flush\n")
                     text.appendText(stringBuilder.toString())
                     stringBuilder.clear()
                 } else {
                     Platform.runLater {
-                        text.appendText("flush\n")
                         text.appendText(stringBuilder.toString())
                         stringBuilder.clear()
                     }
@@ -86,10 +84,10 @@ class ConsoleView : ScrollPane(), StreamOutput {
 
     override fun writeln(tag: String, string: String) {
         if (Platform.isFxApplicationThread()) {
-            text.text += "$tag: $string\n"
+            text.appendText("$tag: $string\n")
         } else {
             Platform.runLater {
-                text.text += "$tag: $string\n"
+                text.appendText("$tag: $string\n")
             }
         }
     }

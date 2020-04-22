@@ -1,28 +1,25 @@
-package ru.art2000.androraider.model.analyzer.smali
+package ru.art2000.androraider.model.analyzer.result
 
 import io.reactivex.Observable
-import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
-import io.reactivex.schedulers.Schedulers
-import org.antlr.v4.runtime.*
-import org.antlr.v4.runtime.tree.ParseTree
-import ru.art2000.androraider.model.analyzer.SyntaxAnalyzer
+import ru.art2000.androraider.model.analyzer.smali.SmaliIndexer
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliPackage
 import java.io.File
 
+class ProjectAnalyzeResult(val baseFolder: File) {
 
-class SmaliAnalyzer(projectBaseFolder: File) : SyntaxAnalyzer<SmaliClass>() {
+    val packages = mutableListOf<SmaliPackage>()
 
-    private val packages = mutableListOf<SmaliPackage>()
+    public val smaliFolders : List<File>
 
-    private val smaliFolder: File
-
-    override val filesRootDir: File
-        get() = smaliFolder
+    val smaliFolderNameRegex = Regex("^((smali)|(smali_classes\\d+))\$")
 
     init {
-        require(projectBaseFolder.isDirectory) { "SmaliAnalyzer requires a folder as constructor argument" }
-        smaliFolder = projectBaseFolder.resolve("smali")
+        require(baseFolder.isDirectory) { "ProjectAnalyzeResult requires a folder as constructor argument" }
+
+        smaliFolders = baseFolder.listFiles { _, name ->
+            name.matches(smaliFolderNameRegex)
+        }?.toList() ?: emptyList()
     }
 
     fun getOrCreatePackage(name: String): SmaliPackage {
@@ -124,36 +121,11 @@ class SmaliAnalyzer(projectBaseFolder: File) : SyntaxAnalyzer<SmaliClass>() {
         return null
     }
 
-    override fun analyzeFile(file: File): SmaliClass {
-        require(!file.isDirectory) { "Method argument must be a file" }
-
-
-        val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
-        val tokens = CommonTokenStream(lexer as TokenSource)
-        val parser = SmaliParser(tokens as TokenStream)
-        parser.removeErrorListeners()
-
-        val tree = parser.parse()
-
-        val smaliClass = SmaliClass()
-
-        val visitor = SmaliShallowScanner(smaliClass, this)
-
-        parser.addErrorListener(visitor)
-
-        visitor.visit(tree as ParseTree)
-        visitor.onlyClass = false
-        visitor.visit(tree as ParseTree)
-
-        return visitor.smaliClass.apply { associatedFile = file }
+    public fun indexProject(): Observable<out FileAnalyzeResult> {
+        return SmaliIndexer.indexProject(this)
     }
 
-    override fun analyzeFilesInDir(directory: File): Observable<SmaliClass> {
-        return Observable
-                .fromIterable(directory.walk().asIterable().filter { !it.isDirectory })
-                .subscribeOn(Schedulers.io())
-                .map {
-                    analyzeFile(it)
-                }.observeOn(JavaFxScheduler.platform())
+    public fun analyzeFile(file: File): FileAnalyzeResult{
+        return SmaliIndexer.analyzeFile(this, file)
     }
 }

@@ -6,6 +6,7 @@ import java.nio.file.FileSystems
 import java.nio.file.Path
 import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchEvent
+import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 
 class FileObserver(private val file: File) {
@@ -47,6 +48,8 @@ class FileObserver(private val file: File) {
 
                 if (shouldStop.get())
                     break
+
+                Thread.sleep(50);
 
                 for (event in key.pollEvents()) {
                     if (event.kind() == StandardWatchEventKinds.OVERFLOW) {

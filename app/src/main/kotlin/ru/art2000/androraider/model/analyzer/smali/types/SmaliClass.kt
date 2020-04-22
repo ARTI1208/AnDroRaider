@@ -2,7 +2,6 @@ package ru.art2000.androraider.model.analyzer.smali.types
 
 import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
 import ru.art2000.androraider.model.analyzer.result.RangeAnalyzeStatus
-import ru.art2000.androraider.model.analyzer.result.Error
 import java.io.File
 
 @Suppress("RedundantVisibilityModifier")
@@ -86,7 +85,7 @@ class SmaliClass() : FileAnalyzeResult {
     val fields = mutableListOf<SmaliField>()
     val methods = mutableListOf<SmaliMethod>()
 
-    val errors = mutableListOf<Error>()
+    val ranges = mutableListOf<RangeAnalyzeStatus>()
 
     var arrayCount = 0
 
@@ -115,9 +114,9 @@ class SmaliClass() : FileAnalyzeResult {
     }
 
     override val rangeStatuses: List<RangeAnalyzeStatus>
-        get() = errors
+        get() = ranges
 
     override fun toString(): String {
-        return "SmaliClass(modifier=$modifier, name='$name', parentPackage=${parentPackage?.fullname}, parentClass=${parentClass?.fullname})"
+        return fullname
     }
 }

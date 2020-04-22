@@ -39,7 +39,7 @@ class TypeDetector {
                     return false
                 if (knownVectorTypes.contains(file.extension))
                     return true
-                println("ext is ${file.extension}, parent ${file.parent}")
+
                 if (file.extension == "xml" && file.parentFile.name.startsWith("drawable"))
                     return true
 

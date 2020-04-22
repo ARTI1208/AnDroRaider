@@ -5,6 +5,7 @@ import javafx.scene.control.*
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseButton
+import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialogPane
 import ru.art2000.androraider.view.dialogs.showErrorMessage
@@ -23,11 +24,9 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
 
     val onFileSelectedListeners = mutableListOf<FileSelectedListener>()
 
-    private val fileHistory = mutableListOf<File>()
-
     private val searchResults = mutableListOf<File>()
 
-    private lateinit var baseFolder: File
+    private lateinit var project: ProjectAnalyzeResult
 
     init {
         setCellFactory { FileManagerTreeListItem() }
@@ -69,8 +68,8 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
         }
     }
 
-    public fun setupWithBaseFolder(baseFolder: File) {
-        this.baseFolder = baseFolder
+    public fun setupWithProject(currentProject: ProjectAnalyzeResult) {
+        project = currentProject
         updateFileList()
     }
 
@@ -89,15 +88,9 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
     }
 
     private fun onFileItemClick(file: File) {
-        if (fileHistory.getOrNull(0) == file) {
-            return
-        }
-
         onFileSelectedListeners.forEach {
-            it.fileSelected(fileHistory.getOrNull(0), file)
+            it.fileSelected(null, file)
         }
-        fileHistory.remove(file)
-        fileHistory.add(0, file)
     }
 
     fun onTreeItemCreate(treeItem: TreeItem<File>?) {
@@ -348,7 +341,7 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
 
     public fun updateFileList(fileToSelect: File? = null) {
         val structure = saveStructure()
-        root = TreeItem(baseFolder)
+        root = TreeItem(project.baseFolder)
         val itemToSelect = if (fileToSelect == null)
             addFileExplorerTreeItemChildren(root, selectionModel.selectedItem?.value)
         else
@@ -413,7 +406,7 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
         }
 
 
-        baseFolder.walk().forEach {
+        project.baseFolder.walk().forEach {
 
             if (it.name.toLowerCase().contains(valueToFind.toLowerCase())
                     || it.extension.toLowerCase().contains(valueToFind.toLowerCase())
@@ -422,7 +415,7 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
             }
         }
 
-        setupWithBaseFolder(baseFolder)
+        updateFileList()
     }
 
     override fun findNext() {

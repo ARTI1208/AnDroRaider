@@ -59,7 +59,6 @@ class DecompileDialog(val app: File) : Dialog<Pair<List<ApktoolCommand>, File>?>
             return@setResultConverter if (button == decompileButton) {
                 cont.goThrough(selectedOptions)
                 val resultPath = folderPath.text + File.separator + folderName.text
-                println(resultPath)
                 selectedOptions.add(ApktoolCommand(
                         ApktoolCommand.General.OUTPUT, resultPath))
                 if (customFramework.isSelected)
