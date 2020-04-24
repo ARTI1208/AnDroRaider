@@ -1059,12 +1059,8 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
     }
 
     override fun visitErrorNode(node: ErrorNode): SmaliClass {
-        println("Error $node, line=${node.symbol.line} range=${node.symbol.startIndex}..${node.symbol.stopIndex} text=${node.text} for $smaliClass")
-        smaliClass.ranges.find { it.range.first == node.symbol.startIndex }
-                ?: run {
-                    println(smaliClass.fullname)
-                    smaliClass.ranges.add(Error.from(node))
-                }
+//        println("Error $node, line=${node.symbol.line} range=${node.symbol.startIndex}..${node.symbol.stopIndex} text=${node.text} for $smaliClass")
+        smaliClass.ranges.find { it.range.first == node.symbol.startIndex } ?: smaliClass.ranges.add(Error.from(node))
         return super.visitErrorNode(node)
     }
 

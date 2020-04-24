@@ -2,17 +2,16 @@ package ru.art2000.androraider.model.editor
 
 class SearchSpanList() : ArrayList<IntRange>() {
 
-    var searchString: String? = null
+    var searchString: String = ""
         set(value) {
             if (field != value) {
-                clear()
+                super.clear()
                 field = value
             }
         }
 
     override fun clear() {
-        super.clear()
-        searchString = null
+        searchString = ""
     }
 
 }

@@ -1,28 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.lang.*?>
-<?import java.util.*?>
-<?import javafx.scene.*?>
 <?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
+<?import javafx.geometry.Insets?>
 <VBox spacing="10" xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml">
-    <RadioButton id="builtinFrame" text="Built-in framework"/>
-    <RadioButton id="customFrame" text="Custom framework"/>
-    <HBox id="framePathBox" spacing="10">
-        <TextField id="-p" />
-        <Button id="customFramePathSelector" text="Select"/>
+    <padding>
+        <Insets bottom="20" />
+    </padding>
+
+    <fx:define>
+        <ToggleGroup fx:id="frameworkType"/>
+        <Tooltip fx:id="fileNameTooltip" text="${fileNameField.text}"/>
+        <Tooltip fx:id="filePathTooltip" text="${filePathField.text}"/>
+    </fx:define>
+
+    <RadioButton fx:id="builtinFrameRadio" toggleGroup="$frameworkType" text="Built-in framework" selected="true"/>
+    <RadioButton fx:id="customFrameRadio" toggleGroup="$frameworkType" text="Custom framework"/>
+    <HBox id="framePathBox" spacing="10" disable="${builtinFrameRadio.selected}">
+        <TextField fx:id="customFramePathField" id="-p"/>
+        <Button fx:id="customFramePathSelector" text="Select"/>
     </HBox>
     <HBox alignment="CENTER_LEFT" spacing="10">
         <Text text="File name: "/>
-        <TextField promptText="File name" id="fileName" />
+        <TextField fx:id="fileNameField" tooltip="$fileNameTooltip" promptText="File name"/>
     </HBox>
     <HBox alignment="CENTER_LEFT" spacing="10">
         <Text text="Path to file: "/>
-        <TextField text="Path to folder" id="path" />
-        <Button id="pathSelector" text="Select"/>
+        <TextField fx:id="filePathField" tooltip="$filePathTooltip" text="Path to folder"/>
+        <Button fx:id="filePathFieldSelector" text="Select"/>
     </HBox>
-    <CheckBox id="-f" text="Do not search changes" />
+    <CheckBox fx:id="forceRebuildCheckBox" id="-f" text="Force rebuild"/>
 </VBox>

@@ -7,6 +7,7 @@
 <?import ru.art2000.androraider.view.editor.CodeEditorArea?>
 <?import ru.art2000.androraider.view.editor.FileManagerView?>
 <?import ru.art2000.androraider.view.editor.ConsoleView?>
+<?import ru.art2000.androraider.view.editor.menu.search.SearchMenuItem?>
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml">
     <MenuBar>
@@ -16,7 +17,7 @@
             <MenuItem fx:id="recompile" text="Recompile"/>
         </Menu>
         <Menu fx:id="searchMenu" text="_Search">
-            <CustomMenuItem fx:id="search"/>
+            <SearchMenuItem fx:id="search"/>
         </Menu>
         <Menu fx:id="miscMenu" text="_Misc">
             <MenuItem fx:id="examineFile" text="Examine file"/>
@@ -27,6 +28,7 @@
             <FileManagerView fx:id="fileManagerView"/>
             <SplitPane orientation="VERTICAL">
                 <VirtualizedScrollPane minWidth="0" minHeight="0">
+                    <!--suppress JavaFxDefaultTag -->
                     <content>
                         <CodeEditorArea fx:id="editorArea"/>
                     </content>

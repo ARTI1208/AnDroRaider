@@ -1,40 +1,49 @@
 package ru.art2000.androraider.model.apktool
 
+@Suppress("MemberVisibilityCanBePrivate", "unused")
 class ApktoolCommand(val tag: String, val value: String? = null) {
+
     class General {
+
         companion object {
-            @JvmStatic
-            val INSTALL_FRAME_TAG = "if"
-            @JvmStatic
-            val OUTPUT = "-o"
-            @JvmStatic
-            val FRAMEWORK_FOLDER_PATH = "-p"
-            @JvmStatic
-            val FRAMEWORK_TAG = "-t"
+
+            const val INSTALL_FRAME_TAG = "if"
+            const val OUTPUT = "-o"
+            const val FRAMEWORK_FOLDER_PATH = "-p"
+            const val FRAMEWORK_TAG = "-t"
+
+            fun installFramework() = ApktoolCommand(INSTALL_FRAME_TAG)
+            fun output(outputPath: Any) = ApktoolCommand(OUTPUT, outputPath.toString())
+            fun frameworkFolder(frameworkFolderPath: Any) = ApktoolCommand(FRAMEWORK_FOLDER_PATH, frameworkFolderPath.toString())
+            fun frameworkTag() = ApktoolCommand(FRAMEWORK_TAG)
         }
     }
 
-    @Suppress("unused")
     class Decompiler {
+
         companion object {
-            @JvmStatic
-            val TAG = "d"
-            @JvmStatic
-            val OVERRIDE_FOLDER = "-f"
-            @JvmStatic
-            val DO_NOT_DECODE_RES = "-r"
-            @JvmStatic
-            val DO_NOT_DECODE_CODE = "-s"
+
+            const val TAG = "d"
+            const val OVERRIDE_FOLDER = "-f"
+            const val DO_NOT_DECODE_RES = "-r"
+            const val DO_NOT_DECODE_CODE = "-s"
+
+            fun tag() = ApktoolCommand(TAG)
+            fun override() = ApktoolCommand(OVERRIDE_FOLDER)
+            fun noRes() = ApktoolCommand(DO_NOT_DECODE_RES)
+            fun noCode() = ApktoolCommand(DO_NOT_DECODE_CODE)
         }
     }
 
-    @Suppress("unused")
     class Compiler {
+
         companion object {
-            @JvmStatic
-            val TAG = "b"
-            @JvmStatic
-            val SKIP_LOOK_FOR_CHANGES = "-f"
+
+            const val TAG = "b"
+            const val SKIP_LOOK_FOR_CHANGES = "-f"
+
+            fun tag() = ApktoolCommand(TAG)
+            fun forceRebuild() = ApktoolCommand(SKIP_LOOK_FOR_CHANGES)
         }
     }
 }

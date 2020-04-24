@@ -1,40 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.lang.*?>
-<?import java.util.*?>
-<?import javafx.scene.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.text.Text?>
+<?import javafx.geometry.Insets?>
 <VBox spacing="10" xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml">
+    <padding>
+        <Insets bottom="20" />
+    </padding>
     <HBox spacing="10">
-        <CheckBox id="-s" text="Do not decompile code" />
-        <CheckBox id="-r" text="Do not decompile res" />
+        <CheckBox fx:id="noCodeDecompile" id="-s" text="Do not decompile code"/>
+        <CheckBox fx:id="noResDecompile" id="-r" text="Do not decompile res"/>
     </HBox>
-    <RadioButton id="builtinFrame" text="Built-in framework"/>
-    <RadioButton id="customFrame" text="Custom framework"/>
-    <HBox id="framePathBox" spacing="10">
-        <TextField id="-p" />
-        <Button id="customFramePathSelector" text="Select"/>
+
+    <fx:define>
+        <ToggleGroup fx:id="frameworkType"/>
+    </fx:define>
+
+    <RadioButton fx:id="builtinFrameRadio" toggleGroup="$frameworkType" text="Built-in framework" selected="true"/>
+    <RadioButton fx:id="customFrameRadio" toggleGroup="$frameworkType" text="Custom framework"/>
+    <HBox spacing="10" disable="${builtinFrameRadio.selected}">
+        <TextField fx:id="customFramePathField" id="-p"/>
+        <Button fx:id="customFramePathSelector" text="Select"/>
     </HBox>
     <HBox alignment="CENTER_LEFT" spacing="10">
         <Text text="Folder: "/>
-        <TextField promptText="Folder name" id="folderName" />
+        <TextField fx:id="folderNameField" promptText="Folder name"/>
     </HBox>
     <HBox alignment="CENTER_LEFT" spacing="10">
         <Text text="Path to folder: "/>
-        <TextField text="Path to folder" id="path" />
-        <Button id="pathSelector" text="Select"/>
+        <TextField fx:id="projectPathField" text="Path to folder"/>
+        <Button fx:id="projectPathFieldSelector" text="Select"/>
     </HBox>
-    <CheckBox id="-f" text="Override if folder already exists" />
+    <CheckBox fx:id="overrideIfExistsCheckBox" id="-f" text="Override if folder already exists"/>
     <!--<HBox spacing="10">-->
-        <!--<padding>-->
-            <!--<Insets top="30"/>-->
-        <!--</padding>-->
-        <!--<CheckBox id="saveChoice" text="Save choice" />-->
-        <!--<CheckBox id="doNotAskAgain" text="Do not ask again" />-->
+    <!--<padding>-->
+    <!--<Insets top="30"/>-->
+    <!--</padding>-->
+    <!--<CheckBox id="saveChoice" text="Save choice" />-->
+    <!--<CheckBox id="doNotAskAgain" text="Do not ask again" />-->
     <!--</HBox>-->
 </VBox>

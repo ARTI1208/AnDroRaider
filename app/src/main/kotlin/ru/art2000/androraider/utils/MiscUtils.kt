@@ -1,5 +1,7 @@
 package ru.art2000.androraider.utils
 
+import javafx.beans.property.Property
+import javafx.beans.value.ObservableValue
 import javafx.scene.control.CheckBox
 import javafx.scene.layout.Pane
 import org.antlr.v4.runtime.ParserRuleContext
@@ -8,14 +10,11 @@ import ru.art2000.androraider.model.apktool.ApktoolCommand
 import java.io.File
 import java.util.regex.Matcher
 
-fun Pane.goThrough(list: ArrayList<ApktoolCommand>) {
-    for (ch in this.childrenUnmodifiable) {
-        if (ch is Pane) {
-            ch.goThrough(list)
-        } else if (ch is CheckBox && ch.id.startsWith('-') && ch.isSelected) {
-            list.add(ApktoolCommand(ch.id))
-        }
+public fun <T, E> Property<T>.bind(observable: ObservableValue<E>, converter: (e: E) -> T) {
+    observable.addListener{_, _, newValue ->
+        value = converter(newValue)
     }
+    value = converter(observable.value)
 }
 
 fun Matcher.contains(group: String): Boolean {

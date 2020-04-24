@@ -17,6 +17,7 @@ import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.editor.SearchSpanList
 import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.utils.contains
+import ru.art2000.androraider.utils.getStyle
 import java.io.File
 import java.nio.file.Files
 import java.time.Duration
@@ -24,7 +25,7 @@ import java.util.function.Consumer
 import java.util.regex.Pattern
 
 @Suppress("RedundantVisibilityModifier")
-class CodeEditorArea : CodeArea(), Searchable<String?> {
+class CodeEditorArea : CodeArea(), Searchable<String> {
 
     val observableCurrentEditingFile = object : ObservableValue<File?> {
         override fun removeListener(p0: ChangeListener<in File?>?) {
@@ -78,7 +79,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     private var isFileChanged = false
 
-    override var currentSearchValue: String? = null
+    override var currentSearchValue: String = ""
 
     private var currentSearchCursor = -1
         set(value) {
@@ -108,6 +109,8 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
                 afterFileWrittenListeners.forEach { it.accept(currentEditingFile!!) }
             }
         }
+
+        stylesheets.add(javaClass.getStyle("code.css"))
 
         multiPlainChanges()
                 .successionEnds(Duration.ofMillis(200))
@@ -188,11 +191,11 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
         }
     }
 
-    public override fun find(valueToFind: String?) {
+    public override fun find(valueToFind: String) {
         findAll(valueToFind)
     }
 
-    public override fun findAll(valueToFind: String?) {
+    public override fun findAll(valueToFind: String) {
         currentSearchValue = valueToFind
 //        setStyleSpans(0, updateHighlighting())
         updateHighlighting()
@@ -200,7 +203,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
     }
 
     public override fun findNext() {
-        if (searchSpanList.size == 0 || currentSearchValue.isNullOrEmpty()) {
+        if (searchSpanList.size == 0 || currentSearchValue.isEmpty()) {
             currentSearchCursor = -1
             return
         }
@@ -211,7 +214,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
 
     public override fun findPrevious() {
         val size = searchSpanList.size
-        if (size == 0 || currentSearchValue.isNullOrEmpty()) {
+        if (size == 0 || currentSearchValue.isEmpty()) {
             currentSearchCursor = -1
             searchSpanList.searchString
             return
@@ -254,7 +257,7 @@ class CodeEditorArea : CodeArea(), Searchable<String?> {
                     }
 
 
-                    println(result.rangeStatuses.size)
+//                    println(result.rangeStatuses.size)
 
                     result.rangeStatuses.forEach { status ->
                         setStyle(status.range.first, status.range.last + 1, status.style)

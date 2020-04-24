@@ -1,42 +1,53 @@
 package ru.art2000.androraider.view.settings
 
 import javafx.fxml.FXML
+import javafx.scene.Parent
 import javafx.scene.control.Button
 import javafx.scene.control.RadioButton
 import javafx.scene.control.TextField
 import javafx.scene.control.ToggleGroup
+import ru.art2000.androraider.utils.getLayout
 
-class SettingsController {
-
-    @FXML
-    lateinit var javaSourcesPathSelectButton: Button
-    @FXML
-    lateinit var apktoolPathSelectButton: Button
-    @FXML
-    lateinit var frameworkFilePathSelectButton: Button
-    @FXML
-    lateinit var frameworkFolderPathSelectButton: Button
+class SettingsController : ISettingsController {
 
     @FXML
-    lateinit var clearDataButton: Button
+    override lateinit var javaSourcesPathSelectButton: Button
+    @FXML
+    override lateinit var apktoolPathSelectButton: Button
+    @FXML
+    override lateinit var frameworkFilePathSelectButton: Button
+    @FXML
+    override lateinit var frameworkFolderPathSelectButton: Button
 
     @FXML
-    lateinit var javaSourcesPath: TextField
-    @FXML
-    lateinit var apktoolPath: TextField
-    @FXML
-    lateinit var frameworkFolderPath: TextField
-    @FXML
-    lateinit var frameworkFilePath: TextField
-    @FXML
-    lateinit var frameworkFileRB: RadioButton
-    @FXML
-    lateinit var frameworkFolderRB: RadioButton
-    @FXML
-    lateinit var frameworkSmartFolderRB: RadioButton
-    @FXML
-    lateinit var frameworkStaticFolderRB: RadioButton
+    override lateinit var clearDataButton: Button
 
-    val frameworkTypeGroup = ToggleGroup()
-    val frameworkFolderTypeGroup = ToggleGroup()
+    @FXML
+    override lateinit var javaSourcesPath: TextField
+    @FXML
+    override lateinit var apktoolPath: TextField
+    @FXML
+    override lateinit var frameworkFolderPath: TextField
+    @FXML
+    override lateinit var frameworkFilePath: TextField
+    @FXML
+    override lateinit var frameworkFileRB: RadioButton
+    @FXML
+    override lateinit var frameworkFolderRB: RadioButton
+    @FXML
+    override lateinit var frameworkSmartFolderRB: RadioButton
+    @FXML
+    override lateinit var frameworkStaticFolderRB: RadioButton
+
+    override val frameworkTypeGroup = ToggleGroup()
+    override val frameworkFolderTypeGroup = ToggleGroup()
+
+    override val root: Parent
+    override val layoutFile = "settings.fxml"
+
+    init {
+        val loader = javaClass.getLayout(layoutFile)
+        loader.setController(this)
+        root = loader.load()
+    }
 }

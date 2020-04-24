@@ -14,15 +14,12 @@ import java.io.File
 import java.nio.file.DirectoryNotEmptyException
 import java.nio.file.Files
 
+typealias onFileSelected = (File?, File) -> Unit
+
 @Suppress("RedundantVisibilityModifier")
-class FileManagerView : TreeView<File>(), Searchable<String?> {
+class FileManagerView : TreeView<File>(), Searchable<String> {
 
-    @FunctionalInterface
-    interface FileSelectedListener {
-        fun fileSelected(oldFile: File?, newFile: File)
-    }
-
-    val onFileSelectedListeners = mutableListOf<FileSelectedListener>()
+    val onFileSelectedListeners = mutableListOf<onFileSelected>()
 
     private val searchResults = mutableListOf<File>()
 
@@ -89,7 +86,7 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
 
     private fun onFileItemClick(file: File) {
         onFileSelectedListeners.forEach {
-            it.fileSelected(null, file)
+            it(null, file)
         }
     }
 
@@ -391,20 +388,18 @@ class FileManagerView : TreeView<File>(), Searchable<String?> {
         return returnItem
     }
 
-    override var currentSearchValue: String? = null
+    override var currentSearchValue: String = ""
 
-    override fun find(valueToFind: String?) {
+    override fun find(valueToFind: String) {
         findAll(valueToFind)
     }
 
-    override fun findAll(valueToFind: String?) {
+    override fun findAll(valueToFind: String) {
         searchResults.clear()
 
-        if (valueToFind == null || valueToFind.isEmpty()) {
-
+        if (valueToFind.isEmpty()) {
             return
         }
-
 
         project.baseFolder.walk().forEach {
 

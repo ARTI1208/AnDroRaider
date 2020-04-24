@@ -7,23 +7,32 @@ import javafx.scene.image.ImageView
 import javafx.scene.layout.HBox
 import javafx.scene.text.Text
 import ru.art2000.androraider.model.launcher.RecentProject
+import ru.art2000.androraider.utils.getLayout
 
-class LauncherController {
+class LauncherController : ILauncherController {
 
     @FXML
-    lateinit var appNameText: Text
+    override lateinit var appNameText: Text
     @FXML
-    lateinit var appInfoText: Text
+    override lateinit var appInfoText: Text
     @FXML
-    lateinit var recentsListView: ListView<RecentProject>
+    override lateinit var recentsListView: ListView<RecentProject>
     @FXML
-    lateinit var appLogoImageView: ImageView
+    override lateinit var appLogoImageView: ImageView
     @FXML
-    lateinit var newProjectButton: Hyperlink
+    override lateinit var newProjectButton: Hyperlink
     @FXML
-    lateinit var openProjectButton: Hyperlink
+    override lateinit var openProjectButton: Hyperlink
     @FXML
-    lateinit var settingsButton: Hyperlink
-    @FXML
-    lateinit var root: HBox
+    override lateinit var settingsButton: Hyperlink
+
+    override val root: HBox
+
+    override val layoutFile = "launcher.fxml"
+
+    init {
+        val loader = javaClass.getLayout(layoutFile)
+        loader.setController(this)
+        root = loader.load()
+    }
 }

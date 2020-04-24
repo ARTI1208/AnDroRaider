@@ -23,18 +23,24 @@
     </HBox>
     <Text text="Framework"/>
     <VBox spacing="10">
-        <RadioButton text="Static framework file" fx:id="frameworkFileRB"/>
-        <HBox>
+
+        <fx:define>
+            <ToggleGroup fx:id="frameworkType" />
+            <ToggleGroup fx:id="frameworkFolderType" />
+        </fx:define>
+
+        <RadioButton text="Static framework file" toggleGroup="$frameworkType" fx:id="frameworkFileRB" selected="true"/>
+        <HBox disable="${frameworkFolderRB.selected}">
             <TextField promptText="framework path" fx:id="frameworkFilePath"/>
             <Button text="Select" fx:id="frameworkFilePathSelectButton"/>
         </HBox>
-        <RadioButton text="Framework in folder" fx:id="frameworkFolderRB"/>
-        <VBox spacing="10">
+        <RadioButton text="Framework in folder" toggleGroup="$frameworkType" fx:id="frameworkFolderRB"/>
+        <VBox spacing="10" disable="${frameworkFileRB.selected}">
             <VBox.margin>
                 <Insets left="50"/>
             </VBox.margin>
-            <RadioButton text="Autoselect (search in project parent folder)" fx:id="frameworkSmartFolderRB"/>
-            <RadioButton text="Static folder" fx:id="frameworkStaticFolderRB"/>
+            <RadioButton text="Autoselect (search in project parent folder)" toggleGroup="$frameworkFolderType" fx:id="frameworkSmartFolderRB"/>
+            <RadioButton text="Static folder" toggleGroup="$frameworkFolderType" fx:id="frameworkStaticFolderRB"/>
             <HBox>
                 <TextField promptText="framework path" fx:id="frameworkFolderPath"/>
                 <Button text="Select" fx:id="frameworkFolderPathSelectButton"/>

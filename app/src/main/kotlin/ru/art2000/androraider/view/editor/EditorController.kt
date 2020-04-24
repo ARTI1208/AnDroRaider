@@ -1,43 +1,43 @@
 package ru.art2000.androraider.view.editor
 
-import io.reactivex.disposables.Disposable
 import javafx.fxml.FXML
-import javafx.scene.control.CustomMenuItem
-import javafx.scene.control.Menu
-import javafx.scene.control.MenuItem
-import javafx.scene.control.TextField
+import javafx.scene.Parent
+import javafx.scene.control.*
+import ru.art2000.androraider.mvp.BaseController
+import ru.art2000.androraider.utils.getLayout
+import ru.art2000.androraider.view.editor.menu.search.SearchMenuItem
 
-class EditorController {
-
-    @FXML
-    lateinit var home: MenuItem
+class EditorController : BaseController(), IEditorController {
 
     @FXML
-    lateinit var settings: MenuItem
+    override lateinit var home: MenuItem
 
     @FXML
-    lateinit var recompile: MenuItem
+    override lateinit var settings: MenuItem
+
+    @FXML
+    override lateinit var recompile: MenuItem
 
     // Menu/Search
     @FXML
-    lateinit var searchMenu: Menu
+    override lateinit var searchMenu: Menu
 
     @FXML
-    lateinit var search: CustomMenuItem
+    override lateinit var search: SearchMenuItem
 
     // Menu/Misc
     @FXML
-    lateinit var examineFile: MenuItem
+    override lateinit var examineFile: MenuItem
 
     // Main area
     @FXML
-    lateinit var fileManagerView: FileManagerView
+    override lateinit var fileManagerView: FileManagerView
 
     @FXML
-    lateinit var editorArea: CodeEditorArea
+    override lateinit var editorArea: CodeEditorArea
 
     @FXML
-    lateinit var console: ConsoleView
+    override lateinit var console: ConsoleView
 
-    var searchField = TextField()
+    override val layoutFile = "editor.fxml"
 }

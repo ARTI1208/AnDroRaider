@@ -6,10 +6,10 @@ import javafx.collections.ObservableList
 import ru.art2000.androraider.model.launcher.RecentProject
 import ru.art2000.androraider.model.settings.PreferenceManager
 import ru.art2000.androraider.model.settings.SettingsManager
-import ru.art2000.androraider.presenter.Presenter
+import ru.art2000.androraider.mvp.IPresenter
 import ru.art2000.androraider.view.launcher.Launcher
 
-class LauncherPresenter : Presenter, PreferenceManager by prefs {
+class LauncherPresenter : IPresenter, PreferenceManager by prefs {
 
     companion object {
         const val KEY_RECENTS = "recent_projects"

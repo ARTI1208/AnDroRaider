@@ -2,14 +2,12 @@ package ru.art2000.androraider.presenter.editor
 
 import io.reactivex.disposables.Disposable
 import javafx.collections.FXCollections
-import ru.art2000.androraider.model.analyzer.SyntaxAnalyzer
 import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
-import ru.art2000.androraider.model.editor.SingleInstanceObservableList
 import ru.art2000.androraider.model.editor.project.DirectoryObserver
-import ru.art2000.androraider.presenter.Presenter
+import ru.art2000.androraider.mvp.IPresenter
 import java.io.File
 
-class EditorPresenter(val baseFolder: File) : Presenter, Disposable {
+class EditorPresenter(val baseFolder: File) : IPresenter, Disposable {
 
     val projectAnalyzeResult = ProjectAnalyzeResult(baseFolder)
 
