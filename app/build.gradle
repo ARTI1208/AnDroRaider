@@ -6,7 +6,7 @@ plugins {
 }
 
 group 'ru.art2000'
-version 'BETA 0.1'
+version 'BETA-0.1'
 
 sourceCompatibility = 13
 
@@ -28,6 +28,12 @@ compileTestKotlin {
 }
 
 tasks.compileKotlin.dependsOn(generateGrammarSource)
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'ru.art2000.androraider.view.AnDroRaider'
+    }
+}
 
 generateGrammarSource {
     arguments += ["-visitor"]

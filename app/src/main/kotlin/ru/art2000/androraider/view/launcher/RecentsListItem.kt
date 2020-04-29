@@ -11,6 +11,7 @@ import javafx.scene.control.ListCell
 import javafx.scene.effect.Blend
 import javafx.scene.effect.BlendMode
 import javafx.scene.effect.ColorInput
+import javafx.scene.image.Image
 import javafx.scene.image.ImageView
 import javafx.scene.layout.AnchorPane
 import javafx.scene.paint.Color
@@ -35,6 +36,12 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
 
     private val defaultCrossColor: Color = Color.valueOf("#33A3F8")
 
+    companion object {
+        val crossImage: Image? by lazy {
+            RecentsListItem::class.java.getDrawable("cross.png")
+        }
+    }
+
     private var fxmlLoader: FXMLLoader? = null
 
     init {
@@ -53,7 +60,7 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
         }
         maxWidth = Control.USE_PREF_SIZE
 
-        val imageView = ImageView(javaClass.getDrawable("cross.png"))
+        val imageView = ImageView(crossImage)
         imageView.fitHeight = 20.0
         imageView.fitWidth = 20.0
         imageView.isVisible = false

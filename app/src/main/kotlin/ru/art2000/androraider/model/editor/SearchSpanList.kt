@@ -1,6 +1,6 @@
 package ru.art2000.androraider.model.editor
 
-class SearchSpanList() : ArrayList<IntRange>() {
+class SearchSpanList : ArrayList<IntRange>() {
 
     var searchString: String = ""
         set(value) {

@@ -7,24 +7,17 @@ import javafx.stage.Stage
 import javafx.stage.Window
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
 
-class Settings(owner: Window) : Window(), ISettingsView, ISettingsController by SettingsController() {
-
-    private val settingsStage = Stage()
+class Settings(owner: Window) : Stage(), ISettingsView, ISettingsController by SettingsController() {
 
     override val presenter = SettingsPresenter()
 
     init {
-        settingsStage.title = "Settings"
-        settingsStage.scene = Scene(root, 900.0, 600.0)
-        settingsStage.initOwner(owner)
-
+        title = "Settings"
+        scene = Scene(root, 900.0, 600.0)
+        initOwner(owner)
 
         setupApktoolSettings()
         setupClearButton()
-    }
-
-    public override fun show() {
-        settingsStage.show()
     }
 
     private fun setupApktoolSettings() {
@@ -33,7 +26,7 @@ class Settings(owner: Window) : Window(), ISettingsView, ISettingsController by 
         apktoolPathSelectButton.onAction = EventHandler {
             val chooser = FileChooser()
             chooser.extensionFilters.add(FileChooser.ExtensionFilter("Executable JAR", "*.jar"))
-            val jar = chooser.showOpenDialog(settingsStage) ?: return@EventHandler
+            val jar = chooser.showOpenDialog(this) ?: return@EventHandler
             apktoolPath.text = jar.absolutePath
         }
     }

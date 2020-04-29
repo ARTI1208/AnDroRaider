@@ -43,3 +43,9 @@
 .error {
     -rtfx-background-color: red;
 }
+
+.popup {
+    -fx-background-color: black;
+    -fx-text-fill: white;
+    -fx-padding: 5;
+}

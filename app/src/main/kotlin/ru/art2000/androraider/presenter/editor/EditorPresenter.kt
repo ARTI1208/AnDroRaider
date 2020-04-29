@@ -1,15 +1,16 @@
 package ru.art2000.androraider.presenter.editor
 
+import io.reactivex.Observable
 import io.reactivex.disposables.Disposable
 import javafx.collections.FXCollections
-import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
+import javafx.stage.Window
+import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
+import ru.art2000.androraider.model.editor.getOrInitProject
 import ru.art2000.androraider.model.editor.project.DirectoryObserver
 import ru.art2000.androraider.mvp.IPresenter
 import java.io.File
 
-class EditorPresenter(val baseFolder: File) : IPresenter, Disposable {
-
-    val projectAnalyzeResult = ProjectAnalyzeResult(baseFolder)
+class EditorPresenter(private val window: Window, private val baseFolder: File) : IPresenter, Disposable {
 
     var currentOpenedFile = -1
         private set
@@ -44,6 +45,9 @@ class EditorPresenter(val baseFolder: File) : IPresenter, Disposable {
 
     val projectObserver = DirectoryObserver(baseFolder)
 
+    fun generateProjectIndex() : Observable<out FileAnalyzeResult>? {
+        return getOrInitProject(window, baseFolder).indexProject()
+    }
 
     override fun isDisposed() = disposed
 

@@ -3,81 +3,42 @@ package ru.art2000.androraider.view.editor
 import io.reactivex.Single
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
-import javafx.beans.InvalidationListener
-import javafx.beans.value.ChangeListener
-import javafx.beans.value.ObservableValue
+import javafx.beans.property.ObjectPropertyBase
 import javafx.scene.control.Label
 import javafx.stage.Popup
 import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
 import org.fxmisc.richtext.LineNumberFactory
 import org.fxmisc.richtext.event.MouseOverTextEvent
-import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.editor.SearchSpanList
+import ru.art2000.androraider.model.editor.getProjectForNode
 import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.utils.contains
 import ru.art2000.androraider.utils.getStyle
 import java.io.File
 import java.nio.file.Files
 import java.time.Duration
-import java.util.function.Consumer
 import java.util.regex.Pattern
 
-@Suppress("RedundantVisibilityModifier")
+@Suppress("RedundantVisibilityModifier", "MemberVisibilityCanBePrivate")
 class CodeEditorArea : CodeArea(), Searchable<String> {
 
-    val observableCurrentEditingFile = object : ObservableValue<File?> {
-        override fun removeListener(p0: ChangeListener<in File?>?) {
-            currentEditingFileChangeListeners.remove(p0)
+    val currentEditingFileProperty = object : ObjectPropertyBase<File?>() {
+        override fun getName(): String {
+            return "currentEditingFile"
         }
 
-        override fun removeListener(p0: InvalidationListener?) {
-            currentEditingFileInvalidationListeners.remove(p0)
+        override fun getBean(): Any {
+            return this@CodeEditorArea
         }
-
-        override fun addListener(p0: InvalidationListener?) {
-            currentEditingFileInvalidationListeners.add(p0)
-        }
-
-        override fun addListener(p0: ChangeListener<in File?>?) {
-            currentEditingFileChangeListeners.add(p0)
-        }
-
-        override fun getValue(): File? = currentEditingFile
     }
 
+    var currentEditingFile: File?
+        get() = currentEditingFileProperty.value
+        set(value) = currentEditingFileProperty.setValue(value)
+
     public var currentSmaliClass: SmaliClass? = null
-
-    public lateinit var project: ProjectAnalyzeResult
-
-//    public var syntaxAnalyzer: SyntaxAnalyzer<*>? = null
-
-    public var currentEditingFile: File? = null
-        private set(value) {
-            val previousValue = field
-            field = value
-            if (previousValue != value) {
-                isFileChanged = true
-                currentEditingFileChangeListeners.forEach {
-                    it?.changed(observableCurrentEditingFile, previousValue, value)
-                }
-
-                if (value == null) {
-                    currentEditingFileInvalidationListeners.forEach {
-                        it?.invalidated(observableCurrentEditingFile)
-                    }
-                }
-            }
-        }
-
-    private val currentEditingFileChangeListeners = mutableListOf<ChangeListener<in File?>?>()
-    private val currentEditingFileInvalidationListeners = mutableListOf<InvalidationListener?>()
-
-    val beforeFileWrittenListeners = mutableListOf<Consumer<File>>()
-    val afterFileWrittenListeners = mutableListOf<Consumer<File>>()
-
-    private var isFileChanged = false
 
     override var currentSearchValue: String = ""
 
@@ -98,31 +59,19 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
 
     init {
         paragraphGraphicFactory = LineNumberFactory.get(this)
-        textProperty().addListener { _, oldValue, newValue ->
-            if (isFileChanged) {
-                isFileChanged = false
-                return@addListener
-            }
-            if (currentEditingFile != null && oldValue.isNotEmpty()) {
-                beforeFileWrittenListeners.forEach { it.accept(currentEditingFile!!) }
-                Files.write(currentEditingFile!!.toPath(), newValue.toByteArray())
-                afterFileWrittenListeners.forEach { it.accept(currentEditingFile!!) }
-            }
-        }
 
         stylesheets.add(javaClass.getStyle("code.css"))
 
         multiPlainChanges()
                 .successionEnds(Duration.ofMillis(200))
                 .subscribe {
+                    currentEditingFile?.also { Files.write(it.toPath(), text.toByteArray()) }
                     updateHighlighting()
                 }
 
         val popup = Popup()
         val popupMsg = Label()
-        popupMsg.style = "-fx-background-color: black;" +
-                "-fx-text-fill: white;" +
-                "-fx-padding: 5;"
+        popupMsg.styleClass.add("popup")
         popup.content.add(popupMsg)
 
         mouseOverTextDelay = Duration.ofSeconds(1)
@@ -187,7 +136,6 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
                         updateHighlighting()
                         displaceCaret(0)
                     }.subscribe()
-//            setStyleSpans(0, updateHighlighting())
         }
     }
 
@@ -197,7 +145,6 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
 
     public override fun findAll(valueToFind: String) {
         currentSearchValue = valueToFind
-//        setStyleSpans(0, updateHighlighting())
         updateHighlighting()
         currentSearchCursor = 0
     }
@@ -227,7 +174,7 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
     private fun updateHighlighting() {
         Single
                 .fromCallable {
-                    project.analyzeFile(currentEditingFile!!)
+                    getProjectForNode(this)?.analyzeFile(currentEditingFile!!)
                 }.subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .doOnSuccess { result ->
@@ -256,15 +203,12 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
                         setStyle(it.start(), it.end(), listOf(styleClass))
                     }
 
-
-//                    println(result.rangeStatuses.size)
-
                     result.rangeStatuses.forEach { status ->
                         setStyle(status.range.first, status.range.last + 1, status.style)
                     }
 
                     searchSpanList.searchString = currentSearchValue
-                    if (!currentSearchValue.isNullOrEmpty()) {
+                    if (currentSearchValue.isNotEmpty()) {
                         val pattern = Pattern.compile("(?<SEARCH>$currentSearchValue)")
                         val searchMatcher = pattern.matcher(text)
                         if (pattern.pattern().isNotEmpty()) {
@@ -277,5 +221,4 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
                 }
                 .subscribe()
     }
-
 }

@@ -13,15 +13,12 @@ import javafx.scene.input.KeyCodeCombination
 import javafx.scene.input.KeyCombination
 import javafx.scene.layout.HBox
 import javafx.stage.Stage
-import javafx.stage.Window
+import javafx.stage.WindowEvent
 import ru.art2000.androraider.model.App
-import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
-import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.apktool.ApkToolUtils
 import ru.art2000.androraider.presenter.editor.EditorPresenter
 import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.utils.getFileRelativePath
-import ru.art2000.androraider.utils.getStyle
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.recompile.RecompileDialog
 import ru.art2000.androraider.view.dialogs.showErrorMessage
@@ -29,17 +26,17 @@ import ru.art2000.androraider.view.launcher.Launcher
 import ru.art2000.androraider.view.settings.Settings
 import java.io.File
 import java.io.IOException
-import java.io.PrintStream
 import java.nio.file.StandardWatchEventKinds
+import ru.art2000.androraider.model.io.println
+import ru.art2000.androraider.model.io.registerStreamOutput
+import ru.art2000.androraider.model.io.unregisterStreamOutput
 
-
+@Suppress("ReactiveStreamsUnusedPublisher")
 class Editor @Throws(IOException::class)
 constructor(private val projectFolder: File, vararg runnables: Runnable) :
-        Window(),
+        Stage(),
         IEditorView,
         IEditorController by EditorController() {
-
-    private var editorStage = Stage()
 
     private val onLoadRunnables = mutableListOf(*runnables)
 
@@ -49,42 +46,32 @@ constructor(private val projectFolder: File, vararg runnables: Runnable) :
 
     override val presenter: EditorPresenter
 
-    private val project: ProjectAnalyzeResult
-
     init {
         if (!projectFolder.exists())
             projectFolder.mkdirs()
 
-        project = ProjectAnalyzeResult(projectFolder)
-        presenter = EditorPresenter(projectFolder)
+        icons.add(App.LOGO)
+        title = "${projectFolder.name} - Project Editor"
+        scene = Scene(root, 900.0, 600.0)
+        presenter = EditorPresenter(this, projectFolder)
 
-        editorStage.apply {
-            icons.add(App.LOGO)
-            title = "${projectFolder.name} - Project Editor"
-
-            scene = Scene(root, 900.0, 600.0)
-            onHiding = EventHandler {
-                presenter.dispose()
-            }
-        }
-
-        editorStage.onShown = EventHandler {
+        addEventHandler(WindowEvent.WINDOW_SHOWN) {
+            registerStreamOutput(this, console)
+            showLoadingDialog()
+            onSetupFinished()
             fileManagerView.requestFocus()
         }
 
-        editorArea.prefWidthProperty().bind(editorStage.widthProperty().subtract(fileManagerView.prefWidthProperty()))
-        fileManagerView.prefHeightProperty().bind(editorStage.heightProperty())
+        addEventHandler(WindowEvent.WINDOW_HIDDEN) {
+            unregisterStreamOutput(this)
+            presenter.dispose()
+        }
 
-        setupConsoleView()
-        setupCodeArea()
+        editorArea.prefWidthProperty().bind(widthProperty().subtract(fileManagerView.prefWidthProperty()))
+        fileManagerView.prefHeightProperty().bind(heightProperty())
+
         setupFileExplorerView()
         setupMenu()
-    }
-
-    public override fun show() {
-        editorStage.show()
-        showLoadingDialog()
-        onSetupFinished()
     }
 
     private fun showLoadingDialog() {
@@ -97,27 +84,21 @@ constructor(private val projectFolder: File, vararg runnables: Runnable) :
         loadingDialog.show()
     }
 
-    private fun generateProjectIndex(): Observable<out FileAnalyzeResult> {
-        loadingLabel.text = "Indexing project..."
-
-        return project.indexProject()
-    }
-
     private fun onSetupFinished() {
         val onLoadObservable = Observable
                 .fromIterable(onLoadRunnables)
                 .subscribeOn(Schedulers.io())
                 .doOnNext { it.run() }
 
-        val projectIndexerObservable = generateProjectIndex()
+        val projectIndexerObservable = (presenter.generateProjectIndex() ?: Observable.empty())
                 .observeOn(JavaFxScheduler.platform())
                 .doOnNext {
                     loadingLabel.text = "Indexing $it..."
                 }.doOnSubscribe {
-                    App.currentStreamOutput.writeln("ProjectAnalyzer", "Analyze started")
+                    println(this, "ProjectAnalyzer", "Analyze started")
                 }
                 .doOnComplete {
-                    App.currentStreamOutput.writeln("ProjectAnalyzer", "Analyze ended")
+                    println(this,"ProjectAnalyzer", "Analyze ended")
 
                     loadingDialog.close()
 
@@ -125,16 +106,11 @@ constructor(private val projectFolder: File, vararg runnables: Runnable) :
                     presenter.projectObserver.start()
                 }
 
+        loadingLabel.text = "Indexing project..."
         Observable.concat(onLoadObservable, projectIndexerObservable).subscribe()
     }
 
-    private fun setupCodeArea() {
-        editorArea.project = project
-    }
-
     private fun setupFileExplorerView() {
-        fileManagerView.setupWithProject(project)
-
         fileManagerView.onFileSelectedListeners.add { _, newFile ->
             if (TypeDetector.isTextFile(newFile.name)) {
                 presenter.openFile(newFile)
@@ -152,33 +128,27 @@ constructor(private val projectFolder: File, vararg runnables: Runnable) :
         }
     }
 
-    private fun setupConsoleView() {
-        App.currentStreamOutput = console
-        System.setOut(PrintStream(console.getOutputStream()))
-//            System.setErr(PrintStream(console.getErrorStream()))
-    }
-
     private fun setupMenu() {
         // Menu/File
         home.parentMenu.isMnemonicParsing = true
         home.onAction = EventHandler {
-            editorStage.close()
-            Launcher().start(Stage())
+            hide()
+            Launcher().show()
         }
         settings.onAction = EventHandler {
-            Settings(editorStage).show()
+            Settings(this).show()
         }
         recompile.accelerator = KeyCodeCombination(KeyCode.R, KeyCombination.SHORTCUT_DOWN)
         recompile.onAction = EventHandler {
             val dialog = RecompileDialog(projectFolder)
-            dialog.initOwner(editorStage)
+            dialog.initOwner(this)
             val selectedOptions = dialog.showAndWait().get()
             if (selectedOptions.isNotEmpty()) {
                 ApkToolUtils.recompile(projectFolder, *selectedOptions.toTypedArray())
                         ?: showErrorMessage(
                                 "Recompile error",
                                 "An error occurred while recompiling",
-                                editorStage)
+                                this)
             }
         }
 
@@ -188,13 +158,13 @@ constructor(private val projectFolder: File, vararg runnables: Runnable) :
             search.searchField.requestFocus()
         }
 
-        editorStage.setOnShown {
-            editorStage.scene.accelerators[KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN)] = Runnable {
+        addEventHandler(WindowEvent.WINDOW_SHOWN) {
+            scene.accelerators[KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN)] = Runnable {
                 searchMenu.show()
             }
         }
 
-        editorStage.scene.focusOwnerProperty().addListener { _, _, newValue ->
+        scene.focusOwnerProperty().addListener { _, _, newValue ->
             @Suppress("UNCHECKED_CAST")
             search.currentSearchable = newValue as? Searchable<String>
         }
@@ -208,17 +178,17 @@ constructor(private val projectFolder: File, vararg runnables: Runnable) :
 
     private fun createFileInfoDialog() {
         val typeLabelTitle = Label("Type:")
-        val typeLabelValue = Label(editorArea.observableCurrentEditingFile.value?.extension
+        val typeLabelValue = Label(editorArea.currentEditingFile?.extension
                 ?: "No file or extension")
         val typeBox = HBox()
         typeBox.children.addAll(typeLabelTitle, typeLabelValue)
         typeBox.spacing = 40.0
 
         val fileInfoDialog = getBaseDialog<Unit>(typeBox)
-        fileInfoDialog.title = getFileRelativePath(editorArea.observableCurrentEditingFile.value, projectFolder)
+        fileInfoDialog.title = getFileRelativePath(editorArea.currentEditingFile, projectFolder)
                 ?: "No file is currently editing"
 
-        fileInfoDialog.initOwner(editorStage)
+        fileInfoDialog.initOwner(this)
         fileInfoDialog.dialogPane.buttonTypes.add(ButtonType.OK)
         fileInfoDialog.show()
     }

@@ -13,54 +13,37 @@ import javafx.scene.text.Text
 import javafx.stage.DirectoryChooser
 import javafx.stage.FileChooser
 import javafx.stage.Stage
+import javafx.stage.StageStyle
 import ru.art2000.androraider.model.App
 import ru.art2000.androraider.model.apktool.ApkToolUtils
 import ru.art2000.androraider.model.launcher.RecentProject
 import ru.art2000.androraider.presenter.launcher.LauncherPresenter
-import ru.art2000.androraider.utils.getStyle
 import ru.art2000.androraider.view.dialogs.decompile.DecompileDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.editor.Editor
 import ru.art2000.androraider.view.settings.Settings
 import java.io.File
 
-class Launcher : Application(), ILauncherView, ILauncherController by LauncherController() {
-
-    companion object {
-
-        fun main(args: Array<String>) {
-            launch(Launcher::class.java, *args)
-        }
-
-        lateinit var stage: Stage
-    }
+class Launcher : Stage(), ILauncherView, ILauncherController by LauncherController() {
 
     override val presenter = LauncherPresenter()
 
-    @Throws(Exception::class)
-    override fun start(primaryStage: Stage) {
-        stage = primaryStage
-
-//        setUserAgentStylesheet(javaClass.getStyle("application.css"))
-
+    init {
         setupApplicationInfo()
         setupRecentsListView()
         setupButtons()
 
-        primaryStage.title = App.NAME
-        primaryStage.icons.add(App.LOGO)
-        primaryStage.scene = Scene(root, 900.0, 600.0)
-        primaryStage.isResizable = false
-        primaryStage.show()
+        title = App.NAME
+        icons.add(App.LOGO)
+        scene = Scene(root, 900.0, 600.0)
+        isResizable = false
     }
 
     private fun openRecentProject() {
         val projectToOpen = recentsListView.selectionModel.selectedItem
         if (projectToOpen.appFile.exists()) {
-
             presenter.openProject(projectToOpen)
-
-            root.scene.window.hide()
+            hide()
             Editor(projectToOpen.appFile).show()
         } else {
             val d = getBaseDialog<Unit>(Text("This project doesn't exist! Do you want to remove it?"))
@@ -122,7 +105,7 @@ class Launcher : Application(), ILauncherView, ILauncherController by LauncherCo
     private fun setupButtons() {
         newProjectButton.text = "Decompile apk"
         settingsButton.onAction = EventHandler {
-            Settings(stage).show()
+            Settings(this).show()
         }
 
         newProjectButton.onAction = EventHandler {
@@ -136,7 +119,7 @@ class Launcher : Application(), ILauncherView, ILauncherController by LauncherCo
             val app = chooser.showOpenDialog(root.scene.window) ?: return@EventHandler
 
             val dialog = DecompileDialog(app)
-            dialog.initOwner(stage)
+            dialog.initOwner(this)
             dialog.showAndWait()
 
             if (dialog.result != null) {
@@ -144,7 +127,7 @@ class Launcher : Application(), ILauncherView, ILauncherController by LauncherCo
 
                 presenter.openProject(RecentProject(folder))
 
-                stage.hide()
+                hide()
                 Editor(folder, Runnable {
                     ApkToolUtils.decompile(app, *selectedOptions.toTypedArray())
                 }).show()
