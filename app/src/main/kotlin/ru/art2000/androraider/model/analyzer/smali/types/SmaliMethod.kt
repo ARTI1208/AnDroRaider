@@ -39,9 +39,39 @@ class SmaliMethod() {
 
     val parametersInternal = mutableListOf<SmaliClass>()
 
+    public fun addParameter(smaliClass: SmaliClass) {
+        parametersInternal.add(smaliClass)
+    }
+
+    public fun addParameters(vararg smaliClass: SmaliClass) {
+        parametersInternal.addAll(smaliClass)
+    }
+
+    public fun addParameters(smaliClasses: List<SmaliClass>) {
+        parametersInternal.addAll(smaliClasses)
+    }
+
     public val parameters: List<SmaliClass>
         get() = if (java.lang.reflect.Modifier.isStatic(modifier))
             parametersInternal.toList()
         else
             mutableListOf(parentClass!!).also { it.addAll(parametersInternal) }
+
+    var locals = 0
+        set(value) {
+            if (value == field)
+                return
+
+            field = value
+            registers = value + parametersInternal.size + if (java.lang.reflect.Modifier.isStatic(modifier)) 0 else 1
+        }
+
+    var registers = 0
+        set(value) {
+            if (value == field)
+                return
+
+            field = value
+            locals = value - (parametersInternal.size + if (java.lang.reflect.Modifier.isStatic(modifier)) 0 else 1)
+        }
 }

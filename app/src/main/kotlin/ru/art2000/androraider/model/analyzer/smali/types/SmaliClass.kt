@@ -5,7 +5,7 @@ import ru.art2000.androraider.model.analyzer.result.RangeAnalyzeStatus
 import java.io.File
 
 @Suppress("RedundantVisibilityModifier")
-class SmaliClass() : FileAnalyzeResult {
+open class SmaliClass() : FileAnalyzeResult {
 
     object Primitives {
 
@@ -27,13 +27,18 @@ class SmaliClass() : FileAnalyzeResult {
         this.parentPackage = parentPackage
     }
 
+    constructor(file: File) : this() {
+        this.associatedFile = file
+        this.name = file.nameWithoutExtension
+    }
+
     var modifier = 0
 
     public fun setModifierBit(modifierBit: Int) {
         modifier = modifier or modifierBit
     }
 
-    val fullname: String
+    public val fullname: String
         get() {
 
             if (isArray) {
@@ -73,6 +78,9 @@ class SmaliClass() : FileAnalyzeResult {
         set(value) {
             if (field != value) {
                 field?.classes?.remove(this)
+                value?.classes?.removeIf {
+                    it.name == name
+                }
                 value?.classes?.add(this)
                 field = value
             }
@@ -119,4 +127,24 @@ class SmaliClass() : FileAnalyzeResult {
     override fun toString(): String {
         return fullname
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as SmaliClass
+
+        if (fullname != other.fullname) return false
+        if (associatedFile != other.associatedFile) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = fullname.hashCode()
+        result = 31 * result + (associatedFile?.hashCode() ?: 0)
+        return result
+    }
+
+
 }

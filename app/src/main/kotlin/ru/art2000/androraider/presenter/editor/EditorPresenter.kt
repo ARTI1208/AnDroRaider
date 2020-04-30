@@ -10,7 +10,7 @@ import ru.art2000.androraider.model.editor.project.DirectoryObserver
 import ru.art2000.androraider.mvp.IPresenter
 import java.io.File
 
-class EditorPresenter(private val window: Window, private val baseFolder: File) : IPresenter, Disposable {
+class EditorPresenter(private val window: Window, val baseFolder: File) : IPresenter, Disposable {
 
     var currentOpenedFile = -1
         private set

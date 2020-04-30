@@ -21,10 +21,12 @@ class FileManagerTreeListItem : TreeCell<File>(), Initializable {
         private val TEXT_FILE_ICON = ::FileManagerTreeListItem.javaClass.getDrawable("txt.png")
 
         private val UNKNOWN_FILE_ICON = ::FileManagerTreeListItem.javaClass.getDrawable("unknown.png")
+
+        private val ARROW_ICON = ::FileManagerTreeListItem.javaClass.getDrawable("arrow.png")
     }
 
     init {
-        val close = ImageView(javaClass.getDrawable("arrow.png"))
+        val close = ImageView(ARROW_ICON)
         close.fitWidth = 20.0
         close.fitHeight = 20.0
         disclosureNode = close

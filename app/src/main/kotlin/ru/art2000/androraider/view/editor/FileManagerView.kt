@@ -9,7 +9,7 @@ import ru.art2000.androraider.model.editor.getProjectForNode
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialogPane
 import ru.art2000.androraider.view.dialogs.showErrorMessage
-import ru.art2000.androraider.utils.getFileRelativePath
+import ru.art2000.androraider.utils.relativeTo
 import java.io.File
 import java.nio.file.DirectoryNotEmptyException
 import java.nio.file.Files
@@ -279,7 +279,7 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
 
     private fun onFileItemDelete(file: File): Boolean {
         val deleteFileDialog = Dialog<Boolean>()
-        val path = getFileRelativePath(file, root.value)
+        val path = file.relativeTo(root.value)
         deleteFileDialog.title = "Delete $path"
         val toDeleteString = "${if (file.isDirectory) "directory" else "file"} $path"
         val mainLabel = Label("Are you sure you want delete $toDeleteString?")
@@ -361,7 +361,7 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
     }
 
     private fun addFileExplorerTreeItemChildren(treeItem: TreeItem<File>, fileToSelect: File? = null): TreeItem<File>? {
-        val allFiles = treeItem.value.listFiles() ?: return null
+        val allFiles = treeItem.value.listFiles()?.sortedBy { it.name } ?: return null
 
         var returnItem: TreeItem<File>? = null
         val dirs = mutableListOf<TreeItem<File>>()

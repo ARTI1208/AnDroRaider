@@ -12,7 +12,7 @@ import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import java.io.File
 
-object SmaliIndexer : Indexer<SmaliClass> {
+object SmaliDependencyVerifier : Indexer<SmaliClass> {
     override fun analyzeFile(project: ProjectAnalyzeResult, file: File): SmaliClass {
         require(!file.isDirectory) { "Method argument must be a file" }
 
@@ -26,12 +26,7 @@ object SmaliIndexer : Indexer<SmaliClass> {
 
         var smaliClass = project.fileToClassMapping[file] ?: SmaliClass(file)
         smaliClass = ClassAndSuperReader(project, smaliClass).visit(tree as ParseTree)
-
-        smaliClass.associatedFile = file
-        project.fileToClassMapping[file] = smaliClass
-        smaliClass.ranges.clear()
-
-        SmaliFileScanner(project, smaliClass).visit(tree as ParseTree)
+        SmaliDependencyAnalyzer(project, smaliClass).visit(tree as ParseTree)
 
         return smaliClass
     }
@@ -50,6 +45,5 @@ object SmaliIndexer : Indexer<SmaliClass> {
             acc.mergeWith(analyzeFilesInDir(project, folder))
         }
     }
-
 
 }

@@ -9,7 +9,7 @@
 }
 
 .number {
-    -fx-fill: dodgerblue;
+    -fx-fill: mediumblue;
 }
 
 .bracket {
@@ -41,7 +41,8 @@
 }
 
 .error {
-    -rtfx-background-color: red;
+    -fx-fill: red;
+    -fx-font-weight: bold;
 }
 
 .popup {

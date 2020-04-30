@@ -13,8 +13,6 @@ import org.fxmisc.richtext.event.MouseOverTextEvent
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.editor.SearchSpanList
 import ru.art2000.androraider.model.editor.getProjectForNode
-import ru.art2000.androraider.utils.TypeDetector
-import ru.art2000.androraider.utils.contains
 import ru.art2000.androraider.utils.getStyle
 import java.io.File
 import java.nio.file.Files
@@ -79,7 +77,7 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
             val chIdx = e.characterIndex
             val pos = e.screenPosition
 
-            val smaliCopy = currentSmaliClass
+            val smaliCopy = getProjectForNode(this)?.fileToClassMapping?.get(currentEditingFile)
             if (smaliCopy != null) {
                 val error = smaliCopy.ranges.find {
                     return@find chIdx in it.range
@@ -183,28 +181,33 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
 
                     clearStyle(0, text.length)
 
-                    val patternString = TypeDetector.getPatternForExtension(currentEditingFile?.extension)
-                    val syntaxElementsMatcher = Pattern.compile(patternString).matcher(text)
-
-                    syntaxElementsMatcher.results().forEach {
-
-
-                        val styleClass = (when {
-                            syntaxElementsMatcher.contains("LOCAL") -> "local"
-                            syntaxElementsMatcher.contains("PARAM") -> "param"
-                            syntaxElementsMatcher.contains("CALL") -> "call"
-                            syntaxElementsMatcher.contains("NUMBER") -> "number"
-                            syntaxElementsMatcher.contains("KEYWORD") -> "keyword"
-                            syntaxElementsMatcher.contains("COMMENT") -> "comment"
-                            syntaxElementsMatcher.contains("BRACKET") -> "bracket"
-                            syntaxElementsMatcher.contains("STRING") -> "string"
-                            else -> ""
-                        })
-                        setStyle(it.start(), it.end(), listOf(styleClass))
-                    }
+//                    val patternString = TypeDetector.getPatternForExtension(currentEditingFile?.extension)
+//                    val syntaxElementsMatcher = Pattern.compile(patternString).matcher(text)
+//
+//                    syntaxElementsMatcher.results().forEach {
+//
+//
+//                        val styleClass = (when {
+//                            syntaxElementsMatcher.contains("LOCAL") -> "local"
+//                            syntaxElementsMatcher.contains("PARAM") -> "param"
+//                            syntaxElementsMatcher.contains("CALL") -> "call"
+//                            syntaxElementsMatcher.contains("NUMBER") -> "number"
+//                            syntaxElementsMatcher.contains("KEYWORD") -> "keyword"
+//                            syntaxElementsMatcher.contains("COMMENT") -> "comment"
+//                            syntaxElementsMatcher.contains("BRACKET") -> "bracket"
+//                            syntaxElementsMatcher.contains("STRING") -> "string"
+//                            else -> ""
+//                        })
+//                        setStyle(it.start(), it.end(), listOf(styleClass))
+//                    }
 
                     result.rangeStatuses.forEach { status ->
-                        setStyle(status.range.first, status.range.last + 1, status.style)
+                        try {
+                            setStyle(status.range.first, status.range.last + 1, status.style)
+                        } catch (e: Exception) {
+                            println("Error: ${status.style}")
+                            e.printStackTrace()
+                        }
                     }
 
                     searchSpanList.searchString = currentSearchValue

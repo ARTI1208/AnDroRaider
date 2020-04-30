@@ -1,14 +1,20 @@
 package ru.art2000.androraider.model.analyzer.result
 
 import io.reactivex.Observable
+import ru.art2000.androraider.model.analyzer.smali.SmaliDependencyVerifier
 import ru.art2000.androraider.model.analyzer.smali.SmaliIndexer
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
+import ru.art2000.androraider.model.analyzer.smali.types.SmaliClassTmp
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliPackage
 import java.io.File
 
 class ProjectAnalyzeResult(val baseFolder: File) {
 
     val packages = mutableListOf<SmaliPackage>()
+
+    val fileToClassMapping = mutableMapOf<File, SmaliClass>()
+
+
 
     public val smaliFolders : List<File>
 
@@ -36,6 +42,78 @@ class ProjectAnalyzeResult(val baseFolder: File) {
             val parentPackageName = name.substring(0, lastDot)
             val packageName = name.substring(lastDot + 1)
             SmaliPackage(packageName, getOrCreatePackage(parentPackageName))
+        }
+    }
+
+    fun exists(smaliClass: SmaliClass?): Boolean {
+        if (smaliClass == null)
+            return false
+
+        return smaliClass.associatedFile != null || smaliClass.isPrimitive || smaliClass.isVoid || (smaliClass.isArray && exists(smaliClass.parentClass))
+    }
+
+    fun getPackageForClassName(name: String): SmaliPackage? {
+        // Reference type
+        if (name.startsWith('L')) {
+            var referenceClassName = name.substring(1).replace('/', '.')
+            if (referenceClassName.endsWith(';'))
+                referenceClassName = referenceClassName.substring(0, referenceClassName.lastIndex)
+
+            val classToReturn = findClass(packages, referenceClassName)
+            if (classToReturn != null)
+                return classToReturn.parentPackage
+
+            val lastDot = referenceClassName.lastIndexOf('.')
+            return if (lastDot == -1) {
+                null
+            } else {
+                val parentPackageName = referenceClassName.substring(0, lastDot)
+                getOrCreatePackage(parentPackageName)
+            }
+        } else {
+            return null
+        }
+    }
+
+    fun classByName(name: String): SmaliClass? {
+
+        // Primitive type or void
+        when (name) {
+            "V" -> return SmaliClass.Primitives.VOID
+            "I" -> return SmaliClass.Primitives.INT
+            "J" -> return SmaliClass.Primitives.LONG
+            "S" -> return SmaliClass.Primitives.SHORT
+            "B" -> return SmaliClass.Primitives.BYTE
+            "Z" -> return SmaliClass.Primitives.BOOLEAN
+            "C" -> return SmaliClass.Primitives.CHAR
+            "F" -> return SmaliClass.Primitives.FLOAT
+            "D" -> return SmaliClass.Primitives.DOUBLE
+        }
+
+        // Reference type
+        if (name.startsWith('L')) {
+            var referenceClassName = name.substring(1).replace('/', '.')
+            if (referenceClassName.endsWith(';'))
+                referenceClassName = referenceClassName.substring(0, referenceClassName.lastIndex)
+
+            val classToReturn = findClass(packages, referenceClassName)
+            if (classToReturn != null)
+                return classToReturn
+
+            return null
+        } else if (name.startsWith('[')) { // Array
+            var arrayLevel = 0
+            for (c in name) {
+                if (c == '[')
+                    arrayLevel++
+                else
+                    break
+            }
+
+            return classByName(name.substring(arrayLevel))
+        } else {
+//            throw IllegalStateException("Unknown class type for $name")
+            return null
         }
     }
 
@@ -73,8 +151,8 @@ class ProjectAnalyzeResult(val baseFolder: File) {
             } else {
                 val parentPackageName = referenceClassName.substring(0, lastDot)
                 val className = referenceClassName.substring(lastDot + 1)
-
-                return SmaliClass(className, getOrCreatePackage(parentPackageName))
+                val clazz = SmaliClassTmp(className, getOrCreatePackage(parentPackageName))
+                return clazz
             }
         } else if (name.startsWith('[')) { // Array
             val smaliClass = SmaliClass()
@@ -122,10 +200,11 @@ class ProjectAnalyzeResult(val baseFolder: File) {
     }
 
     public fun indexProject(): Observable<out FileAnalyzeResult> {
-        return SmaliIndexer.indexProject(this)
+        return SmaliIndexer.indexProject(this).concatWith(SmaliDependencyVerifier.indexProject(this))
     }
 
     public fun analyzeFile(file: File): FileAnalyzeResult{
-        return SmaliIndexer.analyzeFile(this, file)
+        SmaliIndexer.analyzeFile(this, file)
+        return SmaliDependencyVerifier.analyzeFile(this, file)
     }
 }

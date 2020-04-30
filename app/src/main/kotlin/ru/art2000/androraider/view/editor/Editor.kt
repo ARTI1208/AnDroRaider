@@ -15,10 +15,12 @@ import javafx.scene.layout.HBox
 import javafx.stage.Stage
 import javafx.stage.WindowEvent
 import ru.art2000.androraider.model.App
+import ru.art2000.androraider.model.analyzer.smali.types.SmaliPackage
 import ru.art2000.androraider.model.apktool.ApkToolUtils
+import ru.art2000.androraider.model.editor.getOrInitProject
 import ru.art2000.androraider.presenter.editor.EditorPresenter
 import ru.art2000.androraider.utils.TypeDetector
-import ru.art2000.androraider.utils.getFileRelativePath
+import ru.art2000.androraider.utils.relativeTo
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.recompile.RecompileDialog
 import ru.art2000.androraider.view.dialogs.showErrorMessage
@@ -99,9 +101,7 @@ constructor(private val projectFolder: File, vararg runnables: Runnable) :
                 }
                 .doOnComplete {
                     println(this,"ProjectAnalyzer", "Analyze ended")
-
                     loadingDialog.close()
-
                     fileManagerView.updateFileList()
                     presenter.projectObserver.start()
                 }
@@ -185,7 +185,7 @@ constructor(private val projectFolder: File, vararg runnables: Runnable) :
         typeBox.spacing = 40.0
 
         val fileInfoDialog = getBaseDialog<Unit>(typeBox)
-        fileInfoDialog.title = getFileRelativePath(editorArea.currentEditingFile, projectFolder)
+        fileInfoDialog.title = editorArea.currentEditingFile.relativeTo(projectFolder)
                 ?: "No file is currently editing"
 
         fileInfoDialog.initOwner(this)

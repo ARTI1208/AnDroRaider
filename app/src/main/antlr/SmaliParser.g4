@@ -972,7 +972,7 @@ methodArguments:            methodParameterType+;
 
 methodSignature:            methodIdentifier LPAREN methodArguments? RPAREN methodReturnType;
 
-methodDeclaration:          methodModifier* methodSignature;
+methodDeclaration:          methodModifier* methodSignature (registersDirective | localsDirective);
 
 annotationScope:            IDENTIFIER;
 
@@ -1003,9 +1003,7 @@ localRestartDirective:      RESTART_LOCAL_DIRECTIVE registerIdentifier;
 lineLabel:                  label;
 
 methodBodyStatement:
-    registersDirective
-    | localsDirective
-    | paramDirective
+    paramDirective
     | lineDirective
     | instruction
     | lineLabel

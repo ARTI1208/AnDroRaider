@@ -14,6 +14,6 @@ class AnDroRaider : Application() {
     }
 
     override fun start(primaryStage: Stage) {
-        println(measureTimeMillis { Launcher().show() })
+        Launcher().show()
     }
 }
