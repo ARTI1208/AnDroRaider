@@ -317,18 +317,6 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
     }
 
     override fun visitMethodParameterType(ctx: SmaliParser.MethodParameterTypeContext): SmaliClass {
-
-        var offset = ctx.start.startIndex
-        findMethod(ctx)?.parametersInternal?.addAll(parseCompound(ctx.text)
-                .mapNotNull {
-                    val parameterType = project.getOrCreateClass(it)
-                    if (parameterType == null) {
-                        smaliClass.ranges.add(Error(offset until offset + it.length, "Unknown type \"$it\""))
-                    }
-                    offset += it.length
-                    parameterType
-                })
-
         return smaliClass
     }
 
@@ -395,20 +383,58 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
         when {
             txt.matches(Regex("p\\d+")) -> {
                 val num = txt.substring(1).toInt()
-                if (method != null && num >= method.parameters.size) {
-                    smaliClass.ranges.add(Error(ctx.textRange, "Invalid param index $num: must be in range 0..${method.parameters.size - 1}"))
-                } else {
-                    smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "Param $num of ${method?.parameters?.size}", listOf("param")))
+
+                when {
+                    method == null -> {
+                        smaliClass.ranges.add(RangeStatusBase(
+                                ctx.textRange,
+                                "Param $num, failed to get max possible value",
+                                listOf("param"))
+                        )
+                    }
+                    num >= method.parameters.size -> {
+                        smaliClass.ranges.add(Error(
+                                ctx.textRange,
+                                "Invalid param index $num: must be in range 0..${method.parameters.size - 1}")
+                        )
+                    }
+                    else -> {
+                        smaliClass.ranges.add(RangeStatusBase(
+                                ctx.textRange,
+                                "Param $num, max ${method.parameters.size - 1}",
+                                listOf("param"))
+                        )
+                    }
                 }
             }
+
             txt.matches(Regex("v\\d+")) -> {
                 val num = txt.substring(1).toInt()
-                if (method != null && num >= method.locals) {
-                    smaliClass.ranges.add(Error(ctx.textRange, "Invalid local index $num: must be in range 0..${method.locals - 1}"))
-                } else {
-                    smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "Local $num of ${method?.locals}", listOf("local")))
+
+                when {
+                    method == null -> {
+                        smaliClass.ranges.add(RangeStatusBase(
+                                ctx.textRange,
+                                "Local $num, failed to get max possible value",
+                                listOf("local"))
+                        )
+                    }
+                    num >= method.locals -> {
+                        smaliClass.ranges.add(Error(
+                                ctx.textRange,
+                                "Invalid local index $num: must be in range 0..${method.locals - 1}")
+                        )
+                    }
+                    else -> {
+                        smaliClass.ranges.add(RangeStatusBase(
+                                ctx.textRange,
+                                "Local $num, max ${method.locals - 1}",
+                                listOf("local"))
+                        )
+                    }
                 }
             }
+
             else -> {
                 smaliClass.ranges.add(Error(ctx.textRange, "Invalid register identifier"))
             }
@@ -721,6 +747,19 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
     }
 
     override fun visitMethodDeclaration(ctx: SmaliParser.MethodDeclarationContext): SmaliClass {
+        val arguments = ctx.methodSignature().methodArguments() ?: return visitChildren(ctx)
+
+        var offset = arguments.start.startIndex
+        findMethod(ctx)?.parametersInternal?.addAll(parseCompound(arguments.text)
+                .mapNotNull {
+                    val parameterType = project.getOrCreateClass(it)
+                    if (parameterType == null) {
+                        smaliClass.ranges.add(Error(offset until offset + it.length, "Unknown type \"$it\""))
+                    }
+                    offset += it.length
+                    parameterType
+                })
+
         return visitChildren(ctx)
     }
 
