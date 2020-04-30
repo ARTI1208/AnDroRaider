@@ -5,15 +5,17 @@ import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
 import javafx.beans.property.ObjectPropertyBase
 import javafx.scene.control.Label
+import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyEvent
 import javafx.scene.input.ScrollEvent
 import javafx.stage.Popup
 import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
 import org.fxmisc.richtext.LineNumberFactory
 import org.fxmisc.richtext.event.MouseOverTextEvent
-import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.editor.SearchSpanList
 import ru.art2000.androraider.model.editor.getProjectForNode
+import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.utils.getStyle
 import java.io.File
 import java.nio.file.Files
@@ -36,8 +38,6 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
     var currentEditingFile: File?
         get() = currentEditingFileProperty.value
         set(value) = currentEditingFileProperty.setValue(value)
-
-    public var currentSmaliClass: SmaliClass? = null
 
     override var currentSearchValue: String = ""
 
@@ -93,6 +93,52 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
         }
         addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_END) { popup.hide() }
         addEventHandler(ScrollEvent.SCROLL) { popup.hide() }
+
+        addEventHandler(KeyEvent.KEY_PRESSED) {
+            if (it.isControlDown && (it.code == KeyCode.SLASH || it.code == KeyCode.PERIOD)) {
+                val refactorer = TypeDetector.getRefactoringRule(currentEditingFile?.extension)
+
+                val isSingleLine = selection.start == selection.end
+                val from = getLineStartIndex(selection.start)
+                val to = if (isSingleLine) getLineEndIndex(selection.end) else getLineEndIndex(selection.end, true)
+
+                val selectedText = text.substring(from, to)
+
+                var caretPosition = caretPosition
+                val newText = refactorer
+                        .commentUncommentFragment(selectedText)
+                        .joinToString("\n") { commentingResult ->
+                            if (isSingleLine || caretPosition > from)
+                                caretPosition += commentingResult.insertedBefore + commentingResult.insertedAfter
+
+                            commentingResult.line
+                        }
+
+                replaceText(from, to, newText)
+                moveTo(caretPosition)
+            }
+        }
+    }
+
+    fun getLineStartIndex(index: Int): Int {
+        for (currentIndex in index downTo 1) {
+            if (text[currentIndex - 1] == '\n')
+                return currentIndex
+        }
+
+        return 0
+    }
+
+    fun getLineEndIndex(index: Int, checkPrevious: Boolean = false): Int {
+        if (checkPrevious && index > 0 && text[index - 1] == '\n')
+            return index - 1
+
+        for (currentIndex in index until text.length) {
+            if (text[currentIndex] == '\n')
+                return currentIndex
+        }
+
+        return text.length
     }
 
     public fun edit(file: File?, forceRead: Boolean = false) {
@@ -115,7 +161,7 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
                     .doOnSuccess {
                         replaceText(it)
                         updateHighlighting()
-                        displaceCaret(0)
+                        moveTo(0)
                     }.subscribe()
         }
     }
@@ -163,26 +209,6 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
                         return@doOnSuccess
 
                     clearStyle(0, text.length)
-
-//                    val patternString = TypeDetector.getPatternForExtension(currentEditingFile?.extension)
-//                    val syntaxElementsMatcher = Pattern.compile(patternString).matcher(text)
-//
-//                    syntaxElementsMatcher.results().forEach {
-//
-//
-//                        val styleClass = (when {
-//                            syntaxElementsMatcher.contains("LOCAL") -> "local"
-//                            syntaxElementsMatcher.contains("PARAM") -> "param"
-//                            syntaxElementsMatcher.contains("CALL") -> "call"
-//                            syntaxElementsMatcher.contains("NUMBER") -> "number"
-//                            syntaxElementsMatcher.contains("KEYWORD") -> "keyword"
-//                            syntaxElementsMatcher.contains("COMMENT") -> "comment"
-//                            syntaxElementsMatcher.contains("BRACKET") -> "bracket"
-//                            syntaxElementsMatcher.contains("STRING") -> "string"
-//                            else -> ""
-//                        })
-//                        setStyle(it.start(), it.end(), listOf(styleClass))
-//                    }
 
                     result.rangeStatuses.forEach { status ->
                         try {
