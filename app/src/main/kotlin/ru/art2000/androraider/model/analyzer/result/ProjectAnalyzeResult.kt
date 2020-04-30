@@ -4,7 +4,6 @@ import io.reactivex.Observable
 import ru.art2000.androraider.model.analyzer.smali.SmaliDependencyVerifier
 import ru.art2000.androraider.model.analyzer.smali.SmaliIndexer
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
-import ru.art2000.androraider.model.analyzer.smali.types.SmaliClassTmp
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliPackage
 import java.io.File
 
@@ -151,7 +150,7 @@ class ProjectAnalyzeResult(val baseFolder: File) {
             } else {
                 val parentPackageName = referenceClassName.substring(0, lastDot)
                 val className = referenceClassName.substring(lastDot + 1)
-                val clazz = SmaliClassTmp(className, getOrCreatePackage(parentPackageName))
+                val clazz = SmaliClass(className, getOrCreatePackage(parentPackageName))
                 return clazz
             }
         } else if (name.startsWith('[')) { // Array

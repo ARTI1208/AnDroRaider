@@ -5,6 +5,7 @@ import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
 import javafx.beans.property.ObjectPropertyBase
 import javafx.scene.control.Label
+import javafx.scene.input.ScrollEvent
 import javafx.stage.Popup
 import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
@@ -89,27 +90,9 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
                     return@addEventHandler
                 }
             }
-
-            val pre = text.substring(0, chIdx).lastIndexOf(" ")
-            val aft = text.substring(chIdx).indexOf(" ") + chIdx
-            val sub = text.substring(pre + 1, aft)
-            val pat = Pattern.compile("(?<LOCAL>v\\d+)")
-            val mt = pat.matcher(sub)
-            if (mt.find()) {
-
-                val txt = mt.group("LOCAL").substring(1).toInt()
-                val loc = text.substring(0, chIdx).lastIndexOf("locals") + "locals ".length
-                val t = text.substring(loc).indexOf("\n") + loc
-                val num = text.substring(loc, t).toInt()
-                popupMsg.text = "Found local " + mt.group("LOCAL") + ".\n"
-                if (txt < num)
-                    popupMsg.text += "Total available locals : $num"
-                else
-                    popupMsg.text += "ERROR! Total available locals $num, but current is $txt!"
-                popup.show(this, pos.x, pos.y + 10)
-            }
         }
         addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_END) { popup.hide() }
+        addEventHandler(ScrollEvent.SCROLL) { popup.hide() }
     }
 
     public fun edit(file: File?, forceRead: Boolean = false) {

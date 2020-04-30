@@ -15,9 +15,11 @@ import javafx.scene.layout.HBox
 import javafx.stage.Stage
 import javafx.stage.WindowEvent
 import ru.art2000.androraider.model.App
-import ru.art2000.androraider.model.analyzer.smali.types.SmaliPackage
 import ru.art2000.androraider.model.apktool.ApkToolUtils
-import ru.art2000.androraider.model.editor.getOrInitProject
+import ru.art2000.androraider.model.io.StreamOutput
+import ru.art2000.androraider.model.io.println
+import ru.art2000.androraider.model.io.registerStreamOutput
+import ru.art2000.androraider.model.io.unregisterStreamOutput
 import ru.art2000.androraider.presenter.editor.EditorPresenter
 import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.utils.relativeTo
@@ -29,13 +31,12 @@ import ru.art2000.androraider.view.settings.Settings
 import java.io.File
 import java.io.IOException
 import java.nio.file.StandardWatchEventKinds
-import ru.art2000.androraider.model.io.println
-import ru.art2000.androraider.model.io.registerStreamOutput
-import ru.art2000.androraider.model.io.unregisterStreamOutput
+import java.util.function.Consumer
+import kotlin.concurrent.thread
 
 @Suppress("ReactiveStreamsUnusedPublisher")
 class Editor @Throws(IOException::class)
-constructor(private val projectFolder: File, vararg runnables: Runnable) :
+constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOutput>) :
         Stage(),
         IEditorView,
         IEditorController by EditorController() {
@@ -90,7 +91,7 @@ constructor(private val projectFolder: File, vararg runnables: Runnable) :
         val onLoadObservable = Observable
                 .fromIterable(onLoadRunnables)
                 .subscribeOn(Schedulers.io())
-                .doOnNext { it.run() }
+                .doOnNext { it.accept(console) }
 
         val projectIndexerObservable = (presenter.generateProjectIndex() ?: Observable.empty())
                 .observeOn(JavaFxScheduler.platform())
@@ -100,7 +101,7 @@ constructor(private val projectFolder: File, vararg runnables: Runnable) :
                     println(this, "ProjectAnalyzer", "Analyze started")
                 }
                 .doOnComplete {
-                    println(this,"ProjectAnalyzer", "Analyze ended")
+                    println(this, "ProjectAnalyzer", "Analyze ended")
                     loadingDialog.close()
                     fileManagerView.updateFileList()
                     presenter.projectObserver.start()
@@ -144,11 +145,13 @@ constructor(private val projectFolder: File, vararg runnables: Runnable) :
             dialog.initOwner(this)
             val selectedOptions = dialog.showAndWait().get()
             if (selectedOptions.isNotEmpty()) {
-                ApkToolUtils.recompile(projectFolder, *selectedOptions.toTypedArray())
-                        ?: showErrorMessage(
-                                "Recompile error",
-                                "An error occurred while recompiling",
-                                this)
+                thread {
+                    ApkToolUtils.recompile(projectFolder, *selectedOptions.toTypedArray(), output = console)
+                            ?: showErrorMessage(
+                                    "Recompile error",
+                                    "An error occurred while recompiling",
+                                    this)
+                }
             }
         }
 

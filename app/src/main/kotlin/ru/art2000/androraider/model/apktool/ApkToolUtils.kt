@@ -2,6 +2,7 @@ package ru.art2000.androraider.model.apktool
 
 import javafx.application.Platform
 import ru.art2000.androraider.model.App
+import ru.art2000.androraider.model.io.StreamOutput
 import ru.art2000.androraider.model.settings.SettingsManager
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
 import ru.art2000.androraider.view.settings.Settings
@@ -24,11 +25,10 @@ class ApkToolUtils {
             }
 
         @JvmStatic
-        fun decompile(apk: File, vararg options: ApktoolCommand): File? {
+        fun decompile(apk: File, vararg options: ApktoolCommand, output: StreamOutput? = null): File? {
             val apktoolFile = apktool
             if (apktoolFile == null || !apktoolFile.exists()) {
-                App.currentStreamOutput.writeln("ApkToolCheck",
-                        "Apktool not found! Checkout its path in settings")
+                output?.writeln("ApkToolCheck", "Apktool not found! Checkout its path in settings")
                 return null
             }
             var appDecompileFolder: File? = null
@@ -51,23 +51,20 @@ class ApkToolUtils {
             }
             cmds.add(apk.absolutePath)
 
-            App.currentStreamOutput.writeln("ApkTool",
-                    "Decompilation of ${apk.absolutePath} started!")
+            output?.writeln("ApkTool", "Decompilation of ${apk.absolutePath} started!")
             val process = ProcessBuilder(cmds).start()
-            App.currentStreamOutput.startOutput("ApkTool", process.inputStream, process.errorStream)
+            output?.startOutput("ApkTool", process.inputStream, process.errorStream)
             process.waitFor()
-            App.currentStreamOutput.writeln("ApkTool",
-                    "${apk.absolutePath} decompiled in ${appDecompileFolder.absolutePath}!")
+            output?.writeln("ApkTool", "${apk.absolutePath} decompiled in ${appDecompileFolder.absolutePath}!")
 
             return appDecompileFolder
         }
 
         @JvmStatic
-        fun recompile(projectFolder: File, vararg options: ApktoolCommand): File? {
+        fun recompile(projectFolder: File, vararg options: ApktoolCommand, output: StreamOutput? = null): File? {
             val apktoolFile = apktool
             if (apktoolFile == null || !apktoolFile.exists()) {
-                App.currentStreamOutput.writeln("ApkToolCheck",
-                        "Apktool not found! Checkout its path in settings")
+                output?.writeln("ApkToolCheck", "Apktool not found! Checkout its path in settings")
                 return null
             }
             var apk: File? = null
@@ -82,20 +79,12 @@ class ApkToolUtils {
             }
             commands.add(projectFolder.absolutePath)
             val builder = ProcessBuilder(commands)
-            val myThread = Thread {
-                Platform.runLater {
-                    App.currentStreamOutput.writeln("ApkTool",
-                            "Recompilation of ${projectFolder.absolutePath} started!")
-                }
-                val process = builder.start()
-                App.currentStreamOutput.startOutput("ApkTool", process.inputStream, process.errorStream)
-                process.waitFor()
-                Platform.runLater {
-                    App.currentStreamOutput.writeln("ApkTool", "${apk?.absolutePath} recompiled!")
-                    App.currentStreamOutput.stopOutput(process.inputStream, process.errorStream)
-                }
-            }
-            myThread.start()
+            output?.writeln("ApkTool", "Recompilation of ${projectFolder.absolutePath} started!")
+            val process = builder.start()
+            output?.startOutput("ApkTool", process.inputStream, process.errorStream)
+            process.waitFor()
+            output?.writeln("ApkTool", "${apk?.absolutePath} recompiled!")
+            output?.stopOutput(process.inputStream, process.errorStream)
             return apk
         }
 

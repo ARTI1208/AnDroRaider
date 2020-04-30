@@ -11,6 +11,4 @@ object App {
     const val NAME = "AnDroRaider"
     const val RELEASE_TYPE = "BETA"
     val LOGO = javaClass.getDrawable("logo.png")
-
-    var currentStreamOutput: StreamOutput = DefaultStreamOutput
 }

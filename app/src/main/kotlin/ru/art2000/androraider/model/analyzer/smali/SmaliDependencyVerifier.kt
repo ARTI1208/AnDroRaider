@@ -42,7 +42,7 @@ object SmaliDependencyVerifier : Indexer<SmaliClass> {
 
     override fun indexProject(project: ProjectAnalyzeResult): Observable<SmaliClass> {
         return project.smaliFolders.fold(Observable.fromIterable(emptyList<SmaliClass>())) { acc, folder ->
-            acc.mergeWith(analyzeFilesInDir(project, folder))
+            acc.concatWith(analyzeFilesInDir(project, folder))
         }
     }
 

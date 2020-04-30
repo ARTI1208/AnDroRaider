@@ -8,6 +8,7 @@ import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchEvent
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
 
 class FileObserver(private val file: File) {
 
@@ -34,7 +35,7 @@ class FileObserver(private val file: File) {
         if (isRunning.get())
             return
 
-        val thread = Thread {
+        thread {
             val path = file.toPath()
             val watcher = FileSystems.getDefault().newWatchService()
             val watchKey = path.register(watcher,
@@ -74,9 +75,6 @@ class FileObserver(private val file: File) {
             isRunning.set(false)
             watchKey.cancel()
         }
-
-        thread.isDaemon = true
-        thread.start()
     }
 
     fun stop() {

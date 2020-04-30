@@ -23,6 +23,7 @@ import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.editor.Editor
 import ru.art2000.androraider.view.settings.Settings
 import java.io.File
+import java.util.function.Consumer
 
 class Launcher : Stage(), ILauncherView, ILauncherController by LauncherController() {
 
@@ -128,8 +129,8 @@ class Launcher : Stage(), ILauncherView, ILauncherController by LauncherControll
                 presenter.openProject(RecentProject(folder))
 
                 hide()
-                Editor(folder, Runnable {
-                    ApkToolUtils.decompile(app, *selectedOptions.toTypedArray())
+                Editor(folder, Consumer {
+                    ApkToolUtils.decompile(app, *selectedOptions.toTypedArray(), output = it)
                 }).show()
             }
         }

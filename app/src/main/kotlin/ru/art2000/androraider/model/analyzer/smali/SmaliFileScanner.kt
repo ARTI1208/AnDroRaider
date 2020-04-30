@@ -65,9 +65,6 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
     }
 
     override fun visitFieldDirective(ctx: SmaliParser.FieldDirectiveContext): SmaliClass {
-//        if (onlyClass)
-//            return smaliClass
-
         smaliClass.ranges.add(RangeStatusBase(ctx.FIELD_DIRECTIVE().textRange, "Field", listOf("keyword")))
 
         return visitChildren(FieldDeclarationContextWrapper(ctx))
@@ -162,6 +159,7 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
                 offsetBefore = 2
             }
             meaningful.hexFloatLiteral() != null -> {
+                println("Hello: ${smaliClass.fullname}")
                 radix = 16
                 offsetBefore = 2
                 type = 3
@@ -204,14 +202,23 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
         if (isNegative)
             numberString = "-$numberString"
 
+        var hex: String
         val decimal: Number = when (type) {
-            1 -> numberString.toLong(radix)
-            2 -> numberString.toFloat()
-            3 -> numberString.toDouble()
-            else -> numberString.toInt(radix)
+            1 -> numberString.toLong(radix).also {
+                hex = it.toString(16)
+            }
+            2 -> numberString.toFloat().also {
+                hex = it.toBits().toString(16)
+            }
+            3 -> numberString.toDouble().also {
+                hex = it.toBits().toString(16)
+            }
+            else -> numberString.toInt(radix).also {
+                hex = it.toString(16)
+            }
         }
 
-        val hex = if (type > 1) "%a".format(decimal) else "%x".format(decimal)
+//        val hex = if (type > 1) "%a".format(decimal) else decimal.to
 
         description += "; hex: 0x${hex}; dec: $decimal"
 
