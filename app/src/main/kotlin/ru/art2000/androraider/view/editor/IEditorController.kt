@@ -27,8 +27,6 @@ interface IEditorController : IController {
     // Main area
     val fileManagerView: FileManagerView
 
-    val editorArea: CodeEditorArea
-
     val console: ConsoleView
 
     val editorTabPane: TabPane

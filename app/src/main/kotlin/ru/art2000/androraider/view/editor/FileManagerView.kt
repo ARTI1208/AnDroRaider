@@ -5,17 +5,15 @@ import javafx.scene.control.*
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseButton
-import org.apache.commons.io.FileUtils
 import ru.art2000.androraider.model.editor.FileCreationArguments
 import ru.art2000.androraider.model.editor.getProjectForNode
+import ru.art2000.androraider.presenter.editor.FileManagerPresenter
 import ru.art2000.androraider.utils.getRawContent
 import ru.art2000.androraider.utils.moveOrCopyDelete
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialogPane
 import ru.art2000.androraider.view.dialogs.showErrorMessage
 import java.io.File
-import java.nio.file.DirectoryNotEmptyException
-import java.nio.file.Files
 
 typealias onFileSelected = (File?, File) -> Unit
 

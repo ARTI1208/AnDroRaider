@@ -35,9 +35,6 @@ class EditorController : BaseController(), IEditorController {
     override lateinit var fileManagerView: FileManagerView
 
     @FXML
-    override lateinit var editorArea: CodeEditorArea
-
-    @FXML
     override lateinit var console: ConsoleView
 
     @FXML

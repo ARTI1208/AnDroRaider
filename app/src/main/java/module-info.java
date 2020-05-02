@@ -11,6 +11,7 @@ module app {
     requires io.reactivex.rxjava2;
     requires rxjavafx;
     requires org.apache.commons.io;
+    requires undofx;
 
     opens ru.art2000.androraider.view.launcher;
     exports ru.art2000.androraider.view.launcher;

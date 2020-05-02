@@ -29,12 +29,6 @@
             <SplitPane orientation="VERTICAL">
                 <VBox fx:id="codeEditorContainer" minWidth="0" minHeight="0">
                     <TabPane fx:id="editorTabPane" />
-                    <VirtualizedScrollPane>
-                        <!--suppress JavaFxDefaultTag -->
-                        <content>
-                            <CodeEditorArea fx:id="editorArea"/>
-                        </content>
-                    </VirtualizedScrollPane>
                 </VBox>
                 <ConsoleView minWidth="0" minHeight="0" fx:id="console"/>
             </SplitPane>

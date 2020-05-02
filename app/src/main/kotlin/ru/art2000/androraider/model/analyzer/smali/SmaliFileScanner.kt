@@ -159,7 +159,6 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
                 offsetBefore = 2
             }
             meaningful.hexFloatLiteral() != null -> {
-                println("Hello: ${smaliClass.fullname}")
                 radix = 16
                 offsetBefore = 2
                 type = 3

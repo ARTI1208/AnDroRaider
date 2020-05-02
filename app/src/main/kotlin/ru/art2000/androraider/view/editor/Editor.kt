@@ -3,6 +3,7 @@ package ru.art2000.androraider.view.editor
 import io.reactivex.Observable
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
+import javafx.application.Platform
 import javafx.collections.ListChangeListener
 import javafx.event.EventHandler
 import javafx.scene.Scene
@@ -10,9 +11,11 @@ import javafx.scene.control.*
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyCodeCombination
 import javafx.scene.input.KeyCombination
+import javafx.scene.input.KeyEvent
 import javafx.scene.layout.Background
 import javafx.scene.layout.BackgroundFill
 import javafx.scene.layout.HBox
+import javafx.scene.layout.Region
 import javafx.scene.paint.Color
 import javafx.stage.Stage
 import javafx.stage.WindowEvent
@@ -73,8 +76,9 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
         codeEditorContainer.background = Background(BackgroundFill(Color.GRAY, null, null))
 
-        editorArea.prefWidthProperty().bind(widthProperty().subtract(fileManagerView.prefWidthProperty()))
-        editorArea.prefHeightProperty().bind(codeEditorContainer.heightProperty().subtract(editorTabPane.heightProperty()))
+        editorTabPane.prefHeightProperty().bind(codeEditorContainer.heightProperty())
+        editorTabPane.prefWidthProperty().bind(widthProperty().subtract(fileManagerView.prefWidthProperty()))
+
         fileManagerView.prefHeightProperty().bind(heightProperty())
 
         setupTabs()
@@ -116,23 +120,52 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         Observable.concat(onLoadObservable, projectIndexerObservable).subscribe()
     }
 
+    @Suppress("RedundantLambdaArrow")
     private fun setupTabs() {
-        editorTabPane.selectionModel.selectedItemProperty().addListener { _, _, newValue ->
-            editorArea.edit(newValue.userData as File?)
+        editorTabPane.selectionModel.selectedIndexProperty().addListener { _, _, newValue ->
+            if (newValue != null)
+                presenter.updateTabHistory(newValue as Int)
         }
 
-        editorTabPane.tabs.addListener { c: ListChangeListener.Change<out Tab>? ->
-            if (editorTabPane.tabs.isEmpty()) {
-                editorTabPane.isVisible = false
-                editorArea.isVisible = false
-                editorArea.edit(null)
-            } else {
-                editorTabPane.isVisible = true
-                editorArea.isVisible = true
+        editorTabPane.selectionModel.selectedItemProperty().addListener { _, _, newValue ->
+//            val timer = Timer()
+//            timer.schedule(object : TimerTask() {
+//                override fun run() {
+//                    Platform.runLater {
+//                        newValue?.content?.requestFocus()
+//                        timer.cancel()
+//                        timer.purge()
+//                    }
+//                }
+//            }, 25)
+
+            Platform.runLater {
+                newValue?.content?.requestFocus()
             }
         }
+
+        editorTabPane.eventDispatcher = null
+
+        addEventHandler(KeyEvent.KEY_PRESSED) {
+            if (it.isShortcutDown && it.code == KeyCode.TAB) {
+                if (presenter.openedFilesOrder.size > 1)
+                    editorTabPane.selectionModel.select(presenter.openedFilesOrder[1])
+
+                it.consume()
+            }
+        }
+
+        editorTabPane.tabs.addListener { c: ListChangeListener.Change<out Tab> ->
+            while (c.next()) {
+                if (c.wasRemoved()) {
+                    (c.from..c.to).forEach { presenter.removeTabFromHistory(it) }
+                }
+            }
+
+            editorTabPane.isVisible = editorTabPane.tabs.isNotEmpty()
+        }
+
         editorTabPane.tabClosingPolicy = TabPane.TabClosingPolicy.ALL_TABS
-        editorArea.isVisible = false
     }
 
     private fun setupFileExplorerView() {
@@ -142,6 +175,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 val position = if (indexedTab == null) {
                     val newTab = Tab(newFile.name)
                     newTab.userData = newFile
+                    newTab.content = CodeEditorScrollPane(CodeEditorArea(newFile))
                     val pos = editorTabPane.selectionModel.selectedIndex + 1
                     editorTabPane.tabs.add(pos, newTab)
                     pos
@@ -150,7 +184,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 }
 
                 editorTabPane.selectionModel.select(position)
-                editorArea.requestFocus()
             }
         }
 
@@ -214,16 +247,17 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
     }
 
     private fun createFileInfoDialog() {
+        val file = ((editorTabPane.selectionModel.selectedItem?.content as Region?)
+                ?.childrenUnmodifiable?.firstOrNull() as CodeEditorArea?)?.currentEditingFile
+
         val typeLabelTitle = Label("Type:")
-        val typeLabelValue = Label(editorArea.currentEditingFile?.extension
-                ?: "No file or extension")
+        val typeLabelValue = Label(file?.extension ?: "No file or extension")
         val typeBox = HBox()
         typeBox.children.addAll(typeLabelTitle, typeLabelValue)
         typeBox.spacing = 40.0
 
         val fileInfoDialog = getBaseDialog<Unit>(typeBox)
-        fileInfoDialog.title = editorArea.currentEditingFile?.relativeTo(projectFolder)?.path
-                ?: "No file is currently editing"
+        fileInfoDialog.title = file?.relativeTo(projectFolder)?.path ?: "No file is currently editing"
 
         fileInfoDialog.initOwner(this)
         fileInfoDialog.dialogPane.buttonTypes.add(ButtonType.OK)

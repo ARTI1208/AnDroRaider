@@ -23,7 +23,11 @@ import java.time.Duration
 import java.util.regex.Pattern
 
 @Suppress("RedundantVisibilityModifier", "MemberVisibilityCanBePrivate")
-class CodeEditorArea : CodeArea(), Searchable<String> {
+class CodeEditorArea() : CodeArea(), Searchable<String> {
+
+    constructor(file: File) : this() {
+        edit(file)
+    }
 
     val currentEditingFileProperty = object : ObjectPropertyBase<File?>() {
         override fun getName(): String {
@@ -95,13 +99,13 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
         addEventHandler(ScrollEvent.SCROLL) { popup.hide() }
 
         addEventHandler(KeyEvent.KEY_PRESSED) {
-            if (it.code == KeyCode.TAB) {
+            if (it.code == KeyCode.TAB && !it.isShortcutDown) {
                 // assume tab was already inserted
-                replaceText(caretPosition - 1, caretPosition,  " ".repeat(4))
+                replaceText(caretPosition - 1, caretPosition, " ".repeat(4))
                 return@addEventHandler
             }
 
-            if (it.isControlDown && (it.code == KeyCode.SLASH || it.code == KeyCode.PERIOD)) {
+            if (it.isShortcutDown && (it.code == KeyCode.SLASH || it.code == KeyCode.PERIOD)) {
                 val refactorer = TypeDetector.getRefactoringRule(currentEditingFile?.extension)
 
                 val isSingleLine = selection.start == selection.end
@@ -147,29 +151,25 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
         return text.length
     }
 
-    public fun edit(file: File?, forceRead: Boolean = false) {
-        if (file == null || !file.exists()) {
-            currentEditingFile = null
-            replaceText("")
-            return
-        }
-
-        if (file.isDirectory)
+    public fun edit(file: File?, onTextSet: Runnable = Runnable {}) {
+        if (file?.isDirectory == true || file == currentEditingFile)
             return
 
-        if (file.absolutePath != currentEditingFile?.absolutePath || forceRead) {
-            currentEditingFile = file
-            Single
-                    .fromCallable {
-                        String(Files.readAllBytes(file.toPath()))
-                    }.subscribeOn(Schedulers.io())
-                    .observeOn(JavaFxScheduler.platform())
-                    .doOnSuccess {
-                        replaceText(it)
-                        updateHighlighting()
-                        moveTo(0)
-                    }.subscribe()
-        }
+        currentEditingFile = file
+
+        Single
+                .fromCallable {
+                    if (file == null || !file.exists()) "" else String(Files.readAllBytes(file.toPath()))
+                }.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .doOnSuccess {
+                    replaceText(it)
+                    updateHighlighting()
+                    moveTo(0)
+                    scrollYToPixel(0.0)
+                    undoManager.forgetHistory()
+                    onTextSet.run()
+                }.subscribe()
     }
 
     public override fun find(valueToFind: String) {
