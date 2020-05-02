@@ -3,15 +3,17 @@ package ru.art2000.androraider.view.editor
 import io.reactivex.Observable
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
+import javafx.collections.ListChangeListener
 import javafx.event.EventHandler
 import javafx.scene.Scene
-import javafx.scene.control.Button
-import javafx.scene.control.ButtonType
-import javafx.scene.control.Label
+import javafx.scene.control.*
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyCodeCombination
 import javafx.scene.input.KeyCombination
+import javafx.scene.layout.Background
+import javafx.scene.layout.BackgroundFill
 import javafx.scene.layout.HBox
+import javafx.scene.paint.Color
 import javafx.stage.Stage
 import javafx.stage.WindowEvent
 import ru.art2000.androraider.model.App
@@ -70,9 +72,13 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
             presenter.dispose()
         }
 
+        codeEditorContainer.background = Background(BackgroundFill(Color.GRAY, null, null))
+
         editorArea.prefWidthProperty().bind(widthProperty().subtract(fileManagerView.prefWidthProperty()))
+        editorArea.prefHeightProperty().bind(codeEditorContainer.heightProperty().subtract(editorTabPane.heightProperty()))
         fileManagerView.prefHeightProperty().bind(heightProperty())
 
+        setupTabs()
         setupFileExplorerView()
         setupMenu()
     }
@@ -111,11 +117,40 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         Observable.concat(onLoadObservable, projectIndexerObservable).subscribe()
     }
 
+    private fun setupTabs() {
+        editorTabPane.selectionModel.selectedItemProperty().addListener { _, _, newValue ->
+            editorArea.edit(newValue.userData as File?)
+        }
+
+        editorTabPane.tabs.addListener { c: ListChangeListener.Change<out Tab>? ->
+            if (editorTabPane.tabs.isEmpty()) {
+                editorTabPane.isVisible = false
+                editorArea.isVisible = false
+                editorArea.edit(null)
+            } else {
+                editorTabPane.isVisible = true
+                editorArea.isVisible = true
+            }
+        }
+        editorTabPane.tabClosingPolicy = TabPane.TabClosingPolicy.ALL_TABS
+        editorArea.isVisible = false
+    }
+
     private fun setupFileExplorerView() {
         fileManagerView.onFileSelectedListeners.add { _, newFile ->
             if (TypeDetector.isTextFile(newFile.name)) {
-                presenter.openFile(newFile)
-                editorArea.edit(newFile)
+                val indexedTab = editorTabPane.tabs.withIndex().find { it.value.userData == newFile }
+                val position = if (indexedTab == null) {
+                    val newTab = Tab(newFile.name)
+                    newTab.userData = newFile
+                    val pos = editorTabPane.selectionModel.selectedIndex + 1
+                    editorTabPane.tabs.add(pos, newTab)
+                    pos
+                } else {
+                    indexedTab.index
+                }
+
+                editorTabPane.selectionModel.select(position)
                 editorArea.requestFocus()
             }
         }

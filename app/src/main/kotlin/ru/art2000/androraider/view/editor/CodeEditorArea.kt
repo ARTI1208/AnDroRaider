@@ -199,9 +199,11 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
     }
 
     private fun updateHighlighting() {
+        val file = currentEditingFile ?: return
+
         Single
                 .fromCallable {
-                    getProjectForNode(this)?.analyzeFile(currentEditingFile!!)
+                    getProjectForNode(this)?.analyzeFile(file)
                 }.subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .doOnSuccess { result ->
