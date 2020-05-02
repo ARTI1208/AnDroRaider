@@ -2,7 +2,10 @@ package ru.art2000.androraider.utils
 
 import javafx.fxml.FXMLLoader
 import javafx.scene.image.Image
+import org.apache.commons.io.FileUtils
 import java.io.File
+import java.nio.file.DirectoryNotEmptyException
+import java.nio.file.Files
 
 fun File.isSubFile(folder: File, canMatch: Boolean = false): Boolean {
     if (!folder.isDirectory || !folder.exists() || !exists())
@@ -25,6 +28,26 @@ fun File.isSubFile(folder: File, canMatch: Boolean = false): Boolean {
     }
 
     return false
+}
+
+fun File.moveOrCopyDelete(dest: File): Boolean {
+    try {
+        Files.move(this.toPath(), dest.toPath())
+        return true
+    } catch (e: Exception) {
+        try {
+            if (isDirectory) {
+                FileUtils.copyDirectory(this, dest)
+                deleteRecursively()
+            } else {
+                FileUtils.copyFile(this, dest)
+                delete()
+            }
+        } catch (copyDeleteException: Exception) {
+            return false
+        }
+    }
+    return true
 }
 
 fun Class<*>.getDrawable(name: String): Image? {

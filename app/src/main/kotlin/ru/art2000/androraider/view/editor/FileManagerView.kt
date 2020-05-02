@@ -9,6 +9,7 @@ import org.apache.commons.io.FileUtils
 import ru.art2000.androraider.model.editor.FileCreationArguments
 import ru.art2000.androraider.model.editor.getProjectForNode
 import ru.art2000.androraider.utils.getRawContent
+import ru.art2000.androraider.utils.moveOrCopyDelete
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialogPane
 import ru.art2000.androraider.view.dialogs.showErrorMessage
@@ -251,27 +252,20 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
                     return@EventHandler
                 }
 
-                var renameResult = true
-                val originalPath = treeItem.value
-                val newPath = File(originalPath.parent, nameInput.text)
-                try {
-                    if (originalPath.isDirectory)
-                        FileUtils.moveDirectory(originalPath, newPath)
-                    else
-                        FileUtils.moveFile(originalPath, newPath)
-                } catch (e: Exception) {
-                    renameResult = false
-                    e.printStackTrace()
-                } finally {
-                    if (renameResult) {
-                        renamingDialog.close()
-                    } else {
-                        showErrorMessage("Rename failed",
-                                "Rename of ${if (treeItem.value.isDirectory) "folder" else "file"} " +
-                                        "${treeItem.value.name} failed",
-                                scene.window
-                        )
-                    }
+                val originalFile = treeItem.value
+
+                val newPath = originalFile.toPath().parent.resolve(nameInput.text).toAbsolutePath().toFile()
+
+                val renameResult = originalFile.moveOrCopyDelete(newPath)
+
+                if (renameResult) {
+                    renamingDialog.close()
+                } else {
+                    showErrorMessage("Rename failed",
+                            "Rename of ${if (originalFile.isDirectory) "folder" else "file"} " +
+                                    "${originalFile.name} failed",
+                            scene.window
+                    )
                 }
 
             } else if (it.code == KeyCode.ESCAPE) {
