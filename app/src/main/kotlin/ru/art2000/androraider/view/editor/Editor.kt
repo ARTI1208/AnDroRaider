@@ -24,7 +24,6 @@ import ru.art2000.androraider.model.io.registerStreamOutput
 import ru.art2000.androraider.model.io.unregisterStreamOutput
 import ru.art2000.androraider.presenter.editor.EditorPresenter
 import ru.art2000.androraider.utils.TypeDetector
-import ru.art2000.androraider.utils.relativeTo
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.recompile.RecompileDialog
 import ru.art2000.androraider.view.dialogs.showErrorMessage
@@ -223,7 +222,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         typeBox.spacing = 40.0
 
         val fileInfoDialog = getBaseDialog<Unit>(typeBox)
-        fileInfoDialog.title = editorArea.currentEditingFile.relativeTo(projectFolder)
+        fileInfoDialog.title = editorArea.currentEditingFile?.relativeTo(projectFolder)?.path
                 ?: "No file is currently editing"
 
         fileInfoDialog.initOwner(this)

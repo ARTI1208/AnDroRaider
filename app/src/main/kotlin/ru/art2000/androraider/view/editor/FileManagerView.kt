@@ -5,11 +5,12 @@ import javafx.scene.control.*
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseButton
+import ru.art2000.androraider.model.editor.FileCreationArguments
 import ru.art2000.androraider.model.editor.getProjectForNode
+import ru.art2000.androraider.utils.getRawContent
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialogPane
 import ru.art2000.androraider.view.dialogs.showErrorMessage
-import ru.art2000.androraider.utils.relativeTo
 import java.io.File
 import java.nio.file.DirectoryNotEmptyException
 import java.nio.file.Files
@@ -22,6 +23,8 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
     val onFileSelectedListeners = mutableListOf<onFileSelected>()
 
     private val searchResults = mutableListOf<File>()
+
+    private val presenter = FileManagerPresenter()
 
     init {
         setCellFactory { FileManagerTreeListItem() }
@@ -103,7 +106,10 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
         folderLabel.textOverrun = OverrunStyle.LEADING_ELLIPSIS
 
         val typeOptions = ListView<String>()
-        typeOptions.items.addAll("Folder", "XML", "Smali", "File")
+
+        val options = presenter.getFileCreationOptions(getProjectForNode(this), parentFolder)
+
+        typeOptions.items.addAll(options.map { it.visibleName })
         typeOptions.fixedCellSize = 20.0
         typeOptions.prefHeight = typeOptions.fixedCellSize * typeOptions.items.size
 
@@ -115,7 +121,7 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
         typeOptions.selectionModel.select(0)
         typeOptions.selectionModel.selectedIndexProperty().addListener { _, _, n ->
             val type = n.toInt()
-            val name = getNewFile(type, nameInput.text, parentFolder)
+            val name = getNewFile(options[type], nameInput.text, parentFolder)
 
             folderLabel.text = onInputOrTypeChanged(type, typeOptions.items[type], name)
             nameInput.promptText = folderLabel.text
@@ -127,7 +133,7 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
 
         nameInput.textProperty().addListener { _, _, newValue ->
             val type = typeOptions.selectionModel.selectedIndex
-            val name = getNewFile(type, newValue, parentFolder)
+            val name = getNewFile(options[type], newValue, parentFolder)
 
             folderLabel.text = onInputOrTypeChanged(type, typeOptions.items[type], name)
             nameInput.promptText = folderLabel.text
@@ -139,31 +145,39 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
                     return@EventHandler
                 }
 
+                val fileType = typeOptions.selectionModel.selectedIndex
+                val selectedOption = options[fileType]
+
+                val fileName = getNewFile(
+                        selectedOption,
+                        nameInput.text,
+                        parentFolder
+                ) ?: return@EventHandler
+
                 var creationResult = false
                 try {
-                    val newName = getNewFile(
-                            typeOptions.selectionModel.selectedIndex,
-                            nameInput.text,
-                            parentFolder
-                    ) ?: return@EventHandler
-
-                    creationResult = when (typeOptions.selectionModel.selectedIndex) {
-                        0 -> File(newName).mkdirs() // folder
-                        else -> File(newName).createNewFile() // file
+                    creationResult = if (selectedOption.isDirectory) {
+                        File(fileName).mkdirs()
+                    } else {
+                        File(fileName).createNewFile()
                     }
                 } catch (e: Exception) {
 
                 } finally {
                     if (creationResult) {
                         creationDialog.close()
+                        if (selectedOption.fileExtension.isNotEmpty()) {
+                            val content = javaClass.getRawContent("templates/${selectedOption.fileExtension}")
+                            val file = File(fileName)
+                            if (content.isNotEmpty()) {
+                                file.writeBytes(content)
+                            }
+                            onFileItemClick(file)
+                        }
                     } else {
                         showErrorMessage("Creation failed",
                                 "Creation of ${typeOptions.selectionModel.selectedItem.toLowerCase()} " +
-                                        "${getNewFile(
-                                                typeOptions.selectionModel.selectedIndex,
-                                                nameInput.text,
-                                                parentFolder
-                                        )} failed",
+                                        "$fileName failed",
                                 scene.window
                         )
                     }
@@ -203,16 +217,16 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
         } + " will be created"
     }
 
-    private fun getNewFile(type: Int, name: String?, parentFolder: File): String? {
+    private fun getNewFile(option: FileCreationArguments, name: String?, parentFolder: File): String? {
         if (name.isNullOrEmpty()) {
             return null
         }
 
-        return when (type) {
-            1 -> "${parentFolder.absolutePath}${File.separatorChar}${name}.xml"
-            2 -> "${parentFolder.absolutePath}${File.separatorChar}${name}.smali"
-            else -> "${parentFolder.absolutePath}${File.separatorChar}${name}"
-        }
+        val nameWithoutExtension = "${parentFolder.absolutePath}${File.separatorChar}${name}"
+        return if (option.fileExtension.isEmpty())
+            nameWithoutExtension
+        else
+            "${nameWithoutExtension}.${option.fileExtension}"
     }
 
     fun onTreeItemRename(treeItem: TreeItem<File>?) {

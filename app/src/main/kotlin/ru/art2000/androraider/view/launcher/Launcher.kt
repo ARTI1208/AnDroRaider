@@ -1,6 +1,5 @@
 package ru.art2000.androraider.view.launcher
 
-import javafx.application.Application
 import javafx.event.EventHandler
 import javafx.scene.Scene
 import javafx.scene.control.Button
@@ -13,7 +12,6 @@ import javafx.scene.text.Text
 import javafx.stage.DirectoryChooser
 import javafx.stage.FileChooser
 import javafx.stage.Stage
-import javafx.stage.StageStyle
 import ru.art2000.androraider.model.App
 import ru.art2000.androraider.model.apktool.ApkToolUtils
 import ru.art2000.androraider.model.launcher.RecentProject
