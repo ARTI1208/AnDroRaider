@@ -95,6 +95,12 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
         addEventHandler(ScrollEvent.SCROLL) { popup.hide() }
 
         addEventHandler(KeyEvent.KEY_PRESSED) {
+            if (it.code == KeyCode.TAB) {
+                // assume tab was already inserted
+                replaceText(caretPosition - 1, caretPosition,  " ".repeat(4))
+                return@addEventHandler
+            }
+
             if (it.isControlDown && (it.code == KeyCode.SLASH || it.code == KeyCode.PERIOD)) {
                 val refactorer = TypeDetector.getRefactoringRule(currentEditingFile?.extension)
 
