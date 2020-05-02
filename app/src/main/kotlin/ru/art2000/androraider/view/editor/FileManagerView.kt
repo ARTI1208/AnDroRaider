@@ -5,6 +5,7 @@ import javafx.scene.control.*
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseButton
+import org.apache.commons.io.FileUtils
 import ru.art2000.androraider.model.editor.FileCreationArguments
 import ru.art2000.androraider.model.editor.getProjectForNode
 import ru.art2000.androraider.utils.getRawContent
@@ -251,14 +252,13 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
                 }
 
                 var renameResult = true
-                val originalPath = treeItem.value.toPath()
-                val newPath = originalPath.parent.resolve(nameInput.text).toAbsolutePath()
+                val originalPath = treeItem.value
+                val newPath = File(originalPath.parent, nameInput.text)
                 try {
-                    // TODO renaming of non-empty directory
-                    Files.move(originalPath, newPath)
-                } catch (dirNotEmptyException: DirectoryNotEmptyException) {
-                    // is not thrown dunno why
-                    renameResult = false
+                    if (originalPath.isDirectory)
+                        FileUtils.moveDirectory(originalPath, newPath)
+                    else
+                        FileUtils.moveFile(originalPath, newPath)
                 } catch (e: Exception) {
                     renameResult = false
                     e.printStackTrace()
