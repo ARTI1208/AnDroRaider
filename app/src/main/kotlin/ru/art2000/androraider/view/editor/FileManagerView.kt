@@ -1,5 +1,7 @@
 package ru.art2000.androraider.view.editor
 
+import javafx.beans.property.ObjectPropertyBase
+import javafx.beans.property.Property
 import javafx.event.EventHandler
 import javafx.scene.control.*
 import javafx.scene.input.KeyCode
@@ -22,12 +24,21 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
 
     val onFileSelectedListeners = mutableListOf<onFileSelected>()
 
-    private val searchResults = mutableListOf<File>()
-
     private val presenter = FileManagerPresenter()
 
+    override val currentSearchValueProperty: Property<String> = object : ObjectPropertyBase<String>("") {
+        override fun getName(): String {
+            return "currentSearchValue"
+        }
+
+        override fun getBean(): Any {
+            return this
+        }
+
+    }
+
     init {
-        setCellFactory { FileManagerTreeListItem() }
+        setCellFactory { FileManagerTreeListItem(this) }
         onMouseClicked = EventHandler {
             if (it.button === MouseButton.PRIMARY
                     && it.clickCount == 2) {
@@ -377,23 +388,19 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
             if (it.isHidden)
                 return@forEach
 
-            if (searchResults.size == 0
-                    || searchResults.contains(it)
-                    || searchResults.contains(it.parentFile)) {
-                val treeSubItem = TreeItem(it)
+            val treeSubItem = TreeItem(it)
 
-                if (it.absolutePath == fileToSelect?.absolutePath)
-                    returnItem = treeSubItem
+            if (it.absolutePath == fileToSelect?.absolutePath)
+                returnItem = treeSubItem
 
-                if (it.isDirectory) {
-                    dirs.add(treeSubItem)
+            if (it.isDirectory) {
+                dirs.add(treeSubItem)
 
-                    if (returnItem == null)
-                        returnItem = addFileExplorerTreeItemChildren(treeSubItem)
-                    else
-                        addFileExplorerTreeItemChildren(treeSubItem)
-                } else files.add(treeSubItem)
-            }
+                if (returnItem == null)
+                    returnItem = addFileExplorerTreeItemChildren(treeSubItem)
+                else
+                    addFileExplorerTreeItemChildren(treeSubItem)
+            } else files.add(treeSubItem)
         }
 
         treeItem.children.setAll(dirs)
@@ -401,28 +408,12 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
         return returnItem
     }
 
-    override var currentSearchValue: String = ""
-
     override fun find(valueToFind: String) {
         findAll(valueToFind)
     }
 
     override fun findAll(valueToFind: String) {
-        searchResults.clear()
-
-        if (valueToFind.isEmpty()) {
-            return
-        }
-
-        getProjectForNode(this)?.baseFolder?.walk()?.forEach {
-            if (it.name.toLowerCase().contains(valueToFind.toLowerCase())
-                    || it.extension.toLowerCase().contains(valueToFind.toLowerCase())
-                    || searchResults.contains(it.parentFile)) {
-                searchResults.add(it)
-            }
-        }
-
-        updateFileList()
+        currentSearchValue = valueToFind
     }
 
     override fun findNext() {

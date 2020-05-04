@@ -117,15 +117,70 @@
 }
 
 .lineno {
-    -fx-text-fill: orange;
-    -fx-background-color: blue;
+    -fx-text-fill: gray;
+    -fx-background-color: lightgray;
+    -fx-font-size: 14px;
+    -fx-spacing: 0px;
 }
 
-/*.code-area {*/
-/*    -fx-border-color: gray;*/
-/*    -fx-border-width: 1 1 1 1;*/
-/*}*/
+.tab-header-area {
+    -fx-background-color: lightgray;
+}
 
+.tab {
+    -fx-background-color: #eeeeee;
+    -fx-padding: 5;
+}
+
+.tab:hover {
+    -fx-background-color: #dedede;
+    -fx-padding: 5;
+}
+
+.tab:selected {
+    -fx-background-color: #ffffff;
+    -fx-padding: 5;
+}
+
+.tab:hover:selected {
+    -fx-background-color: #e2e2e2;
+    -fx-padding: 5;
+}
+
+.tab .tab-label {
+    -fx-border-insets: 0 0 55 0;
+}
+
+.tab .tab-close-button {
+    -fx-shape:null;
+    -fx-background-image: url("../drawable/cross.png");
+    -fx-background-size: 16;
+    -fx-background-repeat: no-repeat;
+    -fx-background-position: right;
+}
+
+.code-editor-area {
+    -fx-font-size: 14px;
+}
+
+.styled-label {
+    -fx-font-size: 14px;
+    -fx-pref-height: 14px;
+}
+
+.filemanager-item:selected .selected-item-text {
+    -fx-text-fill: white;
+    -fx-fill: white;
+}
+
+.selected-item-text {
+    -fx-text-fill: black;
+    -fx-fill: black;
+}
+
+.filemanager-item:empty {
+    -fx-background-color: white;
+}
 
 .scroll-bar {
     -fx-border-color: transparent;
@@ -166,4 +221,9 @@
 
 .dialog-pane {
     -fx-padding: 10px;
+}
+
+.search {
+    /*-fx-background-color: yellow;*/
+    -rtfx-background-color: yellow;
 }

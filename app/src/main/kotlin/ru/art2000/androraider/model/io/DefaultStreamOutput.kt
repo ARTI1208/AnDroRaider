@@ -29,8 +29,4 @@ object DefaultStreamOutput : StreamOutput {
     override fun writeln(tag: String, string: String) {
         systemOutputStream.println("$tag: $string")
     }
-
-    override fun getOutputStream() = systemOutputStream
-
-    override fun getErrorStream() = systemErrorStream
 }

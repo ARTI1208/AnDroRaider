@@ -28,6 +28,9 @@ class EditorController : BaseController(), IEditorController {
 
     // Menu/Misc
     @FXML
+    override lateinit var miscMenu: Menu
+
+    @FXML
     override lateinit var examineFile: MenuItem
 
     // Main area

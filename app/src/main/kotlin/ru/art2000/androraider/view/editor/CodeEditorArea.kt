@@ -4,6 +4,7 @@ import io.reactivex.Single
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
 import javafx.beans.property.ObjectPropertyBase
+import javafx.scene.control.Control
 import javafx.scene.control.Label
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
@@ -13,6 +14,7 @@ import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
 import org.fxmisc.richtext.LineNumberFactory
 import org.fxmisc.richtext.event.MouseOverTextEvent
+import org.fxmisc.richtext.model.TwoDimensional
 import ru.art2000.androraider.model.editor.SearchSpanList
 import ru.art2000.androraider.model.editor.getProjectForNode
 import ru.art2000.androraider.utils.TypeDetector
@@ -21,6 +23,8 @@ import java.io.File
 import java.nio.file.Files
 import java.time.Duration
 import java.util.regex.Pattern
+import ru.art2000.androraider.model.io.println
+import kotlin.math.max
 
 @Suppress("RedundantVisibilityModifier", "MemberVisibilityCanBePrivate")
 class CodeEditorArea() : CodeArea(), Searchable<String> {
@@ -43,7 +47,16 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
         get() = currentEditingFileProperty.value
         set(value) = currentEditingFileProperty.setValue(value)
 
-    override var currentSearchValue: String = ""
+    override val currentSearchValueProperty: ObjectPropertyBase<String> = object : ObjectPropertyBase<String>() {
+        override fun getName(): String {
+            return "currentSearchValue"
+        }
+
+        override fun getBean(): Any {
+            return this
+        }
+
+    }
 
     private var currentSearchCursor = -1
         set(value) {
@@ -58,10 +71,11 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
         }
 
     private val searchSpanList = SearchSpanList()
-
+    private var isSearching = false
 
     init {
-        paragraphGraphicFactory = LineNumberFactory.get(this)
+//        paragraphGraphicFactory = LineNumberFactory.get(this)
+        paragraphGraphicFactory = CodeEditorLineNumber(this)
 
         stylesheets.add(javaClass.getStyle("code.css"))
 
@@ -79,6 +93,7 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
 
         mouseOverTextDelay = Duration.ofSeconds(1)
         addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_BEGIN) { e ->
+            isSearching = false
             val chIdx = e.characterIndex
             val pos = e.screenPosition
 
@@ -99,6 +114,7 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
         addEventHandler(ScrollEvent.SCROLL) { popup.hide() }
 
         addEventHandler(KeyEvent.KEY_PRESSED) {
+            isSearching = false
             if (it.code == KeyCode.TAB && !it.isShortcutDown) {
                 // assume tab was already inserted
                 replaceText(caretPosition - 1, caretPosition, " ".repeat(4))
@@ -128,6 +144,7 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
                 moveTo(caretPosition)
             }
         }
+        styleClass.add("code-editor-area")
     }
 
     fun getLineStartIndex(index: Int): Int {
@@ -165,8 +182,7 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
                 .doOnSuccess {
                     replaceText(it)
                     updateHighlighting()
-                    moveTo(0)
-                    scrollYToPixel(0.0)
+                    moveToAndPlaceLineInCenter(0)
                     undoManager.forgetHistory()
                     onTextSet.run()
                 }.subscribe()
@@ -177,31 +193,82 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
     }
 
     public override fun findAll(valueToFind: String) {
+        isSearching = true
         currentSearchValue = valueToFind
         updateHighlighting()
         currentSearchCursor = 0
     }
 
+    private fun selectSearchRange(previous: Int, new: Int) {
+        if (!isSearching)
+            return
+
+        searchSpanList.currentPosition = new
+
+//        if (previous in 0..searchSpanList.lastIndex) {
+//            clearStyle(searchSpanList[previous].first, searchSpanList[previous].last)
+//            setStyle(searchSpanList[previous].first, searchSpanList[previous].last, listOf("search"))
+//        }
+
+        if (new in 0..searchSpanList.lastIndex) {
+//            clearStyle(searchSpanList[new].first, searchSpanList[new].last)
+//            setStyle(searchSpanList[new].first, searchSpanList[new].last, listOf("search-current"))
+
+            if (previous in 0..searchSpanList.lastIndex)
+                moveToAndPlaceLineInCenter(searchSpanList[new].last, offsetToPosition(searchSpanList[previous].last, TwoDimensional.Bias.Backward).major)
+            else
+                moveToAndPlaceLineInCenter(searchSpanList[new].last)
+
+            selectRange(searchSpanList[new].first, searchSpanList[new].last)
+        }
+    }
+
+    public fun moveToAndPlaceLineInCenter(newPosition: Int, prevLine: Int? = null) {
+        val previousPosition = caretPosition
+        val previousLine = prevLine ?: currentParagraph
+        println(this, "Position", newPosition.toString() + "|vs|" + previousPosition)
+        moveTo(newPosition) // move to gather new line index
+        val newLine = offsetToPosition(newPosition, TwoDimensional.Bias.Backward).major
+//        moveTo(previousPosition) // move back to prevent bug with wrong scroll
+
+        val lineHeight = (getParagraphGraphic(previousLine) as Control).also { println(this, "gr", it) }.height
+        val visibleLinesCount = max((height / lineHeight).toInt(), visibleParagraphs.size)
+        // so that our newLine will be in the center of screen (if it position allows)
+        val lineToScroll = (newLine - visibleLinesCount / 2).let { if (it < 0) 0 else it }
+        scrollYToPixel((lineHeight * lineToScroll))
+
+        println(this, "Scroll", "$newLine|$lineHeight|$visibleLinesCount|${visibleParagraphs.size}")
+
+//        moveTo(newPosition) // move caret to new position
+        scrollYToPixel((lineHeight * lineToScroll))
+    }
+
     public override fun findNext() {
-        if (searchSpanList.size == 0 || currentSearchValue.isEmpty()) {
-            currentSearchCursor = -1
+        if (currentSearchValue.isEmpty()) {
             return
         }
+        isSearching = true
 
-        currentSearchCursor = (currentSearchCursor + 1) % searchSpanList.size
-        displaceCaret(searchSpanList[currentSearchCursor].last)
+        val newPos = if(searchSpanList.currentPosition < 0) {
+            searchSpanList.withIndex().find { it.value.last >= caretPosition }?.index ?: 0
+        } else
+            (searchSpanList.currentPosition + 1) % searchSpanList.size
+
+        selectSearchRange(searchSpanList.currentPosition, newPos)
     }
 
     public override fun findPrevious() {
-        val size = searchSpanList.size
-        if (size == 0 || currentSearchValue.isEmpty()) {
-            currentSearchCursor = -1
-            searchSpanList.searchString
+        if (currentSearchValue.isEmpty()) {
             return
         }
+        isSearching = true
 
-        currentSearchCursor = (size + currentSearchCursor - 1) % size
-        displaceCaret(searchSpanList[currentSearchCursor].last)
+        val newPos = if(searchSpanList.currentPosition < 0)
+            searchSpanList.withIndex().findLast { it.value.last <= caretPosition }?.index ?: searchSpanList.lastIndex
+        else
+            (searchSpanList.size + searchSpanList.currentPosition - 1) % searchSpanList.size
+
+        selectSearchRange(searchSpanList.currentPosition, newPos)
     }
 
     private fun updateHighlighting() {
@@ -229,12 +296,22 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
 
                     searchSpanList.searchString = currentSearchValue
                     if (currentSearchValue.isNotEmpty()) {
+                        var currentFound = false
                         val pattern = Pattern.compile("(?<SEARCH>$currentSearchValue)")
                         val searchMatcher = pattern.matcher(text)
                         if (pattern.pattern().isNotEmpty()) {
                             while (searchMatcher.find()) {
                                 searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
-                                setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
+                                if (!currentFound && searchMatcher.end() >= caretPosition) {
+                                    currentFound = true
+                                    selectSearchRange(-1, searchSpanList.size - 1)
+                                }
+//                                else {
+                                    setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
+//                                }
+                            }
+                            if (!currentFound) {
+                                selectSearchRange(-1, 0)
                             }
                         }
                     }

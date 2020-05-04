@@ -1,103 +1,75 @@
 package ru.art2000.androraider.view.editor
 
 import javafx.application.Platform
+import javafx.beans.property.StringProperty
+import javafx.beans.property.StringPropertyBase
 import javafx.geometry.Insets
 import javafx.scene.control.ScrollPane
-import javafx.scene.control.TextArea
+import org.fxmisc.flowless.VirtualizedScrollPane
+import org.fxmisc.richtext.Caret
+import org.fxmisc.richtext.StyleClassedTextArea
+import ru.art2000.androraider.model.editor.SearchSpanList
 import ru.art2000.androraider.model.io.StreamOutput
-import java.io.*
-import java.lang.StringBuilder
+import java.io.BufferedReader
+import java.io.IOException
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.util.regex.Pattern
 
-class ConsoleView : ScrollPane(), StreamOutput {
+class ConsoleView : ScrollPane(), StreamOutput, Searchable<String> {
 
-    private val text = TextArea().apply { isEditable = false }
+    private val textArea = StyleClassedTextArea().apply { isEditable = false; showCaret = Caret.CaretVisibility.ON }
+    private val searchSpanList = SearchSpanList()
 
-    private val outStream: OutputStream
+    override val currentSearchValueProperty: StringProperty = object : StringPropertyBase("") {
 
-    private val bufferedOutStream: BufferedOutputStream
+        override fun getName() = "currentSearchValue"
 
-    private val stringBuilder = StringBuilder()
+        override fun getBean() = this
+    }
 
     init {
-        children.add(text)
-        content = text
-        padding = Insets(5.0)
-        isFitToHeight = true
-        isFitToWidth = true
-        outStream = object : OutputStream() {
-            override fun write(b: Int) {
-                val c = b.toChar()
-                stringBuilder.append(c)
-                if (c == '\n' || stringBuilder.length >= 100) {
-                    if (Platform.isFxApplicationThread()) {
-                        text.appendText(stringBuilder.toString())
-                        stringBuilder.clear()
-                    } else {
-                        Platform.runLater {
-                            text.appendText(stringBuilder.toString())
-                            stringBuilder.clear()
-                        }
-                    }
-                }
-            }
-
-            override fun write(b: ByteArray) {
-                stringBuilder.append(b.map { it.toChar() }.toCharArray())
-                if (stringBuilder.length >= 100) {
-                    if (Platform.isFxApplicationThread()) {
-                        text.appendText(stringBuilder.toString())
-                        stringBuilder.clear()
-                    } else {
-                        Platform.runLater {
-                            text.appendText(stringBuilder.toString())
-                            stringBuilder.clear()
-                        }
-                    }
-                }
-            }
-
-            override fun write(b: ByteArray, off: Int, len: Int) {
-                val array = b.drop(off).take(len).map { it.toChar() }.joinToString(separator = "")
-                if (Platform.isFxApplicationThread()) {
-                    text.appendText(array)
-                } else {
-                    Platform.runLater {
-                        text.appendText(array)
-                    }
-                }
-            }
-
-            override fun flush() {
-                if (Platform.isFxApplicationThread()) {
-                    text.appendText(stringBuilder.toString())
-                    stringBuilder.clear()
-                } else {
-                    Platform.runLater {
-                        text.appendText(stringBuilder.toString())
-                        stringBuilder.clear()
-                    }
-                }
+        content = VirtualizedScrollPane(textArea).apply {
+            focusedProperty().addListener { _, _, newValue ->
+                if (newValue)
+                    textArea.requestFocus()
             }
         }
-        bufferedOutStream = BufferedOutputStream(outStream)
+        textArea.padding = Insets(5.0)
+        isFitToHeight = true
+        isFitToWidth = true
+
+        textArea.focusedProperty().addListener { _, _, newValue ->
+            if (newValue) {
+                requestFocus()
+            }
+        }
+    }
+
+    private fun writelnImpl(tag: String, string: String) {
+        val selection = textArea.selection
+        val caretPosition = textArea.caretPosition
+        val shouldScrollAfterAppend = textArea.caretPosition == textArea.text.length
+        textArea.appendText("$tag: $string\n")
+        if (shouldScrollAfterAppend) {
+            textArea.scrollYToPixel(Double.MAX_VALUE)
+        } else {
+            textArea.moveTo(caretPosition)
+            if (selection.length > 0)
+                textArea.selectRange(selection.start, selection.end)
+        }
+        updateSearchIndex(currentSearchValue)
+
     }
 
     override fun writeln(tag: String, string: String) {
         if (Platform.isFxApplicationThread()) {
-            text.appendText("$tag: $string\n")
+            writelnImpl(tag, string)
         } else {
             Platform.runLater {
-                text.appendText("$tag: $string\n")
+                writelnImpl(tag, string)
             }
         }
-    }
-
-    override fun getOutputStream(): OutputStream {
-        return outStream
-    }
-
-    override fun getErrorStream(): OutputStream {
-        return outStream
     }
 
     override fun startOutput(tag: String, vararg inputStream: InputStream) {
@@ -120,36 +92,88 @@ class ConsoleView : ScrollPane(), StreamOutput {
 
     }
 
-//    override fun totalWidthEstimateProperty(): Val<Double> {
-//
-//    }
-//
-//    override fun scrollYBy(deltaY: Double) {
-//
-//    }
-//
-//    override fun estimatedScrollYProperty(): Var<Double> {
-//
-//    }
-//
-//    override fun scrollXBy(deltaX: Double) {
-//
-//    }
-//
-//    override fun scrollXToPixel(pixel: Double) {
-//
-//    }
-//
-//    override fun totalHeightEstimateProperty(): Val<Double> {
-//
-//    }
-//
-//    override fun scrollYToPixel(pixel: Double) {
-//
-//    }
-//
-//    override fun estimatedScrollXProperty(): Var<Double> {
-//
-//    }
+    override fun find(valueToFind: String) {
+        findAll(valueToFind)
+    }
 
+    private fun updateSearchIndex(valueToFind: String) {
+        currentSearchValue = valueToFind.toLowerCase()
+        searchSpanList.searchString = currentSearchValue
+        if (currentSearchValue.isNotEmpty()) {
+            val pattern = Pattern.compile("(?<SEARCH>$currentSearchValue)")
+            val searchMatcher = pattern.matcher(textArea.text.toLowerCase())
+            if (pattern.pattern().isNotEmpty()) {
+                while (searchMatcher.find()) {
+                    searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
+                    textArea.setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
+                }
+            }
+        }
+    }
+
+    override fun findAll(valueToFind: String) {
+        currentSearchValue = valueToFind.toLowerCase()
+        searchSpanList.searchString = currentSearchValue
+        textArea.clearStyle(0, textArea.text.length)
+        if (currentSearchValue.isNotEmpty()) {
+            var currentFound = false
+            val pattern = Pattern.compile("(?<SEARCH>$currentSearchValue)")
+            val searchMatcher = pattern.matcher(textArea.text.toLowerCase())
+            if (pattern.pattern().isNotEmpty()) {
+                while (searchMatcher.find()) {
+                    searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
+                    if (!currentFound && searchMatcher.end() >= textArea.caretPosition) {
+                        currentFound = true
+                        selectSearchRange(-1, searchSpanList.size - 1)
+                    } else {
+                        textArea.setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
+                    }
+                }
+                if (!currentFound) {
+                    selectSearchRange(-1, 0)
+                }
+            }
+        }
+    }
+
+    private fun selectSearchRange(previous: Int, new: Int) {
+        searchSpanList.currentPosition = new
+        ru.art2000.androraider.model.io.println(this, "NewSearchPos", new)
+
+//        if (previous in 0..searchSpanList.lastIndex) {
+//            textArea.clearStyle(searchSpanList[previous].first, searchSpanList[previous].last)
+//            textArea.setStyle(searchSpanList[previous].first, searchSpanList[previous].last, listOf("search"))
+//        }
+
+        if (new in 0..searchSpanList.lastIndex) {
+            textArea.clearStyle(searchSpanList[new].first, searchSpanList[new].last)
+            textArea.setStyle(searchSpanList[new].first, searchSpanList[new].last, listOf("search"))
+            textArea.moveTo(searchSpanList[new].last)
+        }
+    }
+
+    override fun findNext() {
+        if (searchSpanList.isEmpty())
+            return
+
+        val newPos = if (searchSpanList.currentPosition < 0) {
+            searchSpanList.withIndex().find { it.value.last >= textArea.caretPosition }?.index ?: 0
+        } else
+            (searchSpanList.currentPosition + 1) % searchSpanList.size
+
+        selectSearchRange(searchSpanList.currentPosition, newPos)
+    }
+
+    override fun findPrevious() {
+        if (searchSpanList.isEmpty())
+            return
+
+        val newPos = if (searchSpanList.currentPosition < 0)
+            searchSpanList.withIndex().findLast { it.value.last <= textArea.caretPosition }?.index
+                    ?: searchSpanList.lastIndex
+        else
+            (searchSpanList.size + searchSpanList.currentPosition - 1) % searchSpanList.size
+
+        selectSearchRange(searchSpanList.currentPosition, newPos)
+    }
 }

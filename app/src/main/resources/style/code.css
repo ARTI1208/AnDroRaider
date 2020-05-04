@@ -36,10 +36,6 @@
     -fx-fill: brown;
 }
 
-.search {
-    -rtfx-background-color: yellow;
-}
-
 .error {
     -fx-fill: red;
     -fx-font-weight: bold;

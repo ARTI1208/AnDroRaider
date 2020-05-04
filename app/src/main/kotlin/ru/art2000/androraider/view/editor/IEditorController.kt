@@ -22,6 +22,8 @@ interface IEditorController : IController {
     val search: SearchMenuItem
 
     // Menu/Misc
+    val miscMenu: Menu
+
     val examineFile: MenuItem
 
     // Main area

@@ -235,11 +235,13 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         }
 
         scene.focusOwnerProperty().addListener { _, _, newValue ->
+            println(this, "FocusOwner", newValue)
             @Suppress("UNCHECKED_CAST")
             search.currentSearchable = newValue as? Searchable<String>
         }
 
         // Menu/Misc
+        miscMenu.isVisible = false
         examineFile.parentMenu.isMnemonicParsing = true
         examineFile.onAction = EventHandler {
             createFileInfoDialog()

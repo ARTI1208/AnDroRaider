@@ -12,6 +12,6 @@
     <TextField fx:id="searchField" promptText="Type here..."/>
     <HBox alignment="BASELINE_CENTER" spacing="2">
         <Button fx:id="findPreviousButton" prefWidth="100" text="Prev"/>
-        <Button fx:id="findNextButton" prefWidth="100" text="Prev"/>
+        <Button fx:id="findNextButton" prefWidth="100" text="Next"/>
     </HBox>
 </VBox>

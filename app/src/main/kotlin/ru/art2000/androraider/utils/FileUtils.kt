@@ -66,7 +66,7 @@ fun Class<*>.getLayout(name: String): FXMLLoader {
 }
 
 fun Class<*>.getStyle(name: String): String {
-    return getResource(STYLE_PATH + name).toString()
+    return getResource(STYLE_PATH + name).toExternalForm()
 }
 
 fun Class<*>.getRawContent(name: String): ByteArray {

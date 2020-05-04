@@ -2,8 +2,9 @@ package ru.art2000.androraider.view
 
 import javafx.application.Application
 import javafx.stage.Stage
+import org.fxmisc.richtext.StyleClassedTextField
+import ru.art2000.androraider.utils.getStyle
 import ru.art2000.androraider.view.launcher.Launcher
-import kotlin.system.measureTimeMillis
 
 class AnDroRaider : Application() {
 
@@ -14,6 +15,8 @@ class AnDroRaider : Application() {
     }
 
     override fun start(primaryStage: Stage) {
+        StyleClassedTextField() // hack
+        setUserAgentStylesheet(javaClass.getStyle("application.css"))
         Launcher().show()
     }
 }

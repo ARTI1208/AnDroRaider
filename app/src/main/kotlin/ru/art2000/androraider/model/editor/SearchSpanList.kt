@@ -7,6 +7,7 @@ class SearchSpanList : ArrayList<IntRange>() {
             if (field != value) {
                 super.clear()
                 field = value
+                currentPosition = -1
             }
         }
 
@@ -14,4 +15,5 @@ class SearchSpanList : ArrayList<IntRange>() {
         searchString = ""
     }
 
+    var currentPosition = -1
 }
