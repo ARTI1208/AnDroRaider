@@ -46,15 +46,8 @@ class ApkToolUtils {
                 return@optionsAsStringList true
             }))
 
-
             if (appDecompileFolder == null) {
                 appDecompileFolder = File(apk.parentFile, apk.nameWithoutExtension)
-            }
-
-            println("Exi $appDecompileFolder: ${appDecompileFolder!!.exists()}")
-
-            if (!appDecompileFolder!!.exists()) {
-                commands.add(ApktoolCommand.Decompiler.OVERRIDE_FOLDER) // hack
             }
 
             commands.add(apk.absolutePath)
@@ -159,8 +152,6 @@ class ApkToolUtils {
             for (apkCommand in options) {
                 commands.add(apkCommand)
             }
-
-            output?.writeln("0000", commands.joinToString(", ", prefix = "[", postfix = "]"))
 
             onStart.invoke()
             val processBuilder = ProcessBuilder(commands)
