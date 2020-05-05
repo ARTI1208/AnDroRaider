@@ -8,6 +8,8 @@ import ru.art2000.androraider.view.settings.Settings
 import java.io.File
 import java.io.StringWriter
 import java.nio.charset.Charset
+import java.nio.file.Files
+import java.nio.file.Paths
 import kotlin.concurrent.thread
 
 
@@ -43,11 +45,19 @@ class ApkToolUtils {
 
                 return@optionsAsStringList true
             }))
-            commands.add(apk.absolutePath)
+
 
             if (appDecompileFolder == null) {
-                appDecompileFolder = File(apk.parentFile, apk.nameWithoutExtension).apply { mkdirs() }
+                appDecompileFolder = File(apk.parentFile, apk.nameWithoutExtension)
             }
+
+            println("Exi $appDecompileFolder: ${appDecompileFolder!!.exists()}")
+
+            if (!appDecompileFolder!!.exists()) {
+                commands.add(ApktoolCommand.Decompiler.OVERRIDE_FOLDER) // hack
+            }
+
+            commands.add(apk.absolutePath)
 
             basicApktoolQuery(commands, output, onStart = {
                 output?.writeln("ApkTool", "Decompilation of ${apk.absolutePath} started!")
@@ -149,6 +159,8 @@ class ApkToolUtils {
             for (apkCommand in options) {
                 commands.add(apkCommand)
             }
+
+            output?.writeln("0000", commands.joinToString(", ", prefix = "[", postfix = "]"))
 
             onStart.invoke()
             val processBuilder = ProcessBuilder(commands)

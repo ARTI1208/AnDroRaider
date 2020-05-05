@@ -57,18 +57,16 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
     override val presenter: EditorPresenter
 
     init {
-        if (!projectFolder.exists())
-            projectFolder.mkdirs()
-
         icons.add(App.LOGO)
-        title = "${projectFolder.name} - Project Editor"
+        title = "Project Editor"
         scene = BaseScene(root, 900.0, 600.0)
+
         presenter = EditorPresenter(this, projectFolder)
 
         addEventHandler(WindowEvent.WINDOW_SHOWN) {
             registerStreamOutput(this, console)
             showLoadingDialog()
-            onSetupFinished()
+            loadProject()
             fileManagerView.requestFocus()
         }
 
@@ -83,10 +81,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         editorTabPane.prefWidthProperty().bind(widthProperty().subtract(fileManagerView.prefWidthProperty()))
 
         fileManagerView.prefHeightProperty().bind(heightProperty())
-
-        setupTabs()
-        setupFileExplorerView()
-        setupMenu()
     }
 
     private fun showLoadingDialog() {
@@ -99,13 +93,13 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         loadingDialog.show()
     }
 
-    private fun onSetupFinished() {
-        val onLoadObservable = Observable
-                .fromIterable(onLoadRunnables)
-                .subscribeOn(Schedulers.io())
-                .doOnNext { it.accept(console) }
+    private fun onLoad() {
+        if (!projectFolder.exists())
+            projectFolder.mkdirs()
 
-        val projectIndexerObservable = (presenter.generateProjectIndex() ?: Observable.empty())
+        loadingLabel.text = "Indexing project..."
+
+        (presenter.generateProjectIndex() ?: Observable.empty())
                 .observeOn(JavaFxScheduler.platform())
                 .doOnNext {
                     loadingLabel.text = "Indexing $it..."
@@ -115,12 +109,25 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 .doOnComplete {
                     println(this, "ProjectAnalyzer", "Analyze ended at ${Date()}")
                     loadingDialog.close()
-                    fileManagerView.updateFileList()
                     presenter.projectObserver.start()
-                }
+                }.subscribe()
 
-        loadingLabel.text = "Indexing project..."
-        Observable.concat(onLoadObservable, projectIndexerObservable).subscribe()
+        title = "${projectFolder.name} - Project Editor"
+
+        setupTabs()
+        setupFileExplorerView()
+        setupMenu()
+    }
+
+    private fun loadProject() {
+        loadingLabel.text = "Loading project..."
+        Observable
+                .fromIterable(onLoadRunnables)
+                .subscribeOn(Schedulers.io())
+                .doOnNext { it.accept(console) }
+                .observeOn(JavaFxScheduler.platform())
+                .doOnComplete { onLoad() }
+                .subscribe()
     }
 
     @Suppress("RedundantLambdaArrow")
@@ -197,6 +204,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 fileManagerView.updateFileList()
             }
         }
+        fileManagerView.updateFileList()
     }
 
     private fun setupMenu() {
