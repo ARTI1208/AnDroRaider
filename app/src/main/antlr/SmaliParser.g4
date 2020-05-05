@@ -51,6 +51,9 @@ positiveNumericLiteral:
     | floatNumericLiteral
     | hexFloatLiteral
     | INFINITY
+    | FLOAT_INFINITY
+    | NAN
+    | FLOAT_NAN
     ;
 
 numericLiteral:                 negativeNumericLiteral | positiveNumericLiteral;
@@ -981,7 +984,7 @@ annotationScope:            IDENTIFIER;
 
 annotationType:             referenceType;
 
-annotationFieldValue:       (assignableValue | referenceType);
+annotationFieldValue:       (methodInvocationTarget | fieldInvocationTarget | assignableValue | referenceType);
 
 annotationValueScoped:      LBRACE (annotationFieldValue (COMMA annotationFieldValue)*)? RBRACE;
 

@@ -376,6 +376,10 @@ SEMI:                       ';';
 
 // Literals
 
+FLOAT_NAN: NAN [fF];
+NAN:   'NaN';
+
+FLOAT_INFINITY: INFINITY [fF];
 INFINITY:   'Infinity';
 
 DECIMAL_LITERAL:    ('0' | [1-9] (Digits? | '_'+ Digits)) [lL]?;
@@ -417,7 +421,7 @@ LINE_COMMENT
     ;
 
 // Fragment rules
-fragment SimpleName:        Letter (LetterOrDigit)*;
+fragment SimpleName:        (Letter (LetterOrDigit | LetterOrDigitOrSign)* (LetterOrDigit)+ | Letter);
 
 // Fragment rules
 
@@ -438,6 +442,11 @@ fragment HexDigit
     ;
 fragment Digits
     : [0-9] ([0-9_]* [0-9])?
+    ;
+fragment LetterOrDigitOrSign
+    : Letter
+    | [0-9]
+    | '-' // in kotlin standart library there are methods with one or more '-' in name
     ;
 fragment LetterOrDigit
     : Letter

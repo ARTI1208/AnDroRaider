@@ -1,10 +1,15 @@
 package ru.art2000.androraider.model.apktool
 
+import org.apache.commons.io.IOUtils
 import ru.art2000.androraider.model.io.StreamOutput
 import ru.art2000.androraider.model.settings.SettingsManager
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
 import ru.art2000.androraider.view.settings.Settings
 import java.io.File
+import java.io.StringWriter
+import java.nio.charset.Charset
+import kotlin.concurrent.thread
+
 
 fun <E> MutableList<E>.addAll(vararg els: E) {
     els.forEach {
@@ -146,10 +151,11 @@ class ApkToolUtils {
             }
 
             onStart.invoke()
-            val process = ProcessBuilder(commands).start()
-//            output?.startOutput("ApkTool", process.inputStream, process.errorStream)
+            val processBuilder = ProcessBuilder(commands)
+            val process = processBuilder.start()
+            output?.startOutput("ApkTool", process.inputStream, process.errorStream)
             process.waitFor()
-//            output?.stopOutput(process.inputStream, process.errorStream)
+            output?.stopOutput(process.inputStream, process.errorStream)
             onEnd.invoke(process.exitValue())
         }
     }

@@ -8,6 +8,7 @@ import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
+import java.lang.Exception
 
 class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: SmaliClass) :
         AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {

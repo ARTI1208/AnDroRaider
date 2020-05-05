@@ -154,19 +154,51 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
         else
             ctx.positiveNumericLiteral()
 
+        var err = false
+        try {
+            val last = meaningful.text.last()
+
+            when {
+                last in listOf('l', 'L') -> {
+                    offsetAfter = 1
+                    type = 1
+                }
+                last in listOf('f', 'F') && (type == 3) -> {
+                    offsetAfter = 1
+                    type = 2
+                }
+                last in listOf('d', 'D') && (type == 3) -> {
+                    offsetAfter = 1
+                    type = 3
+                }
+            }
+        } catch (e: Exception) {
+            println("Error: ${ctx.text} in ${smaliClass.associatedFile}")
+            e.printStackTrace()
+            err = true
+        }
+
         when {
+            meaningful.decimalNumericLiteral() != null -> {
+                radix = 10
+                offsetBefore = 0
+                if (err) println("decNum")
+            }
             meaningful.hexNumericLiteral() != null -> {
                 radix = 16
                 offsetBefore = 2
+                if (err) println("hexNum")
             }
             meaningful.hexFloatLiteral() != null -> {
                 radix = 16
                 offsetBefore = 2
                 type = 3
+                if (err) println("hexFloatNum")
             }
             meaningful.binaryNumericLiteral() != null -> {
                 radix = 2
                 offsetBefore = 2
+                if (err) println("bin")
             }
             meaningful.octNumericLiteral() != null -> {
                 radix = 8
@@ -175,61 +207,64 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
                     if (c == '_') offsetBefore++ else break
                 }
                 offsetBefore++
+                if (err) println("oct")
             }
             meaningful.floatNumericLiteral() != null -> {
                 type = 3
+                if (err) println("float")
             }
-            meaningful.INFINITY() != null -> {
+            meaningful.INFINITY() != null || meaningful.FLOAT_INFINITY() != null -> {
                 type = 4
+                if (err) println("inf")
+            }
+            meaningful.NAN() != null || meaningful.FLOAT_NAN() != null -> {
+                type = 5
+                if (err) println("nan")
+            }
+            else -> {
+                type = 666
+                println(ctx.text + "||"+meaningful.text + "||" + meaningful.childCount)
             }
         }
 
-        val last = meaningful.text.last()
-
-        when {
-            last in listOf('l', 'L') -> {
-                offsetAfter = 1
-                type = 1
-            }
-            last in listOf('f', 'F') && (type == 3) -> {
-                offsetAfter = 1
-                type = 2
-            }
-            last in listOf('d', 'D') && (type == 3) -> {
-                offsetAfter = 1
-                type = 3
-            }
-        }
+        if (err) println("Err in type^ $type")
 
         var numberString = meaningful.text.drop(offsetBefore).dropLast(offsetAfter)
         if (isNegative)
             numberString = "-$numberString"
 
-        var hex: String
-        val decimal: Number = when (type) {
-            0 -> numberString.toInt(radix).also {
-                hex = it.toString(16)
+        try {
+            var hex: String
+            val decimal: Number = when (type) {
+                0 -> numberString.toInt(radix).also {
+                    hex = it.toString(16)
+                }
+                1 -> numberString.toLong(radix).also {
+                    hex = it.toString(16)
+                }
+                2 -> numberString.toFloat().also {
+                    hex = it.toBits().toString(16)
+                }
+                3 -> numberString.toDouble().also {
+                    hex = it.toBits().toString(16)
+                }
+                4 -> (if (isNegative) Double.NEGATIVE_INFINITY else Double.POSITIVE_INFINITY).also {
+                    hex = "${if (isNegative) "-" else ""}Inf"
+                }
+                5 -> Double.NaN.also {
+                    hex = "NaN"
+                }
+                else -> 666.also {
+                    hex = it.toString(16)
+                }
             }
-            1 -> numberString.toLong(radix).also {
-                hex = it.toString(16)
-            }
-            2 -> numberString.toFloat().also {
-                hex = it.toBits().toString(16)
-            }
-            3 -> numberString.toDouble().also {
-                hex = it.toBits().toString(16)
-            }
-            4 -> (if (isNegative) Double.NEGATIVE_INFINITY else Double.POSITIVE_INFINITY).also {
-                hex = "${if (isNegative) "-" else ""}Inf"
-            }
-            else -> 666.also {
-                hex = it.toString(16)
-            }
+
+            description += "; hex: 0x${hex}; dec: $decimal"
+        } catch (e: Exception) {
+            println("Error: ${ctx.text} in ${smaliClass.associatedFile}")
+            e.printStackTrace()
         }
 
-//        val hex = if (type > 1) "%a".format(decimal) else decimal.to
-
-        description += "; hex: 0x${hex}; dec: $decimal"
 
         smaliClass.ranges.add(RangeStatusBase(ctx.textRange, description, listOf("number")))
         return visitChildren(ctx)
