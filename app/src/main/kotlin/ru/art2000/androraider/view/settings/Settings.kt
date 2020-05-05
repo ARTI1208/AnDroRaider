@@ -2,11 +2,13 @@ package ru.art2000.androraider.view.settings
 
 import javafx.event.EventHandler
 import javafx.scene.Scene
+import javafx.stage.DirectoryChooser
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import javafx.stage.Window
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
 import ru.art2000.androraider.view.BaseScene
+import java.io.File
 
 class Settings(owner: Window) : Stage(), ISettingsView, ISettingsController by SettingsController() {
 
@@ -19,6 +21,25 @@ class Settings(owner: Window) : Stage(), ISettingsView, ISettingsController by S
 
         setupApktoolSettings()
         setupClearButton()
+
+        frameworkPath.textProperty().bindBidirectional(presenter.frameworkPathProperty)
+        frameworkFolderPathSelectButton.onAction = EventHandler {
+            val pathChooser = DirectoryChooser()
+            if (!frameworkPath.text.isNullOrEmpty()) {
+                pathChooser.initialDirectory = File(frameworkPath.text).parentFile
+            }
+            val chosen = pathChooser.showDialog(owner) ?: return@EventHandler
+            frameworkPath.text = chosen.absolutePath
+        }
+        frameworkFilePathSelectButton.onAction = EventHandler {
+            val pathChooser = FileChooser()
+            pathChooser.extensionFilters.add(FileChooser.ExtensionFilter("Android app package", "*.apk"))
+            if (!frameworkPath.text.isNullOrEmpty()) {
+                pathChooser.initialDirectory = File(frameworkPath.text).parentFile
+            }
+            val chosen = pathChooser.showOpenDialog(root.scene.window) ?: return@EventHandler
+            frameworkPath.text = chosen.absolutePath
+        }
     }
 
     private fun setupApktoolSettings() {

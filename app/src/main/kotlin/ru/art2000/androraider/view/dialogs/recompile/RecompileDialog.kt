@@ -7,10 +7,16 @@ import javafx.scene.control.Dialog
 import javafx.scene.control.DialogPane
 import javafx.stage.DirectoryChooser
 import ru.art2000.androraider.model.apktool.ApktoolCommand
+import ru.art2000.androraider.model.editor.ProjectSettings
+import ru.art2000.androraider.presenter.settings.SettingsPresenter
 import java.io.File
 
-class RecompileDialog(private val baseFolder: File) : Dialog<List<ApktoolCommand>>(),
+class RecompileDialog(private val baseFolder: File, private val projectSettings: ProjectSettings? = null) : Dialog<List<ApktoolCommand>>(),
         IRecompilationController by RecompileDialogController() {
+
+    companion object {
+        private const val KEY_USE_CUSTOM_FRAMEWORK = "USE_CUSTOM_FRAMEWORK"
+    }
 
     init {
         title = "Recompile options"
@@ -42,12 +48,15 @@ class RecompileDialog(private val baseFolder: File) : Dialog<List<ApktoolCommand
         }
 
         setup()
+        loadFromSettings()
+        addListeners()
     }
 
     private fun setup() {
 
         filePathFieldSelector.onAction = EventHandler {
             DirectoryChooser()
+                    .apply { initialDirectory = File(filePathField.text).parentFile }
                     .showDialog(owner)
                     ?.absolutePath
                     ?.also { filePathField.text = it }
@@ -55,6 +64,7 @@ class RecompileDialog(private val baseFolder: File) : Dialog<List<ApktoolCommand
 
         customFramePathSelector.onAction = EventHandler {
             DirectoryChooser()
+                    .apply { initialDirectory = File(customFramePathField.text).parentFile }
                     .showDialog(owner)
                     ?.absolutePath
                     ?.also { customFramePathField.text = it }
@@ -62,5 +72,24 @@ class RecompileDialog(private val baseFolder: File) : Dialog<List<ApktoolCommand
 
         fileNameField.text = baseFolder.name
         filePathField.text = baseFolder.parent
+    }
+
+    private fun loadFromSettings() {
+        projectSettings ?: return
+
+        customFramePathField.text = projectSettings.getString(SettingsPresenter.KEY_FRAMEWORK_PATH)
+        customFrameRadio.isSelected = projectSettings.getBoolean(KEY_USE_CUSTOM_FRAMEWORK)
+    }
+
+    private fun addListeners() {
+        projectSettings ?: return
+
+        customFramePathField.textProperty().addListener { _, _, newValue ->
+            projectSettings.putString(SettingsPresenter.KEY_FRAMEWORK_PATH, newValue)
+        }
+
+        customFrameRadio.selectedProperty().addListener { _, _, newValue ->
+            projectSettings.putBoolean(KEY_USE_CUSTOM_FRAMEWORK, newValue)
+        }
     }
 }

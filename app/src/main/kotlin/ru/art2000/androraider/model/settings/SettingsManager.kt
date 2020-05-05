@@ -14,8 +14,16 @@ public class SettingsManager(forClass: Class<*>) : PreferenceManager {
         preferences.put(key, value)
     }
 
-    override fun getString(key: String, default: String?): String? {
+    override fun getString(key: String, default: String): String {
         return preferences.get(key, default)
+    }
+
+    override fun putBoolean(key: String, value: Boolean) {
+        preferences.putBoolean(key, value)
+    }
+
+    override fun getBoolean(key: String, default: Boolean): Boolean {
+        return preferences.getBoolean(key, default)
     }
 
 

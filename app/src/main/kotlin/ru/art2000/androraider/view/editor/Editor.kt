@@ -22,6 +22,7 @@ import ru.art2000.androraider.model.App
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.apktool.ApkToolUtils
 import ru.art2000.androraider.model.editor.getOrInitProject
+import ru.art2000.androraider.model.editor.getProjectForWindow
 import ru.art2000.androraider.model.io.StreamOutput
 import ru.art2000.androraider.model.io.println
 import ru.art2000.androraider.model.io.registerStreamOutput
@@ -211,7 +212,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
     private fun setupMenu() {
         // Menu/File
-        home.parentMenu.isMnemonicParsing = true
         home.onAction = EventHandler {
             hide()
             Launcher().show()
@@ -221,7 +221,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         }
         recompile.accelerator = KeyCodeCombination(KeyCode.R, KeyCombination.SHORTCUT_DOWN)
         recompile.onAction = EventHandler {
-            val dialog = RecompileDialog(projectFolder)
+            val dialog = RecompileDialog(projectFolder, getProjectForWindow(this)?.projectSettings)
             dialog.initOwner(this)
             val selectedOptions = dialog.showAndWait().get()
             if (selectedOptions.isNotEmpty()) {
@@ -239,7 +239,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
         // Menu/Search
         searchMenu.accelerator = KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN)
-        searchMenu.isMnemonicParsing = true
         searchMenu.onShown = EventHandler {
             search.searchField.requestFocus()
         }
@@ -251,14 +250,12 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         }
 
         scene.focusOwnerProperty().addListener { _, _, newValue ->
-            println(this, "FocusOwner", newValue)
             @Suppress("UNCHECKED_CAST")
             search.currentSearchable = newValue as? Searchable<String>
         }
 
         // Menu/Misc
         miscMenu.isVisible = false
-        examineFile.parentMenu.isMnemonicParsing = true
         examineFile.onAction = EventHandler {
             createFileInfoDialog()
         }

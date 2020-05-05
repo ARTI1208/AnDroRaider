@@ -27,20 +27,7 @@ class SettingsController : ISettingsController {
     @FXML
     override lateinit var apktoolPath: TextField
     @FXML
-    override lateinit var frameworkFolderPath: TextField
-    @FXML
-    override lateinit var frameworkFilePath: TextField
-    @FXML
-    override lateinit var frameworkFileRB: RadioButton
-    @FXML
-    override lateinit var frameworkFolderRB: RadioButton
-    @FXML
-    override lateinit var frameworkSmartFolderRB: RadioButton
-    @FXML
-    override lateinit var frameworkStaticFolderRB: RadioButton
-
-    override val frameworkTypeGroup = ToggleGroup()
-    override val frameworkFolderTypeGroup = ToggleGroup()
+    override lateinit var frameworkPath: TextField
 
     override val root: Parent
     override val layoutFile = "settings.fxml"

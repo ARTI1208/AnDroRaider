@@ -5,6 +5,9 @@ import ru.art2000.androraider.model.analyzer.smali.SmaliDependencyVerifier
 import ru.art2000.androraider.model.analyzer.smali.SmaliIndexer
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliPackage
+import ru.art2000.androraider.model.editor.ProjectSettings
+import ru.art2000.androraider.presenter.settings.SettingsPresenter
+import ru.art2000.androraider.view.settings.Settings
 import java.io.File
 
 class ProjectAnalyzeResult(val baseFolder: File) {
@@ -13,7 +16,7 @@ class ProjectAnalyzeResult(val baseFolder: File) {
 
     val fileToClassMapping = mutableMapOf<File, SmaliClass>()
 
-
+    public val projectSettings = ProjectSettings(baseFolder, SettingsPresenter.prefs)
 
     public val smaliFolders : List<File>
 
