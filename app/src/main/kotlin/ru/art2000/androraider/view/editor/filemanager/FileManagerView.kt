@@ -1,4 +1,4 @@
-package ru.art2000.androraider.view.editor
+package ru.art2000.androraider.view.editor.filemanager
 
 import javafx.beans.property.ObjectPropertyBase
 import javafx.beans.property.Property
@@ -15,6 +15,7 @@ import ru.art2000.androraider.utils.moveOrCopyDelete
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialogPane
 import ru.art2000.androraider.view.dialogs.showErrorMessage
+import ru.art2000.androraider.view.editor.Searchable
 import java.io.File
 
 typealias onFileSelected = (File?, File) -> Unit

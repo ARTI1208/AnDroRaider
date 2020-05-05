@@ -11,6 +11,7 @@ import ru.art2000.androraider.model.analyzer.smali.types.SmaliField
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
+import java.lang.Exception
 import java.lang.reflect.Modifier
 
 class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliClass) :
@@ -178,6 +179,9 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
             meaningful.floatNumericLiteral() != null -> {
                 type = 3
             }
+            meaningful.INFINITY() != null -> {
+                type = 4
+            }
         }
 
         val last = meaningful.text.last()
@@ -203,6 +207,9 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
 
         var hex: String
         val decimal: Number = when (type) {
+            0 -> numberString.toInt(radix).also {
+                hex = it.toString(16)
+            }
             1 -> numberString.toLong(radix).also {
                 hex = it.toString(16)
             }
@@ -212,7 +219,10 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
             3 -> numberString.toDouble().also {
                 hex = it.toBits().toString(16)
             }
-            else -> numberString.toInt(radix).also {
+            4 -> (if (isNegative) Double.NEGATIVE_INFINITY else Double.POSITIVE_INFINITY).also {
+                hex = "${if (isNegative) "-" else ""}Inf"
+            }
+            else -> 666.also {
                 hex = it.toString(16)
             }
         }
@@ -753,7 +763,7 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
     }
 
     override fun visitMethodDeclaration(ctx: SmaliParser.MethodDeclarationContext): SmaliClass {
-        val arguments = ctx.methodSignature().methodArguments() ?: return visitChildren(ctx)
+        val arguments = ctx.methodSignature()?.methodArguments() ?: return visitChildren(ctx)
 
         var offset = arguments.start.startIndex
         findMethod(ctx)?.parametersInternal?.addAll(parseCompound(arguments.text)
@@ -1711,6 +1721,11 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
     override fun visitNullLiteral(ctx: SmaliParser.NullLiteralContext): SmaliClass {
         return smaliClass
     }
+
+    override fun visitImplementsDirective(ctx: SmaliParser.ImplementsDirectiveContext): SmaliClass {
+        return visitChildren(ctx)
+    }
+
 
 //    override fun visitComment(ctx: SmaliParser.CommentContext): SmaliClass {
 //

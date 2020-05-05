@@ -1448,6 +1448,10 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
         return smaliClass
     }
 
+    override fun visitImplementsDirective(ctx: SmaliParser.ImplementsDirectiveContext): SmaliClass {
+        return visitChildren(ctx)
+    }
+
 //    override fun visitComment(ctx: SmaliParser.CommentContext): SmaliClass {
 //
 //        smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "Comment", listOf("comment")))

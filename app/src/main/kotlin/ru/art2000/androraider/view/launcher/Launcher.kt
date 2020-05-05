@@ -16,6 +16,7 @@ import ru.art2000.androraider.model.App
 import ru.art2000.androraider.model.apktool.ApkToolUtils
 import ru.art2000.androraider.model.launcher.RecentProject
 import ru.art2000.androraider.presenter.launcher.LauncherPresenter
+import ru.art2000.androraider.view.BaseScene
 import ru.art2000.androraider.view.dialogs.decompile.DecompileDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.editor.Editor
@@ -34,7 +35,7 @@ class Launcher : Stage(), ILauncherView, ILauncherController by LauncherControll
 
         title = App.NAME
         icons.add(App.LOGO)
-        scene = Scene(root, 900.0, 600.0)
+        scene = BaseScene(root, 900.0, 600.0)
         isResizable = false
     }
 

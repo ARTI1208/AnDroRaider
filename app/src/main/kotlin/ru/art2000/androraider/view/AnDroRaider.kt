@@ -16,7 +16,7 @@ class AnDroRaider : Application() {
 
     override fun start(primaryStage: Stage) {
         StyleClassedTextField() // hack
-        setUserAgentStylesheet(javaClass.getStyle("application.css"))
+//        setUserAgentStylesheet(javaClass.getStyle("application.css"))
         Launcher().show()
     }
 }

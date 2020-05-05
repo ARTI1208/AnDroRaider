@@ -31,13 +31,16 @@ class FileObserver(private val file: File) {
         })
     }
 
+    companion object {
+        val watcher = FileSystems.getDefault().newWatchService()
+    }
+
     fun start() {
         if (isRunning.get())
             return
 
         thread {
             val path = file.toPath()
-            val watcher = FileSystems.getDefault().newWatchService()
             val watchKey = path.register(watcher,
                     StandardWatchEventKinds.ENTRY_CREATE,
                     StandardWatchEventKinds.ENTRY_MODIFY,

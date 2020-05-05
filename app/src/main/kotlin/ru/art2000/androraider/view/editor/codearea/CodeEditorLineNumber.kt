@@ -1,11 +1,10 @@
-package ru.art2000.androraider.view.editor
+package ru.art2000.androraider.view.editor.codearea
 
 import javafx.scene.Node
 import javafx.scene.control.Label
 import org.fxmisc.richtext.GenericStyledArea
 import ru.art2000.androraider.utils.bind
 import java.util.function.IntFunction
-import kotlin.math.log10
 
 class CodeEditorLineNumber(val area: GenericStyledArea<*, *, *>) : IntFunction<Node> {
 

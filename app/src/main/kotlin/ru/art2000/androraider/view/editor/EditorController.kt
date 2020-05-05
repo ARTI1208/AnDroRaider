@@ -1,11 +1,10 @@
 package ru.art2000.androraider.view.editor
 
 import javafx.fxml.FXML
-import javafx.scene.Parent
 import javafx.scene.control.*
 import javafx.scene.layout.VBox
 import ru.art2000.androraider.mvp.BaseController
-import ru.art2000.androraider.utils.getLayout
+import ru.art2000.androraider.view.editor.filemanager.FileManagerView
 import ru.art2000.androraider.view.editor.menu.search.SearchMenuItem
 
 class EditorController : BaseController(), IEditorController {

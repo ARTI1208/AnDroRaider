@@ -6,6 +6,7 @@ import javafx.stage.FileChooser
 import javafx.stage.Stage
 import javafx.stage.Window
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
+import ru.art2000.androraider.view.BaseScene
 
 class Settings(owner: Window) : Stage(), ISettingsView, ISettingsController by SettingsController() {
 
@@ -13,7 +14,7 @@ class Settings(owner: Window) : Stage(), ISettingsView, ISettingsController by S
 
     init {
         title = "Settings"
-        scene = Scene(root, 900.0, 600.0)
+        scene = BaseScene(root, 900.0, 600.0)
         initOwner(owner)
 
         setupApktoolSettings()

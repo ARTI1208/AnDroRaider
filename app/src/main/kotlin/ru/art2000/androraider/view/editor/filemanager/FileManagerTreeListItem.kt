@@ -1,4 +1,4 @@
-package ru.art2000.androraider.view.editor
+package ru.art2000.androraider.view.editor.filemanager
 
 import javafx.event.EventHandler
 import javafx.fxml.Initializable
@@ -6,10 +6,12 @@ import javafx.geometry.Pos
 import javafx.scene.control.*
 import javafx.scene.image.ImageView
 import javafx.scene.layout.HBox
+import javafx.scene.text.TextAlignment
 import org.fxmisc.richtext.StyleClassedTextField
 import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.utils.autoWidth
 import ru.art2000.androraider.utils.getDrawable
+import ru.art2000.androraider.view.editor.Searchable
 import java.io.File
 import java.net.URL
 import java.util.*
@@ -22,12 +24,16 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
         isEditable = false
         isMouseTransparent = true
         background = null
-        styleClass.add("styled-label")
+        styleClass.setAll("editor-file-manager-item-label")
+        alignment = TextAlignment.JUSTIFY
+        prefHeight = DEFAULT_SIZE
+        minHeight = prefHeight
+        maxHeight = prefHeight
     }
 
     private val l = HBox().apply {
         alignment = Pos.CENTER_LEFT
-        spacing = 0.0
+        spacing = 5.0
     }
 
     private val icon = ImageView().apply { styleClass.add("icon") }
@@ -47,11 +53,9 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
 
     init {
         val close = ImageView(ARROW_ICON)
-        close.fitWidth = DEFAULT_SIZE
-        close.fitHeight = DEFAULT_SIZE
+        close.fitWidth = DEFAULT_SIZE - 8
+        close.fitHeight = DEFAULT_SIZE - 8
         disclosureNode = close
-
-        textField.prefWidth = Control.USE_COMPUTED_SIZE
 
         val menuItemCreate = MenuItem("Create")
         menuItemCreate.onAction = EventHandler {
@@ -83,7 +87,7 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
                 menuItemDelete
         )
 
-        styleClass.add("filemanager-item")
+        styleClass.add("file-manager-item")
 
         searchable.currentSearchValueProperty.addListener { _, _, newValue ->
             updateHighlighting(newValue, textField.text)
@@ -96,6 +100,13 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
         textField.autoWidth()
 
         l.children.addAll(icon, textField)
+        prefHeight = DEFAULT_SIZE
+        minHeight = prefHeight
+        maxHeight = prefHeight
+
+//        HBox.setHgrow(textField, Priority.ALWAYS)
+//        l.alignment = Pos.CENTER_LEFT
+//        l.spacing = 5.0
     }
 
     private fun updateHighlighting(toFind: String?, text: String?) {
@@ -108,7 +119,7 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
             return
 
         Regex(toFind.toLowerCase()).findAll(text.toLowerCase()).forEach {
-            textField.setStyle(it.range.first, it.range.last, listOf("search"))
+            textField.setStyle(it.range.first, it.range.last + 1, listOf("search"))
         }
     }
 
@@ -134,6 +145,7 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
             else -> UNKNOWN_FILE_ICON
         }
         textField.replaceText(item.name)
+        textField.prefHeight = DEFAULT_SIZE
 //        textField.prefWidth = width
 
         icon.fitWidth = DEFAULT_SIZE

@@ -1,4 +1,4 @@
-package ru.art2000.androraider.view.editor
+package ru.art2000.androraider.view.editor.codearea
 
 import io.reactivex.Single
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
@@ -12,7 +12,6 @@ import javafx.scene.input.ScrollEvent
 import javafx.stage.Popup
 import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
-import org.fxmisc.richtext.LineNumberFactory
 import org.fxmisc.richtext.event.MouseOverTextEvent
 import org.fxmisc.richtext.model.TwoDimensional
 import ru.art2000.androraider.model.editor.SearchSpanList
@@ -24,6 +23,7 @@ import java.nio.file.Files
 import java.time.Duration
 import java.util.regex.Pattern
 import ru.art2000.androraider.model.io.println
+import ru.art2000.androraider.view.editor.Searchable
 import kotlin.math.max
 
 @Suppress("RedundantVisibilityModifier", "MemberVisibilityCanBePrivate")
@@ -47,7 +47,7 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
         get() = currentEditingFileProperty.value
         set(value) = currentEditingFileProperty.setValue(value)
 
-    override val currentSearchValueProperty: ObjectPropertyBase<String> = object : ObjectPropertyBase<String>() {
+    override val currentSearchValueProperty: ObjectPropertyBase<String> = object : ObjectPropertyBase<String>("") {
         override fun getName(): String {
             return "currentSearchValue"
         }

@@ -1433,6 +1433,10 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult, var smaliClass: Sma
         return smaliClass
     }
 
+    override fun visitImplementsDirective(ctx: SmaliParser.ImplementsDirectiveContext): SmaliClass {
+        return smaliClass
+    }
+
 //    override fun visitComment(ctx: SmaliParser.CommentContext): SmaliClass {
 //
 //        smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "Comment", listOf("comment")))

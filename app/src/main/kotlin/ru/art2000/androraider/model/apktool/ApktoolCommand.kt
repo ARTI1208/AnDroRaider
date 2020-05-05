@@ -46,4 +46,11 @@ class ApktoolCommand(val tag: String, val value: String? = null) {
             fun forceRebuild() = ApktoolCommand(SKIP_LOOK_FOR_CHANGES)
         }
     }
+
+    public fun toStringList(): List<String> {
+        return if (value == null)
+            listOf(tag)
+        else
+            listOf(tag, value)
+    }
 }

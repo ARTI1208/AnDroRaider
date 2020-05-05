@@ -6,7 +6,6 @@ import io.reactivex.schedulers.Schedulers
 import javafx.application.Platform
 import javafx.collections.ListChangeListener
 import javafx.event.EventHandler
-import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyCodeCombination
@@ -27,14 +26,18 @@ import ru.art2000.androraider.model.io.registerStreamOutput
 import ru.art2000.androraider.model.io.unregisterStreamOutput
 import ru.art2000.androraider.presenter.editor.EditorPresenter
 import ru.art2000.androraider.utils.TypeDetector
+import ru.art2000.androraider.view.BaseScene
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.recompile.RecompileDialog
 import ru.art2000.androraider.view.dialogs.showErrorMessage
+import ru.art2000.androraider.view.editor.codearea.CodeEditorArea
+import ru.art2000.androraider.view.editor.codearea.CodeEditorScrollPane
 import ru.art2000.androraider.view.launcher.Launcher
 import ru.art2000.androraider.view.settings.Settings
 import java.io.File
 import java.io.IOException
 import java.nio.file.StandardWatchEventKinds
+import java.util.*
 import java.util.function.Consumer
 import kotlin.concurrent.thread
 
@@ -59,7 +62,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
         icons.add(App.LOGO)
         title = "${projectFolder.name} - Project Editor"
-        scene = Scene(root, 900.0, 600.0)
+        scene = BaseScene(root, 900.0, 600.0)
         presenter = EditorPresenter(this, projectFolder)
 
         addEventHandler(WindowEvent.WINDOW_SHOWN) {
@@ -107,10 +110,10 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 .doOnNext {
                     loadingLabel.text = "Indexing $it..."
                 }.doOnSubscribe {
-                    println(this, "ProjectAnalyzer", "Analyze started")
+                    println(this, "ProjectAnalyzer", "Analyze started at ${Date()}")
                 }
                 .doOnComplete {
-                    println(this, "ProjectAnalyzer", "Analyze ended")
+                    println(this, "ProjectAnalyzer", "Analyze ended at ${Date()}")
                     loadingDialog.close()
                     fileManagerView.updateFileList()
                     presenter.projectObserver.start()

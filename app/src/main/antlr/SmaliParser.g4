@@ -50,6 +50,7 @@ positiveNumericLiteral:
     | binaryNumericLiteral
     | floatNumericLiteral
     | hexFloatLiteral
+    | INFINITY
     ;
 
 numericLiteral:                 negativeNumericLiteral | positiveNumericLiteral;
@@ -948,7 +949,7 @@ fieldType:                  nonVoidType;
 
 fieldNameAndType:           fieldName COLON fieldType;
 
-fieldDirective:             FIELD_DIRECTIVE fieldModifier* fieldNameAndType (ASSIGN assignableValue)?;
+fieldDirective:             FIELD_DIRECTIVE fieldModifier* fieldNameAndType (ASSIGN assignableValue)? (annotationDirective* FIELD_END_DIRECTIVE)?;
 
 className:                  referenceType;
 
@@ -961,6 +962,8 @@ superDirective:             SUPER_DIRECTIVE superName;
 sourceName:                 stringLiteral;
 
 sourceDirective:            SOURCE_DIRECTIVE sourceName;
+
+implementsDirective:        IMPLEMENTS_DIRECTIVE referenceType;
 
 methodIdentifier:           identifier | LT identifier GT;
 
@@ -1005,6 +1008,7 @@ lineLabel:                  label;
 methodBodyStatement:
     paramDirective
     | lineDirective
+    | PROLOGUE_DIRECTIVE
     | instruction
     | lineLabel
     | catchDirective
@@ -1063,5 +1067,5 @@ sparseSwitchDirectiveValue: numericLiteral ARROW label;
 sparseSwitchDirective:      SPARSE_SWITCH_DIRECTIVE sparseSwitchDirectiveValue* SPARSE_SWITCH_END_DIRECTIVE;
 
 parse:
-    classDirective superDirective sourceDirective? fieldDirective* methodDirective*
+    classDirective superDirective sourceDirective? implementsDirective* annotationDirective* fieldDirective* methodDirective*
     ;

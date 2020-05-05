@@ -58,10 +58,13 @@ METHOD_END_DIRECTIVE:           '.end method';
 CLASS_DIRECTIVE:                '.class';
 SOURCE_DIRECTIVE:               '.source';
 SUPER_DIRECTIVE:                '.super';
+IMPLEMENTS_DIRECTIVE:           '.implements';
 FIELD_DIRECTIVE:                '.field';
+FIELD_END_DIRECTIVE:            '.end field';
 REGISTERS_DIRECTIVE:            '.registers';
 LOCALS_DIRECTIVE:               '.locals';
 PARAM_DIRECTIVE:                '.param';
+PROLOGUE_DIRECTIVE:             '.prologue';
 LINE_DIRECTIVE:                 '.line';
 CATCH_DIRECTIVE:                '.catch';
 CATCHALL_DIRECTIVE:             '.catchall';
@@ -372,6 +375,8 @@ ARROW:                      '->';
 SEMI:                       ';';
 
 // Literals
+
+INFINITY:   'Infinity';
 
 DECIMAL_LITERAL:    ('0' | [1-9] (Digits? | '_'+ Digits)) [lL]?;
 HEX_LITERAL:        '0' [xX] [0-9a-fA-F] ([0-9a-fA-F_]* [0-9a-fA-F])? [lL]?;

@@ -4,11 +4,12 @@
 
 <?import javafx.scene.text.Text?>
 <?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
 <AnchorPane fx:id="pane" id="pane" xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml">
 
     <HBox alignment="CENTER_LEFT" spacing="10">
-        <ImageView fx:id="fileIcon" id="fileIcon" fitHeight="20" fitWidth="20"/>
+        <ImageView fx:id="fileIcon" id="fileIcon" fitHeight="26" fitWidth="26"/>
         <Text fx:id="fileName" id="fileName" text="FileName" />
     </HBox>
 </AnchorPane>

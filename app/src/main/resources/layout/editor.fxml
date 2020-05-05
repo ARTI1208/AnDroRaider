@@ -4,8 +4,8 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import org.fxmisc.flowless.VirtualizedScrollPane?>
-<?import ru.art2000.androraider.view.editor.CodeEditorArea?>
-<?import ru.art2000.androraider.view.editor.FileManagerView?>
+<?import ru.art2000.androraider.view.editor.codearea.CodeEditorArea?>
+<?import ru.art2000.androraider.view.editor.filemanager.FileManagerView?>
 <?import ru.art2000.androraider.view.editor.ConsoleView?>
 <?import ru.art2000.androraider.view.editor.menu.search.SearchMenuItem?>
 <VBox xmlns="http://javafx.com/javafx"

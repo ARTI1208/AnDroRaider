@@ -32,7 +32,7 @@ public fun StyledTextField<*, *>.autoWidth() {
         prefWidth = computeContentWidth()
     }
 
-    multiRichChanges().addObserver {
-        prefWidth = computeContentWidth()
-    }
+//    multiRichChanges().addObserver {
+//        prefWidth = computeContentWidth()
+//    }
 }

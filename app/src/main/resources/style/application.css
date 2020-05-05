@@ -38,28 +38,31 @@
     -fx-background-color: #fafafa;
     -fx-border-color: gray;
     -fx-border-width: 0 0 1 0;
+    -fx-padding: 0;
+}
+
+.mnemonic-underline {
+    -fx-stroke: -fx-text-fill;
 }
 
 .menu-item {
-    -fx-background-color: #fafafa;
+    /*-fx-background-color: #fafafa;*/
     -fx-padding: 3 5 3 5;
+    /*-fx-text-fill: black;*/
 }
 
 .menu {
     -fx-padding: 2 5 2 5;
 }
 
-.menu:showing, .menu:showing:hover {
+.menu:showing, .menu:hover, .menu-item:hover, .menu-item:focused {
     -fx-background-color: linear-gradient(#328BDB 0%, #207BCF 25%, #1973C9 75%, #0A65BF 100%);
     -fx-text-fill: white;
 }
 
-.menu:hover {
-    -fx-background-color: #d0d0d0;
-}
-
-.menu-item:hover {
-    -fx-background-color: #d0d0d0;
+.menu-item:selected {
+    -fx-text-fill: black;
+    -fx-fill: black;
 }
 
 .context-menu {
@@ -72,11 +75,21 @@
 
 .hyperlink {
     -fx-font-size: 14;
+    -fx-text-fill: black;
+    -fx-border-width: 0;
+}
+
+.hyperlink:visited {
+    -fx-underline: false;
 }
 
 .hyperlink:hover {
     -fx-text-fill: chocolate;
     -fx-underline: true;
+}
+
+.hyperlink:focused {
+    -fx-text-fill: chocolate;
 }
 
 .text-field {
@@ -90,6 +103,17 @@
     -fx-border-color: gray;
     -fx-border-width: 1 1 1 1;
     -fx-padding: 2 5 2 5;
+    -fx-border-radius: 1;
+    -fx-min-height: 20px;
+}
+
+.button:disabled {
+    -fx-fill: lightgray;
+}
+
+.button-base {
+    -fx-background-size: 30px;
+    -fx-background-color: #fadc69;
 }
 
 .button:focused {
@@ -125,50 +149,50 @@
 
 .tab-header-area {
     -fx-background-color: lightgray;
+    -fx-padding: 0;
 }
 
 .tab {
+    -fx-background-insets: 0;
     -fx-background-color: #eeeeee;
-    -fx-padding: 5;
+    -fx-padding: 2 10 2 10;
 }
 
 .tab:hover {
-    -fx-background-color: #dedede;
-    -fx-padding: 5;
+    -fx-background-color: #cecece;
 }
 
 .tab:selected {
     -fx-background-color: #ffffff;
-    -fx-padding: 5;
 }
 
 .tab:hover:selected {
-    -fx-background-color: #e2e2e2;
-    -fx-padding: 5;
+    -fx-background-color: #dedede;
 }
 
 .tab .tab-label {
-    -fx-border-insets: 0 0 55 0;
+    -fx-fill:black;
+    -fx-text-fill: black;
 }
 
-.tab .tab-close-button {
-    -fx-shape:null;
-    -fx-background-image: url("../drawable/cross.png");
-    -fx-background-size: 16;
-    -fx-background-repeat: no-repeat;
-    -fx-background-position: right;
-}
+/*.tab .tab-close-button {*/
+/*    -fx-shape:null;*/
+/*    -fx-background-image: url("../drawable/cross.png");*/
+/*    -fx-background-size: 16;*/
+/*    -fx-background-repeat: no-repeat;*/
+/*    -fx-background-position: right;*/
+/*}*/
 
 .code-editor-area {
     -fx-font-size: 14px;
 }
 
-.styled-label {
+.editor-file-manager-item-label {
     -fx-font-size: 14px;
     -fx-pref-height: 14px;
 }
 
-.filemanager-item:selected .selected-item-text {
+.file-manager-item:selected .selected-item-text {
     -fx-text-fill: white;
     -fx-fill: white;
 }
@@ -178,7 +202,7 @@
     -fx-fill: black;
 }
 
-.filemanager-item:empty {
+.file-manager-item:empty {
     -fx-background-color: white;
 }
 
@@ -191,27 +215,31 @@
 
 .scroll-bar > .thumb {
     -fx-background-color: orange;
+    -fx-pref-height: 2px;
 }
 
 .scroll-bar > .track {
     -fx-background-color: transparent;
 }
 
-.scroll-bar > .increment-arrow, .decrement-arrow {
-    -fx-padding: 0;
-    -fx-shape: " ";
+.scroll-bar > .increment-button > .increment-arrow,
+.scroll-bar > .decrement-button > .decrement-arrow {
+    -fx-shape: null;
+    -fx-background-color: transparent;
 }
 
 .scroll-bar:vertical > .increment-button,
 .scroll-bar:vertical > .decrement-button {
     -fx-background-color: transparent;
     -fx-padding: 0 10 0 0;
+    -fx-arrows-visible: false;
 }
 
 .scroll-bar:horizontal > .increment-button,
 .scroll-bar:horizontal > .decrement-button {
     -fx-background-color: transparent;
     -fx-padding: 0 0 10 0;
+    -fx-arrows-visible: false;
 }
 
 .split-pane > .split-pane-divider {
@@ -227,3 +255,120 @@
     /*-fx-background-color: yellow;*/
     -rtfx-background-color: yellow;
 }
+
+/*.check-box {*/
+/*    -fx-label-padding: 0.0em 0.0em 0.0em 0.416667em; !* 0 0 0 5 *!*/
+/*    -fx-text-fill: -fx-text-background-color;*/
+/*}*/
+/*.check-box > .box {*/
+/*    -fx-background-radius: 3, 2, 1;*/
+/*    -fx-padding: 0.166667em 0.166667em 0.25em 0.25em; !* 2 2 3 3 *!*/
+/*}*/
+/*.check-box > .box > .mark {*/
+/*    -fx-background-color: null;*/
+/*    -fx-padding: 0.416667em 0.416667em 0.5em 0.5em; !* 5 5 6 6 *!*/
+/*    -fx-shape: "M-0.25,6.083c0.843-0.758,4.583,4.833,5.75,4.833S14.5-1.5,15.917-0.917c1.292,0.532-8.75,17.083-10.5,17.083C3,16.167-1.083,6.833-0.25,6.083z";*/
+/*}*/
+/*.check-box:indeterminate > .box {*/
+/*    -fx-padding: 0;*/
+/*}*/
+/*.check-box:indeterminate  > .box > .mark {*/
+/*    -fx-shape: "M0,0H10V2H0Z";*/
+/*    -fx-scale-shape: false;*/
+/*    -fx-padding: 0.666667em; !* 16x16 = 8+8 *!*/
+/*}*/
+
+/*.button.left-pill,*/
+/*.toggle-button.left-pill {*/
+/*    -fx-background-radius: 3 0 0 3, 3 0 0 3, 2 0 0 2, 1 0 0 1;*/
+/*    -fx-background-insets: 0 0 -1 0, 0, 1, 2;*/
+/*    -fx-padding: 0.333333em 0.666667em 0.333333em 0.75em; !* 4 8 4 9 *!*/
+/*}*/
+/*.button.center-pill,*/
+/*.toggle-button.center-pill {*/
+/*    -fx-background-radius: 0;*/
+/*    -fx-background-insets: 0 0 -1 0, 0 0 0 0, 1 1 1 0, 2 2 2 1 ;*/
+/*}*/
+/*.button.right-pill,*/
+/*.toggle-button.right-pill {*/
+/*    -fx-background-radius: 0 3 3 0, 0 3 3 0, 0 2 2 0, 0 1 1 0;*/
+/*    -fx-background-insets: 0 0 -1 0, 0, 1 1 1 0, 2 2 2 1 ;*/
+/*}*/
+/*.button.left-pill:focused,*/
+/*.toggle-button.left-pill:focused {*/
+/*    -fx-background-insets: -0.2 0 -0.2 -0.2, 1, 2, -1.4 0 -1.4 -1.4, 2.6;*/
+/*    -fx-background-radius: 3 0 0 3, 2 0 0 2, 1 0 0 1, 4 0 0 4, 1 0 0 1;*/
+/*}*/
+/*.button.center-pill:focused,*/
+/*.toggle-button.center-pill:focused {*/
+/*    -fx-background-insets: -0.2 0 -0.2 -1, 1 1 1 0, 2 2 2 1, -1.4 0 -1.4 -1, 2.6 2.6 2.6 1.6;*/
+/*    -fx-background-radius: 0, 0, 0, 0, 0;*/
+/*}*/
+/*.button.right-pill:focused,*/
+/*.toggle-button.right-pill:focused {*/
+/*    -fx-background-insets: -0.2 -0.2 -0.2 -1, 1 1 1 0, 2 2 2 1, -1.4 -1.4 -1.4 -1, 2.6 2.6 2.6 1.6;*/
+/*    -fx-background-radius: 0 3 3 0, 0 2 2 0, 0 1 1 0, 0 4 4 0, 0 1 1 0;*/
+/*}*/
+/*.toggle-button:selected.left-pill:focused {*/
+/*    -fx-background-insets: -0.2 0 -0.2 -0.2, 1, -1.4 0 -1.4 -1.4, 2.6;*/
+/*    -fx-background-radius: 3 0 0 3, 2 0 0 2, 4 0 0 4, 0;*/
+/*}*/
+/*.toggle-button:selected.center-pill:focused {*/
+/*    -fx-background-insets: -0.2 0 -0.2 -1, 1 1 1 0, -1.4 0 -1.4 -1, 2.6 2.6 2.6 1.6;*/
+/*    -fx-background-radius: 0, 0, 0, 0;*/
+/*}*/
+/*.toggle-button:selected.right-pill:focused {*/
+/*    -fx-background-insets: -0.2 -0.2 -0.2 -1, 1 1 1 0, -1.4 -1.4 -1.4 -1, 2.6 2.6 2.6 1.6;*/
+/*    -fx-background-radius: 0 3 3 0, 0 2 2 0, 0 4 4 0, 0;*/
+/*}*/
+
+/*!* ====   SELECTED TOGGLE   ================================================= *!*/
+
+/*.toggle-button:selected {*/
+/*    -fx-background-color:*/
+/*            -fx-shadow-highlight-color,*/
+/*            linear-gradient(to bottom, derive(-fx-outer-border, -20%), -fx-outer-border),*/
+/*            linear-gradient(to bottom,*/
+/*            derive(-fx-color, -22%) 0%,*/
+/*            derive(-fx-color, -13%) 20%,*/
+/*            derive(-fx-color, -11%) 50%);*/
+/*    -fx-background-insets: 0 0 -1 0, 0, 1;*/
+/*}*/
+/*.toggle-button:selected:focused {*/
+/*    -fx-background-color:*/
+/*            -fx-focus-color,*/
+/*            linear-gradient(to bottom,*/
+/*            derive(-fx-color, -22%) 0%,*/
+/*            derive(-fx-color, -13%) 20%,*/
+/*            derive(-fx-color, -11%) 50%),*/
+/*            -fx-faint-focus-color,*/
+/*            linear-gradient(to bottom,*/
+/*            derive(-fx-color, -22%) 0%,*/
+/*            derive(-fx-color, -13%) 20%,*/
+/*            derive(-fx-color, -11%) 50%);*/
+/*    -fx-background-insets: -0.2, 1, -1.4, 2.6;*/
+/*    -fx-background-radius: 3, 2, 4, 0;*/
+/*}*/
+
+/*.check-box {*/
+/*    -fx-background-color: transparent;*/
+/*}*/
+
+/*.check-box>.box {*/
+/*    -fx-background-insets: 0;*/
+/*    -fx-background-radius: 0;*/
+/*    -fx-background-color: purple;*/
+/*}*/
+
+/*.check-box>.box>.mark {*/
+/*    -fx-background-image: url("../drawable/checkbox_off.png");*/
+/*    -fx-background-size: 30;*/
+/*    -fx-background-position: center;*/
+/*    -fx-background-repeat: stretch;*/
+/*    -fx-shape: none;*/
+/*}*/
+
+/*.check-box:selected>.box>.mark{*/
+/*    -fx-background-color: purple;*/
+/*    -fx-background-image: url("../drawable/checkbox_on.png");*/
+/*}*/
