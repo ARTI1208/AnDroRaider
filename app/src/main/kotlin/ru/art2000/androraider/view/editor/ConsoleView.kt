@@ -3,6 +3,7 @@ package ru.art2000.androraider.view.editor
 import javafx.application.Platform
 import javafx.beans.property.StringProperty
 import javafx.beans.property.StringPropertyBase
+import javafx.concurrent.Task
 import javafx.geometry.Insets
 import javafx.scene.control.ScrollPane
 import org.fxmisc.flowless.VirtualizedScrollPane

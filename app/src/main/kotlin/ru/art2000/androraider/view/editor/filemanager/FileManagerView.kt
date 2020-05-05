@@ -12,11 +12,13 @@ import ru.art2000.androraider.model.editor.getProjectForNode
 import ru.art2000.androraider.presenter.editor.FileManagerPresenter
 import ru.art2000.androraider.utils.getRawContent
 import ru.art2000.androraider.utils.moveOrCopyDelete
+import ru.art2000.androraider.utils.walk
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialogPane
 import ru.art2000.androraider.view.dialogs.showErrorMessage
 import ru.art2000.androraider.view.editor.Searchable
 import java.io.File
+import ru.art2000.androraider.utils.compareTo
 
 typealias onFileSelected = (File?, File) -> Unit
 
@@ -350,6 +352,33 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
         func(node)
         node.children.forEach {
             walkExpandableNode(it, func)
+        }
+    }
+
+    public fun removeBranch(file: File) {
+        var item: TreeItem<File>? = null
+        walkTree {
+            if (it.value == file)
+                item = it
+        }
+
+        item?.parent?.children?.remove(item)
+    }
+
+    public fun addBranch(file: File) {
+        val parent = file.parentFile ?: return
+        var item: TreeItem<File>? = null
+        walkTree {
+            if (it.value == parent)
+                item = it
+        }
+
+        val result = item ?: return
+
+        val pos = result.children.binarySearch { it.value.compareTo(file, true) }
+
+        if (pos < 0) {
+            result.children.add(-pos - 1 , TreeItem(file))
         }
     }
 

@@ -155,8 +155,9 @@ class ApkToolUtils {
 
             onStart.invoke()
             val processBuilder = ProcessBuilder(commands)
+            processBuilder.redirectErrorStream(true)
             val process = processBuilder.start()
-            output?.startOutput("ApkTool", process.inputStream, process.errorStream)
+            output?.startOutput("ApkTool", process.inputStream)
             process.waitFor()
             output?.stopOutput(process.inputStream, process.errorStream)
             onEnd.invoke(process.exitValue())

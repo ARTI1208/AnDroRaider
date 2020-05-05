@@ -30,6 +30,14 @@ fun File.isSubFile(folder: File, canMatch: Boolean = false): Boolean {
     return false
 }
 
+fun File.compareTo(file: File, directoriesBefore: Boolean): Int {
+    return if (directoriesBefore && (isDirectory != file.isDirectory)) {
+        if (isDirectory) -1 else 1
+    } else {
+        compareTo(file)
+    }
+}
+
 fun File.moveOrCopyDelete(dest: File): Boolean {
     try {
         Files.move(this.toPath(), dest.toPath())

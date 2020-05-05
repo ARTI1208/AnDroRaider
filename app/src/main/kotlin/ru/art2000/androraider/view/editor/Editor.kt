@@ -19,7 +19,9 @@ import javafx.scene.paint.Color
 import javafx.stage.Stage
 import javafx.stage.WindowEvent
 import ru.art2000.androraider.model.App
+import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.apktool.ApkToolUtils
+import ru.art2000.androraider.model.editor.getOrInitProject
 import ru.art2000.androraider.model.io.StreamOutput
 import ru.art2000.androraider.model.io.println
 import ru.art2000.androraider.model.io.registerStreamOutput
@@ -67,7 +69,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
             registerStreamOutput(this, console)
             showLoadingDialog()
             loadProject()
-            fileManagerView.requestFocus()
         }
 
         addEventHandler(WindowEvent.WINDOW_HIDDEN) {
@@ -98,8 +99,8 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
             projectFolder.mkdirs()
 
         loadingLabel.text = "Indexing project..."
-
-        (presenter.generateProjectIndex() ?: Observable.empty())
+        getOrInitProject(this, projectFolder)
+        (presenter.generateProjectIndex() ?: Observable.empty<SmaliClass>())
                 .observeOn(JavaFxScheduler.platform())
                 .doOnNext {
                     loadingLabel.text = "Indexing $it..."
@@ -109,14 +110,16 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 .doOnComplete {
                     println(this, "ProjectAnalyzer", "Analyze ended at ${Date()}")
                     loadingDialog.close()
-                    presenter.projectObserver.start()
+                    presenter.startFileObserver()
                 }.subscribe()
 
         title = "${projectFolder.name} - Project Editor"
 
-        setupTabs()
-        setupFileExplorerView()
         setupMenu()
+        setupFileExplorerView()
+        setupTabs()
+
+        fileManagerView.requestFocus()
     }
 
     private fun loadProject() {
@@ -197,11 +200,10 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
             }
         }
 
-        presenter.projectObserver.addListener { _, kind ->
-            if (kind == StandardWatchEventKinds.ENTRY_CREATE
-                    || kind == StandardWatchEventKinds.ENTRY_DELETE) {
-
-                fileManagerView.updateFileList()
+        presenter.addFileListener { file, kind ->
+            when(kind) {
+                StandardWatchEventKinds.ENTRY_DELETE -> fileManagerView.removeBranch(file)
+                StandardWatchEventKinds.ENTRY_CREATE -> fileManagerView.addBranch(file)
             }
         }
         fileManagerView.updateFileList()
@@ -224,16 +226,19 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
             val selectedOptions = dialog.showAndWait().get()
             if (selectedOptions.isNotEmpty()) {
                 thread {
+//                    presenter.stopObservation()
                     ApkToolUtils.recompile(projectFolder, *selectedOptions.toTypedArray(), output = console)
                             ?: showErrorMessage(
                                     "Recompile error",
                                     "An error occurred while recompiling",
                                     this)
+//                    presenter.observe()
                 }
             }
         }
 
         // Menu/Search
+        searchMenu.accelerator = KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN)
         searchMenu.isMnemonicParsing = true
         searchMenu.onShown = EventHandler {
             search.searchField.requestFocus()

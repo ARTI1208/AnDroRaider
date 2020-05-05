@@ -5,11 +5,12 @@ import io.reactivex.disposables.Disposable
 import javafx.stage.Window
 import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
 import ru.art2000.androraider.model.editor.getOrInitProject
-import ru.art2000.androraider.model.editor.project.DirectoryObserver
+import ru.art2000.androraider.model.io.DirectoryObserver
 import ru.art2000.androraider.mvp.IPresenter
 import java.io.File
+import java.nio.file.WatchEvent
 
-class EditorPresenter(private val window: Window, val baseFolder: File) : IPresenter, Disposable {
+class EditorPresenter(private val window: Window, private val baseFolder: File) : IPresenter, Disposable {
 
     val openedFilesOrder = mutableListOf<Int>()
 
@@ -29,7 +30,19 @@ class EditorPresenter(private val window: Window, val baseFolder: File) : IPrese
 
     var disposed = false
 
-    val projectObserver = DirectoryObserver(baseFolder)
+    var projectObserver = DirectoryObserver(baseFolder)
+
+    fun addFileListener(func: (File, WatchEvent.Kind<*>) -> Unit) {
+        projectObserver.addListener(func)
+    }
+
+    fun startFileObserver() {
+        projectObserver.start()
+    }
+
+    fun stopFileObserver() {
+        projectObserver.stop()
+    }
 
     fun generateProjectIndex() : Observable<out FileAnalyzeResult>? {
         return getOrInitProject(window, baseFolder).indexProject()
@@ -39,7 +52,7 @@ class EditorPresenter(private val window: Window, val baseFolder: File) : IPrese
 
     override fun dispose() {
         if (!disposed) {
-
+            stopFileObserver()
             disposed = true
         }
     }
