@@ -35,12 +35,12 @@ public class SettingsManager(forClass: Class<*>) : PreferenceManager {
                 stringBuilder.append("|")
         }
         preferences.put(key, stringBuilder.toString())
+        preferences.keys()
     }
 
     override fun getStringArray(key: String, defaultArray: List<String>): List<String> {
         val array = preferences.get(key, "")
         return if (array != "") array.split("|") else defaultArray
     }
-
 
 }

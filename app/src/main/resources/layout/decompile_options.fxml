@@ -16,29 +16,31 @@
 
     <fx:define>
         <ToggleGroup fx:id="frameworkType"/>
+        <Tooltip fx:id="apktoolPathTooltip" text="${apktoolPathField.text}"/>
+        <Tooltip fx:id="frameworkPathTooltip" text="${customFramePathField.text}"/>
+        <Tooltip fx:id="folderNameTooltip" text="${folderNameField.text}"/>
+        <Tooltip fx:id="folderPathTooltip" text="${projectPathField.text}"/>
     </fx:define>
 
+    <HBox>
+        <TextField fx:id="apktoolPathField" tooltip="$apktoolPathTooltip"/>
+        <Button fx:id="apktoolPathFileSelector" text="Select"/>
+    </HBox>
     <RadioButton fx:id="builtinFrameRadio" toggleGroup="$frameworkType" text="Built-in framework" selected="true"/>
     <RadioButton fx:id="customFrameRadio" toggleGroup="$frameworkType" text="Custom framework"/>
     <HBox spacing="10" disable="${builtinFrameRadio.selected}">
-        <TextField fx:id="customFramePathField" id="-p"/>
-        <Button fx:id="customFramePathSelector" text="Select"/>
+        <TextField fx:id="customFramePathField" tooltip="$frameworkPathTooltip" id="-p"/>
+        <Button fx:id="customFramePathSelector" text="Select folder"/>
+        <Button fx:id="customFramePathFileSelector" text="Select file"/>
     </HBox>
     <HBox alignment="CENTER_LEFT" spacing="10">
         <Text text="Folder: "/>
-        <TextField fx:id="folderNameField" promptText="Folder name"/>
+        <TextField fx:id="folderNameField" tooltip="$folderNameTooltip" promptText="Folder name"/>
     </HBox>
     <HBox alignment="CENTER_LEFT" spacing="10">
         <Text text="Path to folder: "/>
-        <TextField fx:id="projectPathField" text="Path to folder"/>
+        <TextField fx:id="projectPathField" tooltip="$folderPathTooltip" text="Path to folder"/>
         <Button fx:id="projectPathFieldSelector" text="Select"/>
     </HBox>
     <CheckBox fx:id="overrideIfExistsCheckBox" id="-f" text="Override if folder already exists"/>
-    <!--<HBox spacing="10">-->
-    <!--<padding>-->
-    <!--<Insets top="30"/>-->
-    <!--</padding>-->
-    <!--<CheckBox id="saveChoice" text="Save choice" />-->
-    <!--<CheckBox id="doNotAskAgain" text="Do not ask again" />-->
-    <!--</HBox>-->
 </VBox>

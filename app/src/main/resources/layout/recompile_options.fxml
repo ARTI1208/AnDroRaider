@@ -1,27 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Text?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
 <VBox spacing="10" xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml">
     <padding>
-        <Insets bottom="20" />
+        <Insets bottom="20"/>
     </padding>
 
     <fx:define>
         <ToggleGroup fx:id="frameworkType"/>
+        <Tooltip fx:id="apktoolPathTooltip" text="${apktoolPathField.text}"/>
+        <Tooltip fx:id="frameworkPathTooltip" text="${customFramePathField.text}"/>
         <Tooltip fx:id="fileNameTooltip" text="${fileNameField.text}"/>
         <Tooltip fx:id="filePathTooltip" text="${filePathField.text}"/>
     </fx:define>
 
+    <HBox>
+        <TextField fx:id="apktoolPathField" tooltip="$apktoolPathTooltip"/>
+        <Button fx:id="apktoolPathFileSelector" text="Select"/>
+    </HBox>
     <RadioButton fx:id="builtinFrameRadio" toggleGroup="$frameworkType" text="Built-in framework" selected="true"/>
     <RadioButton fx:id="customFrameRadio" toggleGroup="$frameworkType" text="Custom framework"/>
     <HBox id="framePathBox" spacing="10" disable="${builtinFrameRadio.selected}">
-        <TextField fx:id="customFramePathField" id="-p"/>
-        <Button fx:id="customFramePathSelector" text="Select"/>
+        <TextField fx:id="customFramePathField" tooltip="$frameworkPathTooltip" id="-p"/>
+        <Button fx:id="customFramePathSelector" text="Select folder"/>
+        <Button fx:id="customFramePathFileSelector" text="Select file"/>
     </HBox>
     <HBox alignment="CENTER_LEFT" spacing="10">
         <Text text="File name: "/>

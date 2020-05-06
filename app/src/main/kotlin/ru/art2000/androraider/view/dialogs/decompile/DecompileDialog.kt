@@ -1,16 +1,32 @@
 package ru.art2000.androraider.view.dialogs.decompile
 
 import javafx.event.EventHandler
-import javafx.scene.control.ButtonBar
-import javafx.scene.control.ButtonType
-import javafx.scene.control.Dialog
-import javafx.scene.control.DialogPane
+import javafx.scene.Node
+import javafx.scene.control.*
 import javafx.stage.DirectoryChooser
+import javafx.stage.FileChooser
 import ru.art2000.androraider.model.apktool.ApktoolCommand
+import ru.art2000.androraider.model.settings.PreferenceManager
+import ru.art2000.androraider.presenter.settings.SettingsPresenter
+import ru.art2000.androraider.utils.FILE_CHOOSER_APK_FILTER
+import ru.art2000.androraider.utils.FILE_CHOOSER_JAR_FILTER
 import java.io.File
 
-class DecompileDialog(val app: File) : Dialog<Pair<List<ApktoolCommand>, File>?>(),
+class DecompileDialog(private val app: File, private val settings: PreferenceManager? = null) : Dialog<Pair<List<ApktoolCommand>, File>?>(),
         IDecompilationController by DecompileDialogController() {
+
+    companion object {
+        private const val KEY_USE_CUSTOM_FRAMEWORK = "use_custom_framework"
+        private const val KEY_FOLDER_NAME = "folder_name"
+        private const val KEY_FOLDER_PATH = "folder_path"
+        private const val KEY_OVERRIDE = "override"
+        private const val KEY_APKTOOL_PATH = SettingsPresenter.KEY_APKTOOL_PATH
+        private const val KEY_FRAMEWORK_PATH = SettingsPresenter.KEY_FRAMEWORK_PATH
+    }
+
+    private val decompileButton: Node
+
+    private val fileTextFields = listOf(apktoolPathField, customFramePathField, projectPathField)
 
     init {
         title = "Decompile options"
@@ -18,11 +34,12 @@ class DecompileDialog(val app: File) : Dialog<Pair<List<ApktoolCommand>, File>?>
         dialogPane = DialogPane()
         dialogPane.content = root
 
-        val decompileButton = ButtonType("Decompile", ButtonBar.ButtonData.OK_DONE)
-        dialogPane.buttonTypes.addAll(decompileButton, ButtonType.CANCEL)
+        val decompileButtonType = ButtonType("Decompile", ButtonBar.ButtonData.OK_DONE)
+        dialogPane.buttonTypes.addAll(decompileButtonType, ButtonType.CANCEL)
+        decompileButton = dialogPane.lookupButton(decompileButtonType)
 
         setResultConverter { button ->
-            return@setResultConverter if (button === decompileButton) {
+            return@setResultConverter if (button === decompileButtonType) {
 
                 val flagCheckBoxes = listOf(noCodeDecompile, noResDecompile, overrideIfExistsCheckBox)
 
@@ -41,6 +58,8 @@ class DecompileDialog(val app: File) : Dialog<Pair<List<ApktoolCommand>, File>?>
         }
 
         setup()
+        addListeners()
+        loadFromSettings()
     }
 
     private fun setup() {
@@ -57,7 +76,84 @@ class DecompileDialog(val app: File) : Dialog<Pair<List<ApktoolCommand>, File>?>
             customFramePathField.text = chosen.absolutePath
         }
 
-        projectPathField.text = app.parent
-        folderNameField.text = app.nameWithoutExtension
+        apktoolPathFileSelector.onAction = EventHandler {
+            FileChooser()
+                    .apply {
+                        initialDirectory = File(apktoolPathField.text).parentFile
+                        extensionFilters.add(FILE_CHOOSER_JAR_FILTER)
+                    }
+                    .showOpenDialog(owner)
+                    ?.absolutePath
+                    ?.also { apktoolPathField.text = it }
+        }
+
+        customFramePathFileSelector.onAction = EventHandler {
+            FileChooser()
+                    .apply {
+                        initialDirectory = File(customFramePathField.text).parentFile
+                        extensionFilters.add(FILE_CHOOSER_APK_FILTER)
+                    }
+                    .showOpenDialog(owner)
+                    ?.absolutePath
+                    ?.also { customFramePathField.text = it }
+        }
+    }
+
+    private fun loadFromSettings() {
+        settings ?: return
+
+        apktoolPathField.text = settings.getString(KEY_APKTOOL_PATH)
+        customFramePathField.text = settings.getString(KEY_FRAMEWORK_PATH)
+        customFrameRadio.isSelected = settings.getBoolean(KEY_USE_CUSTOM_FRAMEWORK)
+        folderNameField.text = settings.getString(KEY_FOLDER_NAME, app.nameWithoutExtension)
+        projectPathField.text = settings.getString(KEY_FOLDER_PATH, app.parent)
+        overrideIfExistsCheckBox.isSelected = settings.getBoolean(KEY_OVERRIDE)
+    }
+
+    private fun ensureFilesAvailable() {
+        decompileButton.isDisable = fileTextFields.any { it.styleClass.contains("error") }
+    }
+
+    private fun addListeners() {
+        settings ?: return
+
+        customFramePathField.textProperty().addListener { _, _, newValue ->
+//            settings.putString(KEY_FRAMEWORK_PATH, newValue)
+
+            customFramePathField.styleClass.remove("error")
+            if (!File(newValue).exists())
+                customFramePathField.styleClass.add("error")
+            ensureFilesAvailable()
+        }
+
+//        customFrameRadio.selectedProperty().addListener { _, _, newValue ->
+//            settings.putBoolean(KEY_USE_CUSTOM_FRAMEWORK, newValue)
+//        }
+//
+//        folderNameField.textProperty().addListener { _, _, newValue ->
+//            settings.putString(KEY_FOLDER_NAME, newValue)
+//        }
+
+        projectPathField.textProperty().addListener { _, _, newValue ->
+//            settings.putString(KEY_FOLDER_PATH, newValue)
+
+            projectPathField.styleClass.remove("error")
+            if (!File(newValue).exists())
+                projectPathField.styleClass.add("error")
+            ensureFilesAvailable()
+        }
+
+//        overrideIfExistsCheckBox.selectedProperty().addListener { _, _, newValue ->
+//            settings.putBoolean(KEY_OVERRIDE, newValue)
+//        }
+
+        apktoolPathField.textProperty().addListener { _, _, newValue ->
+//            settings.putString(KEY_APKTOOL_PATH, newValue)
+
+            apktoolPathField.styleClass.remove("error")
+            if (!File(newValue).exists())
+                apktoolPathField.styleClass.add("error")
+            ensureFilesAvailable()
+        }
     }
 }

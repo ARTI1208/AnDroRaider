@@ -44,8 +44,10 @@ class ProjectSettings(projectFolder: File, private val globalSettings: Preferenc
     }
 
     override fun putBoolean(key: String, value: Boolean) {
-        properties.setProperty(key, value.toString())
-        saveToFile()
+        if (getBoolean(key) != value) {
+            properties.setProperty(key, value.toString())
+            saveToFile()
+        }
     }
 
     override fun getBoolean(key: String, default: Boolean): Boolean {
@@ -53,8 +55,10 @@ class ProjectSettings(projectFolder: File, private val globalSettings: Preferenc
     }
 
     public override fun putString(key: String, value: String) {
-        properties.setProperty(key, value)
-        saveToFile()
+        if (getString(key) != value) {
+            properties.setProperty(key, value)
+            saveToFile()
+        }
     }
 
     override fun putStringArray(key: String, array: Collection<String>) {

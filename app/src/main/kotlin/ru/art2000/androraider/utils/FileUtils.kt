@@ -2,10 +2,14 @@ package ru.art2000.androraider.utils
 
 import javafx.fxml.FXMLLoader
 import javafx.scene.image.Image
+import javafx.stage.FileChooser
 import org.apache.commons.io.FileUtils
 import java.io.File
 import java.nio.file.DirectoryNotEmptyException
 import java.nio.file.Files
+
+public val FILE_CHOOSER_APK_FILTER = FileChooser.ExtensionFilter("Android app package", "*.apk")
+public val FILE_CHOOSER_JAR_FILTER = FileChooser.ExtensionFilter("Java archive", "*.jar")
 
 fun File.isSubFile(folder: File, canMatch: Boolean = false): Boolean {
     if (!folder.isDirectory || !folder.exists() || !exists())

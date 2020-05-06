@@ -2,7 +2,7 @@ package ru.art2000.androraider.model.settings
 
 interface PreferenceManager {
 
-    public fun remove(key: String)
+    fun remove(key: String)
 
     fun putString(key: String, value: String)
 

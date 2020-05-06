@@ -8,12 +8,19 @@ import ru.art2000.androraider.mvp.IController
 
 interface IRecompilationController : IController {
 
+    val apktoolPathField: TextField
+    val apktoolPathFileSelector: Button
+
     val builtinFrameRadio: RadioButton
+
     val customFrameRadio: RadioButton
     val customFramePathField: TextField
     val customFramePathSelector: Button
+    val customFramePathFileSelector: Button
+
     val fileNameField: TextField
     val filePathField: TextField
     val filePathFieldSelector: Button
+
     val forceRebuildCheckBox: CheckBox
 }

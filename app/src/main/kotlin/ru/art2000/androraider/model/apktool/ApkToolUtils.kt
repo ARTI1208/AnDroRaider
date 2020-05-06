@@ -1,16 +1,9 @@
 package ru.art2000.androraider.model.apktool
 
-import org.apache.commons.io.IOUtils
 import ru.art2000.androraider.model.io.StreamOutput
-import ru.art2000.androraider.model.settings.SettingsManager
+import ru.art2000.androraider.model.settings.PreferenceManager
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
-import ru.art2000.androraider.view.settings.Settings
 import java.io.File
-import java.io.StringWriter
-import java.nio.charset.Charset
-import java.nio.file.Files
-import java.nio.file.Paths
-import kotlin.concurrent.thread
 
 
 fun <E> MutableList<E>.addAll(vararg els: E) {
@@ -25,19 +18,13 @@ class ApkToolUtils {
 
     companion object {
 
-        private val apktool: File?
-            get() {
-                val tmpPath = SettingsManager(Settings::class.java).getString(SettingsPresenter.KEY_APKTOOL_PATH)
-                return if (tmpPath == null || !File(tmpPath).exists()) null else File(tmpPath)
-            }
-
         @JvmStatic
-        fun decompile(apk: File, vararg options: ApktoolCommand, output: StreamOutput? = null): File? {
+        fun decompile(settings: PreferenceManager, apk: File, vararg options: ApktoolCommand, output: StreamOutput? = null): File? {
             var appDecompileFolder: File? = null
             val commands = ArrayList<String>(listOf(ApktoolCommand.Decompiler.TAG))
             commands.addAll(optionsAsStringList(options.toList(), verifier = {
                 if (it.tag == ApktoolCommand.General.FRAMEWORK_FOLDER_PATH) {
-                    installFramework(File(it.value!!))
+                    installFramework(settings, File(it.value!!), output = output)
                     return@optionsAsStringList false
                 } else if (it.tag == ApktoolCommand.General.OUTPUT) {
                     appDecompileFolder = File(it.value!!)
@@ -52,7 +39,7 @@ class ApkToolUtils {
 
             commands.add(apk.absolutePath)
 
-            basicApktoolQuery(commands, output, onStart = {
+            basicApktoolQuery(settings, commands, output, onStart = {
                 output?.writeln("ApkTool", "Decompilation of ${apk.absolutePath} started!")
             }, onEnd = {
                 if (it == 0) {
@@ -66,12 +53,12 @@ class ApkToolUtils {
         }
 
         @JvmStatic
-        fun recompile(projectFolder: File, vararg options: ApktoolCommand, output: StreamOutput? = null): File? {
+        fun recompile(settings: PreferenceManager, projectFolder: File, vararg options: ApktoolCommand, output: StreamOutput? = null): File? {
             var apk: File? = null
             val commands = ArrayList<String>(listOf(ApktoolCommand.Compiler.TAG))
             commands.addAll(optionsAsStringList(options.toList(), verifier = {
                 if (it.tag == ApktoolCommand.General.FRAMEWORK_FOLDER_PATH) {
-                    installFramework(File(it.value!!))
+                    installFramework(settings, File(it.value!!), output = output)
                     return@optionsAsStringList false
                 } else if (it.tag == ApktoolCommand.General.OUTPUT) {
                     apk = File(it.value!!)
@@ -86,7 +73,7 @@ class ApkToolUtils {
                 apk = File(parentFolder, projectFolder.name + ".apk")
             }
 
-            basicApktoolQuery(commands, output, onStart = {
+            basicApktoolQuery(settings, commands, output, onStart = {
                 output?.writeln("ApkTool", "Recompilation of ${projectFolder.absolutePath} started!")
             }, onEnd = {
                 if (it == 0) {
@@ -105,7 +92,7 @@ class ApkToolUtils {
          */
         @Suppress("unused")
         @JvmStatic
-        fun installFramework(framework: File, path: String? = null, output: StreamOutput? = null) {
+        fun installFramework(settings: PreferenceManager, framework: File, path: String? = null, output: StreamOutput? = null) {
             val frameworkFiles = if (framework.isDirectory)
                 framework.listFiles { file -> file.extension == "apk" }?.mapNotNull { it }?.toList() ?: emptyList()
             else
@@ -117,7 +104,7 @@ class ApkToolUtils {
                 if (path != null)
                     commands.addAll(ApktoolCommand.General.FRAMEWORK_FOLDER_PATH, path)
                 commands.add(it.absolutePath)
-                basicApktoolQuery(commands, onStart = {
+                basicApktoolQuery(settings, commands, onStart = {
                     output?.writeln("ApkTool", "Installing framework ${it.absolutePath}...")
                 }, onEnd = { exitCode ->
                     if (exitCode == 0)
@@ -139,16 +126,17 @@ class ApkToolUtils {
             return commands
         }
 
-        private fun basicApktoolQuery(options: List<String>,
+        private fun basicApktoolQuery(settings: PreferenceManager,
+                                      options: List<String>,
                                       output: StreamOutput? = null,
                                       onStart: (() -> Unit) = {},
                                       onEnd: ((Int) -> Unit) = {}) {
-            val apktoolFile = apktool
-            if (apktoolFile == null || !apktoolFile.exists()) {
+            val apktool = File(settings.getString(SettingsPresenter.KEY_APKTOOL_PATH))
+            if (!apktool.exists()) {
                 output?.writeln("ApkToolCheck", "Apktool not found! Checkout its path in settings")
                 return
             }
-            val commands = ArrayList<String>(listOf("java", "-jar", apktoolFile.absolutePath))
+            val commands = ArrayList<String>(listOf("java", "-jar", apktool.absolutePath))
             for (apkCommand in options) {
                 commands.add(apkCommand)
             }

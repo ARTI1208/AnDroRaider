@@ -226,13 +226,23 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
             val selectedOptions = dialog.showAndWait().get()
             if (selectedOptions.isNotEmpty()) {
                 thread {
-//                    presenter.stopObservation()
-                    ApkToolUtils.recompile(projectFolder, *selectedOptions.toTypedArray(), output = console)
-                            ?: showErrorMessage(
+                    val settings = getProjectForWindow(this)?.projectSettings ?: kotlin.run {
+                        Platform.runLater {
+                            showErrorMessage(
                                     "Recompile error",
-                                    "An error occurred while recompiling",
+                                    "Cannot find project settings",
                                     this)
-//                    presenter.observe()
+                        }
+                        return@thread
+                    }
+
+                    ApkToolUtils.recompile(settings, projectFolder, *selectedOptions.toTypedArray(), output = console)
+                            ?: Platform.runLater {
+                                showErrorMessage(
+                                        "Recompile error",
+                                        "An error occurred while recompiling",
+                                        this)
+                            }
                 }
             }
         }

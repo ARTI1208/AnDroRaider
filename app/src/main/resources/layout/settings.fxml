@@ -11,14 +11,16 @@
     <padding>
         <Insets topRightBottomLeft="20"/>
     </padding>
-    <Text text="Java sources"/>
-    <HBox>
-        <TextField promptText="apktool path" fx:id="javaSourcesPath"/>
-        <Button text="Select" fx:id="javaSourcesPathSelectButton"/>
-    </HBox>
+    <VBox visible="false" managed="false">
+        <Text text="Java sources"/>
+        <HBox>
+            <TextField promptText="apktool path" fx:id="javaSourcesPath"/>
+            <Button text="Select" fx:id="javaSourcesPathSelectButton"/>
+        </HBox>
+    </VBox>
     <Text text="General apktool options"/>
     <HBox>
-        <TextField promptText="apktool path" fx:id="apktoolPath"/>
+        <TextField promptText="Apktool path" fx:id="apktoolPath"/>
         <Button text="Select" fx:id="apktoolPathSelectButton"/>
     </HBox>
     <Text text="Framework"/>
@@ -29,16 +31,20 @@
             <Button text="Select file" fx:id="frameworkFilePathSelectButton"/>
         </HBox>
     </VBox>
-    <Text text="Decompile options"/>
-    <HBox>
-        <TextField promptText="apktool path"/>
-        <Button text="Select"/>
-    </HBox>
-    <Text text="Recompile options"/>
-    <HBox>
-        <TextField promptText="apktool path"/>
-        <Button text="Select" />
-    </HBox>
+    <VBox visible="false" managed="false">
+        <Text text="Decompile options"/>
+        <HBox>
+            <TextField promptText="apktool path"/>
+            <Button text="Select"/>
+        </HBox>
+    </VBox>
+    <VBox visible="false" managed="false">
+        <Text text="Recompile options"/>
+        <HBox>
+            <TextField promptText="apktool path"/>
+            <Button text="Select" />
+        </HBox>
+    </VBox>
     <HBox>
         <Button fx:id="clearDataButton" text="Clear app data" />
     </HBox>

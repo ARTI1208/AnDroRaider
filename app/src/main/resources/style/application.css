@@ -97,6 +97,7 @@
     -fx-border-width: 0 0 1 0;
 }
 
+
 .button {
     -fx-alignment: center;
     -fx-background-color: #e5e5e5;
@@ -255,6 +256,13 @@
     /*-fx-background-color: yellow;*/
     -rtfx-background-color: yellow;
 }
+
+.error {
+    -fx-text-fill: red;
+    -fx-fill: red;
+    -fx-font-weight: bold;
+}
+
 
 /*.check-box {*/
 /*    -fx-label-padding: 0.0em 0.0em 0.0em 0.416667em; !* 0 0 0 5 *!*/

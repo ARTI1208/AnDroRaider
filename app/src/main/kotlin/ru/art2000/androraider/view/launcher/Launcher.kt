@@ -16,6 +16,7 @@ import ru.art2000.androraider.model.App
 import ru.art2000.androraider.model.apktool.ApkToolUtils
 import ru.art2000.androraider.model.launcher.RecentProject
 import ru.art2000.androraider.presenter.launcher.LauncherPresenter
+import ru.art2000.androraider.presenter.settings.SettingsPresenter
 import ru.art2000.androraider.view.BaseScene
 import ru.art2000.androraider.view.dialogs.decompile.DecompileDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialog
@@ -118,7 +119,7 @@ class Launcher : Stage(), ILauncherView, ILauncherController by LauncherControll
             }
             val app = chooser.showOpenDialog(root.scene.window) ?: return@EventHandler
 
-            val dialog = DecompileDialog(app)
+            val dialog = DecompileDialog(app, SettingsPresenter.prefs)
             dialog.initOwner(this)
             dialog.showAndWait()
 
@@ -129,7 +130,7 @@ class Launcher : Stage(), ILauncherView, ILauncherController by LauncherControll
 
                 hide()
                 Editor(folder, Consumer {
-                    ApkToolUtils.decompile(app, *selectedOptions.toTypedArray(), output = it)
+                    ApkToolUtils.decompile(SettingsPresenter.prefs, app, *selectedOptions.toTypedArray(), output = it)
                 }).show()
             }
         }
