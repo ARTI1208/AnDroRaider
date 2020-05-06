@@ -978,7 +978,7 @@ methodArguments:            methodParameterType+;
 
 methodSignature:            methodIdentifier LPAREN methodArguments? RPAREN methodReturnType;
 
-methodDeclaration:          methodModifier* methodSignature (registersDirective | localsDirective);
+methodDeclaration:          methodModifier* methodSignature;
 
 annotationScope:            IDENTIFIER;
 
@@ -1025,7 +1025,7 @@ methodBodyStatement:
     | sparseSwitchDirective
     ;
 
-methodBody:                 methodBodyStatement+;
+methodBody:                 (registersDirective | localsDirective) methodBodyStatement+;
 
 packedSwitchIdent:          numericLiteral;
 
