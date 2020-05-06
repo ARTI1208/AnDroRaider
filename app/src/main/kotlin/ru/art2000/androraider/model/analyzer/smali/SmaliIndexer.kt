@@ -2,14 +2,13 @@ package ru.art2000.androraider.model.analyzer.smali
 
 import io.reactivex.Observable
 import io.reactivex.schedulers.Schedulers
-import org.antlr.v4.runtime.CharStreams
-import org.antlr.v4.runtime.CommonTokenStream
-import org.antlr.v4.runtime.TokenSource
-import org.antlr.v4.runtime.TokenStream
+import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.tree.ParseTree
 import ru.art2000.androraider.model.analyzer.Indexer
 import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
+import ru.art2000.androraider.model.analyzer.result.RangeStatusBase
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
+import ru.art2000.androraider.utils.textRange
 import java.io.File
 
 object SmaliIndexer : Indexer<SmaliClass> {
@@ -18,9 +17,8 @@ object SmaliIndexer : Indexer<SmaliClass> {
 
 
         val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
-        val tokens = CommonTokenStream(lexer as TokenSource)
-        val parser = SmaliParser(tokens as TokenStream)
-        parser.removeErrorListeners()
+        val tokenStream = CommonTokenStream(lexer as TokenSource)
+        val parser = SmaliParser(tokenStream as TokenStream)
 
         val tree = parser.parse()
 
@@ -32,6 +30,12 @@ object SmaliIndexer : Indexer<SmaliClass> {
         smaliClass.ranges.clear()
 
         SmaliFileScanner(project, smaliClass).visit(tree as ParseTree)
+
+        tokenStream.tokens.forEach {
+            if (it.channel == 1) { // hidden channel
+                smaliClass.ranges.add(RangeStatusBase(it.textRange, "Comment", listOf("comment")))
+            }
+        }
 
         return smaliClass
     }

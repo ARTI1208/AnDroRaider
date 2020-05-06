@@ -1,6 +1,7 @@
 package ru.art2000.androraider.utils
 
 import org.antlr.v4.runtime.ParserRuleContext
+import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.TerminalNode
 
 val ParserRuleContext.textRange: IntRange
@@ -10,7 +11,12 @@ val ParserRuleContext.textRange: IntRange
 
 val TerminalNode.textRange: IntRange
     get() {
-        return symbol.startIndex..symbol.stopIndex
+        return symbol.textRange
+    }
+
+val Token.textRange: IntRange
+    get() {
+        return startIndex..stopIndex
     }
 
 public fun parseCompound(string: String): List<String> {
