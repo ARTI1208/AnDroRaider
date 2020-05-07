@@ -17,6 +17,8 @@ import ru.art2000.androraider.model.apktool.ApkToolUtils
 import ru.art2000.androraider.model.launcher.RecentProject
 import ru.art2000.androraider.presenter.launcher.LauncherPresenter
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
+import ru.art2000.androraider.utils.FILE_CHOOSER_APK_FILTER
+import ru.art2000.androraider.utils.FILE_CHOOSER_JAR_FILTER
 import ru.art2000.androraider.view.BaseScene
 import ru.art2000.androraider.view.dialogs.decompile.DecompileDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialog
@@ -111,7 +113,7 @@ class Launcher : Stage(), ILauncherView, ILauncherController by LauncherControll
 
         newProjectButton.onAction = EventHandler {
             val chooser = FileChooser()
-            chooser.extensionFilters.add(FileChooser.ExtensionFilter("Android app package", "*.apk"))
+            chooser.extensionFilters.addAll(FILE_CHOOSER_APK_FILTER, FILE_CHOOSER_JAR_FILTER)
             if (recentsListView.items.isNotEmpty()) {
                 val parent = recentsListView.items.first().appFile.parentFile
                 if (parent.isDirectory)

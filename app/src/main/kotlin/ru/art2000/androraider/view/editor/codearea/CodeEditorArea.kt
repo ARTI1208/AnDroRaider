@@ -7,6 +7,7 @@ import javafx.beans.property.ObjectPropertyBase
 import javafx.scene.control.Control
 import javafx.scene.control.Label
 import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyCodeCombination
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.ScrollEvent
 import javafx.stage.Popup
@@ -14,6 +15,9 @@ import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
 import org.fxmisc.richtext.event.MouseOverTextEvent
 import org.fxmisc.richtext.model.TwoDimensional
+import ru.art2000.androraider.model.analyzer.result.NavigableRange
+import ru.art2000.androraider.model.analyzer.result.RangeAnalyzeStatus
+import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.editor.SearchSpanList
 import ru.art2000.androraider.model.editor.getProjectForNode
 import ru.art2000.androraider.utils.TypeDetector
@@ -23,14 +27,15 @@ import java.nio.file.Files
 import java.time.Duration
 import java.util.regex.Pattern
 import ru.art2000.androraider.model.io.println
+import ru.art2000.androraider.utils.toKeyCodeCombination
 import ru.art2000.androraider.view.editor.Searchable
 import kotlin.math.max
 
 @Suppress("RedundantVisibilityModifier", "MemberVisibilityCanBePrivate")
 class CodeEditorArea() : CodeArea(), Searchable<String> {
 
-    constructor(file: File) : this() {
-        edit(file)
+    constructor(file: File, runnable: Runnable = Runnable{}) : this() {
+        edit(file, runnable)
     }
 
     val currentEditingFileProperty = object : ObjectPropertyBase<File?>() {
@@ -57,6 +62,8 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
         }
 
     }
+
+    val keyListeners = mutableMapOf<KeyCodeCombination, (RangeAnalyzeStatus) -> Unit>()
 
     private var currentSearchCursor = -1
         set(value) {
@@ -113,15 +120,43 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
         addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_END) { popup.hide() }
         addEventHandler(ScrollEvent.SCROLL) { popup.hide() }
 
-        addEventHandler(KeyEvent.KEY_PRESSED) {
+        addEventHandler(KeyEvent.KEY_PRESSED) { event ->
             isSearching = false
-            if (it.code == KeyCode.TAB && !it.isShortcutDown) {
+            println(event.toKeyCodeCombination())
+            keyListeners[event.toKeyCodeCombination()]?.also { listener ->
+                println("CombFound")
+                val prj = getProjectForNode(this)
+                prj?.fileToClassMapping?.get(currentEditingFile)?.also { clazz ->
+                    val pos = caretPosition
+                    println("CurClassFound")
+                    clazz.ranges.find { pos in it.range }?.apply {
+                        println("RangeFound: $description")
+                        listener.invoke(this)
+                    }
+                }
+            }
+
+
+            if (event.code == KeyCode.TAB && !event.isShortcutDown) {
                 // assume tab was already inserted
                 replaceText(caretPosition - 1, caretPosition, " ".repeat(4))
                 return@addEventHandler
             }
 
-            if (it.isShortcutDown && (it.code == KeyCode.SLASH || it.code == KeyCode.PERIOD)) {
+            if (event.isShortcutDown && event.code == KeyCode.B) {
+                val prj = getProjectForNode(this)
+                val clazz = prj?.fileToClassMapping?.get(currentEditingFile)
+                if (clazz != null) {
+                    val pos = caretPosition
+                    val navigable = (clazz.ranges.find { pos in it.range && it is NavigableRange } as? NavigableRange)
+                    if (navigable != null) {
+                        //open
+                        println("Open ${navigable.file} at ${navigable.offset}")
+                    }
+                }
+            }
+
+            if (event.isShortcutDown && (event.code == KeyCode.SLASH || event.code == KeyCode.PERIOD)) {
                 val refactorer = TypeDetector.getRefactoringRule(currentEditingFile?.extension)
 
                 val isSingleLine = selection.start == selection.end
@@ -181,7 +216,6 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
                 .observeOn(JavaFxScheduler.platform())
                 .doOnSuccess {
                     replaceText(it)
-                    updateHighlighting()
                     moveToAndPlaceLineInCenter(0)
                     undoManager.forgetHistory()
                     onTextSet.run()
@@ -244,12 +278,12 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
     }
 
     public override fun findNext() {
-        if (currentSearchValue.isEmpty()) {
+        if (currentSearchValue.isEmpty() || searchSpanList.isEmpty()) {
             return
         }
         isSearching = true
 
-        val newPos = if(searchSpanList.currentPosition < 0) {
+        val newPos = if (searchSpanList.currentPosition < 0) {
             searchSpanList.withIndex().find { it.value.last >= caretPosition }?.index ?: 0
         } else
             (searchSpanList.currentPosition + 1) % searchSpanList.size
@@ -263,7 +297,7 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
         }
         isSearching = true
 
-        val newPos = if(searchSpanList.currentPosition < 0)
+        val newPos = if (searchSpanList.currentPosition < 0)
             searchSpanList.withIndex().findLast { it.value.last <= caretPosition }?.index ?: searchSpanList.lastIndex
         else
             (searchSpanList.size + searchSpanList.currentPosition - 1) % searchSpanList.size
@@ -285,9 +319,15 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
 
                     clearStyle(0, text.length)
 
+                    println("Methods")
+                    if (result is SmaliClass) {
+                        result.methods.forEach { println(it) }
+                    }
+
                     result.rangeStatuses.forEach { status ->
+//                        println("${status.range}:${status.style}:${status.description}")
                         try {
-                            setStyle(status.range.first, status.range.last + 1, status.style)
+                            setStyle(status.range.first, status.range.last, status.style)
                         } catch (e: Exception) {
                             println("Error: ${status.style}")
                             e.printStackTrace()
@@ -307,7 +347,7 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
                                     selectSearchRange(-1, searchSpanList.size - 1)
                                 }
 //                                else {
-                                    setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
+                                setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
 //                                }
                             }
                             if (!currentFound) {

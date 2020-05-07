@@ -263,6 +263,11 @@
     -fx-font-weight: bold;
 }
 
+.popup {
+    -fx-background-color: black;
+    -fx-text-fill: white;
+    -fx-padding: 5;
+}
 
 /*.check-box {*/
 /*    -fx-label-padding: 0.0em 0.0em 0.0em 0.416667em; !* 0 0 0 5 *!*/

@@ -19,20 +19,22 @@ import javafx.scene.paint.Color
 import javafx.stage.Stage
 import javafx.stage.WindowEvent
 import ru.art2000.androraider.model.App
+import ru.art2000.androraider.model.analyzer.result.NavigableRange
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.apktool.ApkToolUtils
-import ru.art2000.androraider.model.editor.getOrInitProject
-import ru.art2000.androraider.model.editor.getProjectForWindow
 import ru.art2000.androraider.model.io.StreamOutput
 import ru.art2000.androraider.model.io.println
 import ru.art2000.androraider.model.io.registerStreamOutput
 import ru.art2000.androraider.model.io.unregisterStreamOutput
+import ru.art2000.androraider.model.settings.PreferenceManager
 import ru.art2000.androraider.presenter.editor.EditorPresenter
 import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.view.BaseScene
 import ru.art2000.androraider.view.dialogs.getBaseDialog
+import ru.art2000.androraider.view.dialogs.projectsettings.ProjectSettingsDialog
 import ru.art2000.androraider.view.dialogs.recompile.RecompileDialog
 import ru.art2000.androraider.view.dialogs.showErrorMessage
+import ru.art2000.androraider.view.editor.classes.SmaliDataViewer
 import ru.art2000.androraider.view.editor.codearea.CodeEditorArea
 import ru.art2000.androraider.view.editor.codearea.CodeEditorScrollPane
 import ru.art2000.androraider.view.launcher.Launcher
@@ -95,24 +97,34 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         loadingDialog.show()
     }
 
-    private fun onLoad() {
-        if (!projectFolder.exists())
-            projectFolder.mkdirs()
-
+    private fun runIndexing() {
         loadingLabel.text = "Indexing project..."
-        getOrInitProject(this, projectFolder)
         (presenter.generateProjectIndex() ?: Observable.empty<SmaliClass>())
                 .observeOn(JavaFxScheduler.platform())
-                .doOnNext {
-                    loadingLabel.text = "Indexing $it..."
-                }.doOnSubscribe {
+//                .doOnNext {
+//                    loadingLabel.text = "Indexing $it..."
+//                }
+                .doOnSubscribe {
                     println(this, "ProjectAnalyzer", "Analyze started at ${Date()}")
                 }
                 .doOnComplete {
                     println(this, "ProjectAnalyzer", "Analyze ended at ${Date()}")
                     loadingDialog.close()
                     presenter.startFileObserver()
-                }.subscribe()
+                }.subscribe({
+                    loadingLabel.text = "Indexing $it..."
+                }, {
+                    println("Error1: ")
+                    it.printStackTrace()
+                })
+    }
+
+    private fun onLoad() {
+        if (!projectFolder.exists())
+            projectFolder.mkdirs()
+
+        onSettingsUpdate(presenter.project.projectSettings)
+        runIndexing()
 
         title = "${projectFolder.name} - Project Editor"
 
@@ -182,23 +194,38 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         editorTabPane.tabClosingPolicy = TabPane.TabClosingPolicy.ALL_TABS
     }
 
+    private fun openFile(newFile: File, caretPosition: Int = 0) {
+        if (TypeDetector.isTextFile(newFile.name)) {
+            val indexedTab = editorTabPane.tabs.withIndex().find { it.value.userData == newFile }
+            val position = if (indexedTab == null) {
+                val newTab = Tab(newFile.name)
+                newTab.userData = newFile
+                newTab.content = CodeEditorScrollPane(CodeEditorArea().apply {
+                    keyListeners[KeyCodeCombination(KeyCode.B, KeyCombination.SHORTCUT_DOWN)] = {
+                        if (it is NavigableRange) {
+                            println("File: ${it.file} in ${it.offset}")
+                            it.file?.also { fileToOpen -> openFile(fileToOpen, it.offset) }
+                        }
+                    }
+                    edit(newFile, Runnable {
+                        moveToAndPlaceLineInCenter(caretPosition)
+                    })
+                })
+                val pos = editorTabPane.selectionModel.selectedIndex + 1
+                editorTabPane.tabs.add(pos, newTab)
+                pos
+            } else {
+                (editorTabPane.tabs[indexedTab.index].content as CodeEditorScrollPane).content.moveToAndPlaceLineInCenter(caretPosition)
+                indexedTab.index
+            }
+
+            editorTabPane.selectionModel.select(position)
+        }
+    }
+
     private fun setupFileExplorerView() {
         fileManagerView.onFileSelectedListeners.add { _, newFile ->
-            if (TypeDetector.isTextFile(newFile.name)) {
-                val indexedTab = editorTabPane.tabs.withIndex().find { it.value.userData == newFile }
-                val position = if (indexedTab == null) {
-                    val newTab = Tab(newFile.name)
-                    newTab.userData = newFile
-                    newTab.content = CodeEditorScrollPane(CodeEditorArea(newFile))
-                    val pos = editorTabPane.selectionModel.selectedIndex + 1
-                    editorTabPane.tabs.add(pos, newTab)
-                    pos
-                } else {
-                    indexedTab.index
-                }
-
-                editorTabPane.selectionModel.select(position)
-            }
+            openFile(newFile)
         }
 
         presenter.addFileListener { file, kind ->
@@ -210,6 +237,15 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         fileManagerView.updateFileList()
     }
 
+    private fun onSettingsUpdate(settings: PreferenceManager) {
+        val frameworkFolder = File(settings.getString(ProjectSettingsDialog.KEY_DECOMPILED_FRAMEWORK_PATH))
+        if (frameworkFolder.isDirectory && frameworkFolder.exists()) {
+            presenter.project.addProjectFolder(frameworkFolder)
+            showLoadingDialog()
+            runIndexing()
+        }
+    }
+
     private fun setupMenu() {
         // Menu/File
         home.onAction = EventHandler {
@@ -219,22 +255,24 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         settings.onAction = EventHandler {
             Settings(this).show()
         }
+        projectSettings.onAction = EventHandler {
+            val settings = presenter.project.projectSettings
+            val res = ProjectSettingsDialog(settings).showAndWait()
+            if (res != null) {
+                onSettingsUpdate(settings)
+            }
+        }
+        dataViewer.onAction = EventHandler {
+            SmaliDataViewer(presenter.project).also { it.initOwner(this) }.show()
+        }
         recompile.accelerator = KeyCodeCombination(KeyCode.R, KeyCombination.SHORTCUT_DOWN)
         recompile.onAction = EventHandler {
-            val dialog = RecompileDialog(projectFolder, getProjectForWindow(this)?.projectSettings)
+            val dialog = RecompileDialog(projectFolder, presenter.project.projectSettings)
             dialog.initOwner(this)
             val selectedOptions = dialog.showAndWait().get()
             if (selectedOptions.isNotEmpty()) {
                 thread {
-                    val settings = getProjectForWindow(this)?.projectSettings ?: kotlin.run {
-                        Platform.runLater {
-                            showErrorMessage(
-                                    "Recompile error",
-                                    "Cannot find project settings",
-                                    this)
-                        }
-                        return@thread
-                    }
+                    val settings = presenter.project.projectSettings
 
                     ApkToolUtils.recompile(settings, projectFolder, *selectedOptions.toTypedArray(), output = console)
                             ?: Platform.runLater {

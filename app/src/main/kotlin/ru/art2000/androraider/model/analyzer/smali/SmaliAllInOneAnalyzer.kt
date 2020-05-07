@@ -1,20 +1,27 @@
 package ru.art2000.androraider.model.analyzer.smali
 
+import org.antlr.v4.runtime.RuleContext
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
 import org.antlr.v4.runtime.tree.ErrorNode
-import ru.art2000.androraider.model.analyzer.result.Error
-import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
+import ru.art2000.androraider.model.analyzer.result.*
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliField
+import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
 import java.lang.Exception
+import java.lang.reflect.Modifier
 
-class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: SmaliClass) :
+class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: SmaliClass) :
         AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
 
     override fun visitClassDirective(ctx: SmaliParser.ClassDirectiveContext): SmaliClass {
-        return smaliClass
+        if (ctx.CLASS_DIRECTIVE() == null) {
+//            println("null cld " + ctx.text + " in " + smaliClass.associatedFile)
+            return visitChildren(ctx)
+        }
+        smaliClass.ranges.add(RangeStatusBaseV2(ctx.CLASS_DIRECTIVE().textRange, ctx.CLASS_DIRECTIVE().text, "Class", listOf("keyword")))
+        return visitChildren(ctx)
     }
 
     override fun visitNegFloatInstruction(ctx: SmaliParser.NegFloatInstructionContext): SmaliClass {
@@ -26,11 +33,49 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitMethodReturnType(ctx: SmaliParser.MethodReturnTypeContext): SmaliClass {
+
+        val method = findMethod(ctx)
+        if (method != null) {
+            val returnType = project.getOrCreateClass(ctx.text)
+            if (returnType == null) {
+                val message = if (ctx.text.isNullOrEmpty())
+                    "No return type provided"
+                else
+                    "Unknown return type \"${ctx.text}\""
+
+                smaliClass.ranges.add(Error(ctx.textRange, message))
+            } else {
+                method.returnType = returnType
+            }
+        }
+
         return visitChildren(ctx)
     }
 
+    inner class FieldDeclarationContextWrapper(ctx: SmaliParser.FieldDirectiveContext) :
+            SmaliParser.FieldDirectiveContext(ctx.getParent(), ctx.invokingState) {
+
+        val smaliField = smaliClass.findOrCreateField(
+                ctx.fieldNameAndType()?.fieldName()?.text ?: "Dummy",
+                ctx.fieldNameAndType()?.fieldType()?.text ?: "I"
+        )!!
+
+        init {
+            children = ctx.children
+            children.forEach {
+                it.setParent(this)
+            }
+            smaliField.parentClass = smaliClass
+            smaliField.textRange = ctx.fieldNameAndType()?.fieldName()?.textRange ?: -1..0
+            smaliClass.ranges.add(DynamicRangeStatusDef(smaliField.textRange, smaliField))
+        }
+
+    }
+
     override fun visitFieldDirective(ctx: SmaliParser.FieldDirectiveContext): SmaliClass {
-        return visitChildren(ctx)
+        smaliClass.ranges.add(RangeStatusBaseV2(ctx.FIELD_DIRECTIVE().textRange, ctx.FIELD_DIRECTIVE().text,"Field", listOf("keyword")))
+
+        return visitChildren(FieldDeclarationContextWrapper(ctx))
     }
 
     override fun visitNewArrayInstruction(ctx: SmaliParser.NewArrayInstructionContext): SmaliClass {
@@ -42,6 +87,12 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitMethodDirective(ctx: SmaliParser.MethodDirectiveContext): SmaliClass {
+//        if (onlyClass)
+//            return smaliClass
+
+        smaliClass.ranges.add(RangeStatusBase(ctx.METHOD_DIRECTIVE().textRange, "Method", listOf("keyword")))
+        smaliClass.ranges.add(RangeStatusBase(ctx.METHOD_END_DIRECTIVE().textRange, "End method", listOf("keyword")))
+
         return visitChildren(MethodDirectiveContextWrapper(ctx))
     }
 
@@ -90,6 +141,8 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitAnnotationDirective(ctx: SmaliParser.AnnotationDirectiveContext): SmaliClass {
+        smaliClass.ranges.add(RangeStatusBase(ctx.ANNOTATION_DIRECTIVE().textRange, "Annotation", listOf("keyword")))
+        smaliClass.ranges.add(RangeStatusBase(ctx.ANNOTATION_END_DIRECTIVE().textRange, "Annotation", listOf("keyword")))
         return visitChildren(ctx)
     }
 
@@ -98,6 +151,131 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitNumericLiteral(ctx: SmaliParser.NumericLiteralContext): SmaliClass {
+        var description = "Number"
+
+        val isNegative = ctx.negativeNumericLiteral() != null
+        var radix = 10
+        var type = 0
+        var offsetBefore = 0
+        var offsetAfter = 0
+        val meaningful = if (isNegative)
+            ctx.negativeNumericLiteral().positiveNumericLiteral()
+        else
+            ctx.positiveNumericLiteral()
+
+        var err = false
+        try {
+            val last = meaningful.text.last()
+
+            when {
+                last in listOf('l', 'L') -> {
+                    offsetAfter = 1
+                    type = 1
+                }
+                last in listOf('f', 'F') && (type == 3) -> {
+                    offsetAfter = 1
+                    type = 2
+                }
+                last in listOf('d', 'D') && (type == 3) -> {
+                    offsetAfter = 1
+                    type = 3
+                }
+            }
+        } catch (e: Exception) {
+            println("Error: ${ctx.text} in ${smaliClass.associatedFile}")
+            e.printStackTrace()
+            err = true
+        }
+
+        when {
+            meaningful.decimalNumericLiteral() != null -> {
+                radix = 10
+                offsetBefore = 0
+                if (err) println("decNum")
+            }
+            meaningful.hexNumericLiteral() != null -> {
+                radix = 16
+                offsetBefore = 2
+                if (err) println("hexNum")
+            }
+            meaningful.hexFloatLiteral() != null -> {
+                radix = 16
+                offsetBefore = 2
+                type = 3
+                if (err) println("hexFloatNum")
+            }
+            meaningful.binaryNumericLiteral() != null -> {
+                radix = 2
+                offsetBefore = 2
+                if (err) println("bin")
+            }
+            meaningful.octNumericLiteral() != null -> {
+                radix = 8
+
+                for (c in meaningful.text.drop(1)) {
+                    if (c == '_') offsetBefore++ else break
+                }
+                offsetBefore++
+                if (err) println("oct")
+            }
+            meaningful.floatNumericLiteral() != null -> {
+                type = 3
+                if (err) println("float")
+            }
+            meaningful.INFINITY() != null || meaningful.FLOAT_INFINITY() != null -> {
+                type = 4
+                if (err) println("inf")
+            }
+            meaningful.NAN() != null || meaningful.FLOAT_NAN() != null -> {
+                type = 5
+                if (err) println("nan")
+            }
+            else -> {
+                type = 666
+                println(ctx.text + "||"+meaningful.text + "||" + meaningful.childCount)
+            }
+        }
+
+        if (err) println("Err in type^ $type")
+
+        var numberString = meaningful.text.drop(offsetBefore).dropLast(offsetAfter)
+        if (isNegative)
+            numberString = "-$numberString"
+
+        try {
+            var hex: String
+            val decimal: Number = when (type) {
+                0 -> numberString.toInt(radix).also {
+                    hex = it.toString(16)
+                }
+                1 -> numberString.toLong(radix).also {
+                    hex = it.toString(16)
+                }
+                2 -> numberString.toFloat().also {
+                    hex = it.toBits().toString(16)
+                }
+                3 -> numberString.toDouble().also {
+                    hex = it.toBits().toString(16)
+                }
+                4 -> (if (isNegative) Double.NEGATIVE_INFINITY else Double.POSITIVE_INFINITY).also {
+                    hex = "${if (isNegative) "-" else ""}Inf"
+                }
+                5 -> Double.NaN.also {
+                    hex = "NaN"
+                }
+                else -> 666.also {
+                    hex = it.toString(16)
+                }
+            }
+
+            description += "; hex: 0x${hex}; dec: $decimal"
+        } catch (e: Exception) {
+            println("Error: ${ctx.text} in ${smaliClass.associatedFile}")
+            e.printStackTrace()
+        }
+
+
+        smaliClass.ranges.add(RangeStatusBase(ctx.textRange, description, listOf("number")))
         return visitChildren(ctx)
     }
 
@@ -118,6 +296,9 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitSuperDirective(ctx: SmaliParser.SuperDirectiveContext): SmaliClass {
+        if (ctx.SUPER_DIRECTIVE() != null) {
+            smaliClass.ranges.add(RangeStatusBase(ctx.SUPER_DIRECTIVE().textRange, "Super", listOf("keyword")))
+        }
         return visitChildren(ctx)
     }
 
@@ -178,18 +359,38 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitFieldType(ctx: SmaliParser.FieldTypeContext): SmaliClass {
+        val grandfather = ctx.parent.parent
+        if (grandfather is FieldDeclarationContextWrapper) {
+            val fieldType = project.getOrCreateClass(ctx.text)
+
+            if (fieldType == null) {
+                val message = if (ctx.text.isNullOrEmpty())
+                    "No field type provided"
+                else
+                    "Unknown field type \"${ctx.text}\""
+
+                smaliClass.ranges.add(Error(ctx.textRange, message))
+            } else {
+                grandfather.smaliField.type = fieldType
+            }
+        }
+
         return visitChildren(ctx)
     }
 
     override fun visitMethodParameterType(ctx: SmaliParser.MethodParameterTypeContext): SmaliClass {
         var offset = 0
-        parseCompound(ctx.text).forEach {
-            if (!project.exists(project.classByName(ctx.text.substring(offset, offset + it.lastIndex))))
-                smaliClass.ranges.add(Error((ctx.start.startIndex + offset)..(ctx.start.startIndex + offset + it.lastIndex), "Class ${it} not found"))
+        parseCompound(ctx.text).forEach { parameterText ->
+            val parameterClass = project.classByName(parameterText)
+            smaliClass.ranges.add(DynamicRangeStatusDef(
+                    (ctx.start.startIndex + offset)..(ctx.start.startIndex + offset + parameterText.lastIndex),
+                    parameterClass)
+            )
+//            if (!project.exists(clazz))
+//                smaliClass.ranges.add(Error((ctx.start.startIndex + offset)..(ctx.start.startIndex + offset + it.lastIndex), "Class ${it} not found"))
 
-            offset += it.length
+            offset += parameterText.length
         }
-
         return smaliClass
     }
 
@@ -203,9 +404,7 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
 
     override fun visitReferenceType(ctx: SmaliParser.ReferenceTypeContext): SmaliClass {
         val clazz = project.classByName(ctx.text)
-        if (!project.exists(clazz)) {
-            smaliClass.ranges.add(Error(ctx.textRange, "Class ${ctx.text} not found"))
-        }
+        smaliClass.ranges.add(DynamicRangeStatusDef(ctx.textRange, clazz))
 
         return visitChildren(ctx)
     }
@@ -242,7 +441,82 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
         return visitChildren(ctx)
     }
 
+    private tailrec fun findMethod(ctx: RuleContext): SmaliMethod? {
+        if (ctx is MethodDirectiveContextWrapper) {
+            return ctx.smaliMethod
+        }
+
+        if (ctx.parent == null)
+            return null
+
+        return findMethod(ctx.parent)
+    }
+
     override fun visitRegisterIdentifier(ctx: SmaliParser.RegisterIdentifierContext): SmaliClass {
+        val txt = ctx.text
+
+        val method = findMethod(ctx)
+
+        when {
+            txt.matches(Regex("p\\d+")) -> {
+                val num = txt.substring(1).toInt()
+
+                when {
+                    method == null -> {
+                        smaliClass.ranges.add(RangeStatusBase(
+                                ctx.textRange,
+                                "Param $num, failed to get max possible value",
+                                listOf("param"))
+                        )
+                    }
+                    num >= method.parameters.size -> {
+                        smaliClass.ranges.add(Error(
+                                ctx.textRange,
+                                "Invalid param index $num: must be in range 0..${method.parameters.size - 1}")
+                        )
+                    }
+                    else -> {
+                        smaliClass.ranges.add(RangeStatusBase(
+                                ctx.textRange,
+                                "Param $num, max ${method.parameters.size - 1}",
+                                listOf("param"))
+                        )
+                    }
+                }
+            }
+
+            txt.matches(Regex("v\\d+")) -> {
+                val num = txt.substring(1).toInt()
+
+                when {
+                    method == null -> {
+                        smaliClass.ranges.add(RangeStatusBase(
+                                ctx.textRange,
+                                "Local $num, failed to get max possible value",
+                                listOf("local"))
+                        )
+                    }
+                    num >= method.locals -> {
+                        smaliClass.ranges.add(Error(
+                                ctx.textRange,
+                                "Invalid local index $num: must be in range 0..${method.locals - 1}")
+                        )
+                    }
+                    else -> {
+                        smaliClass.ranges.add(RangeStatusBase(
+                                ctx.textRange,
+                                "Local $num, max ${method.locals - 1}",
+                                listOf("local"))
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                smaliClass.ranges.add(Error(ctx.textRange, "Invalid register identifier"))
+            }
+        }
+
         return visitChildren(ctx)
     }
 
@@ -283,6 +557,10 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitMethodIdentifier(ctx: SmaliParser.MethodIdentifierContext): SmaliClass {
+//        findMethod(ctx)?.name = ctx.text
+//        if (ctx.text == null || ctx.text == "move") {
+//            println("Found: " + ctx.text)}
+
         return visitChildren(ctx)
     }
 
@@ -316,7 +594,7 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
 
     override fun visitSuperName(ctx: SmaliParser.SuperNameContext): SmaliClass {
 
-//        smaliClass.parentClass = project.getOrCreateClass(ctx.text)
+        smaliClass.parentClass = project.getOrCreateClass(ctx.text)
 
         return visitChildren(ctx)
     }
@@ -342,6 +620,7 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitLocalsDirective(ctx: SmaliParser.LocalsDirectiveContext): SmaliClass {
+        findMethod(ctx)?.locals = ctx.numericLiteral().text.toInt()
         return visitChildren(ctx)
     }
 
@@ -405,7 +684,24 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
         return visitChildren(ctx)
     }
 
+    // TODO implement synthetic, bridge, synchronized, strictfp, varargs
     override fun visitMethodModifier(ctx: SmaliParser.MethodModifierContext): SmaliClass {
+        val method = findMethod(ctx)
+        if (method != null) {
+            when (ctx.text) {
+                "public" -> method.setModifierBit(Modifier.PUBLIC)
+                "protected" -> method.setModifierBit(Modifier.PROTECTED)
+                "private" -> method.setModifierBit(Modifier.PRIVATE)
+                "final" -> method.setModifierBit(Modifier.FINAL)
+                "static" -> method.setModifierBit(Modifier.STATIC)
+                "abstract" -> method.setModifierBit(Modifier.ABSTRACT)
+                "native" -> method.setModifierBit(Modifier.NATIVE)
+                "constructor" -> method.setModifierBit(SmaliMethod.Modifier.CONSTRUCTOR)
+            }
+        }
+
+        smaliClass.ranges.add(RangeStatusBaseV2(ctx.textRange, ctx.text,"MethodModifier", listOf("keyword")))
+
         return visitChildren(ctx)
     }
 
@@ -426,6 +722,7 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitTargetRegister(ctx: SmaliParser.TargetRegisterContext): SmaliClass {
+
         return visitChildren(ctx)
     }
 
@@ -506,19 +803,34 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitMethodInvocationTarget(ctx: SmaliParser.MethodInvocationTargetContext): SmaliClass {
-        val targetClass = project.classByName(ctx.referenceOrArrayType().text)
-        val targetMethod = targetClass?.methods?.find { it.name == ctx.methodSignature().methodIdentifier().text }
-        if (targetClass == null || targetMethod == null) {
-            smaliClass.ranges.add(Error(ctx.methodSignature().textRange, "Method not found"))
-        }
+        val targetClass = project.getOrCreateClass(ctx.referenceOrArrayType().text)
+//        val targetMethod = targetClass?.methods?.find { it.name == ctx.methodSignature().methodIdentifier().text }
+
+        val methodName = ctx.methodSignature().methodIdentifier().text
+        // TODO optimize double invocation (here and in visitMethodArguments)
+        val methodParameters = parseCompound(ctx.methodSignature().methodArguments()?.text)
+
+        val methodReturnType = ctx.methodSignature().methodReturnType().text
+
+        val targetMethod = targetClass?.findOrCreateMethod(methodName, methodParameters, methodReturnType)
+
+        println("${findMethod(ctx)}: invokingTextRange for ${targetClass}//$methodName//${targetMethod}//${targetMethod?.hashCode()} = ${targetClass?.hashCode()}")
+        smaliClass.ranges.add(DynamicRangeStatusDef(ctx.methodSignature().methodIdentifier().textRange, targetMethod))
 
         return visitChildren(ctx)
+    }
+
+    private fun smaliMethodFromDeclarationContext(ctx: SmaliParser.MethodDeclarationContext): SmaliMethod {
+        val name = ctx.methodSignature()?.methodIdentifier()?.text ?: "DummyMethod"
+        val params = parseCompound(ctx.methodSignature()?.methodArguments()?.text)
+        val returnType = ctx.methodSignature()?.methodReturnType()?.text ?: "V"
+        return smaliClass.findOrCreateMethod(name, params, returnType)!!
     }
 
     inner class MethodDirectiveContextWrapper(ctx: SmaliParser.MethodDirectiveContext) :
             SmaliParser.MethodDirectiveContext(ctx.getParent(), ctx.invokingState) {
 
-        val smaliMethod = SmaliField()
+        val smaliMethod = smaliMethodFromDeclarationContext(ctx.methodDeclaration())
 
         init {
             children = ctx.children
@@ -526,12 +838,46 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
                 it.setParent(this)
             }
             smaliMethod.parentClass = smaliClass
+            smaliMethod.textRange = ctx.methodDeclaration()?.methodSignature()?.methodIdentifier()?.textRange ?: -1..0
+            smaliClass.ranges.add(DynamicRangeStatusDef(smaliMethod.textRange, smaliMethod))
+
+//            println("Creating ${smaliMethod.hashCode()} in range ${smaliMethod.textRange} for ${ctx.methodDeclaration().text}")
         }
 
     }
 
     override fun visitMethodDeclaration(ctx: SmaliParser.MethodDeclarationContext): SmaliClass {
-        return visitChildren(ctx)
+
+        val smaliMethod = findMethod(ctx) ?: return visitChildren(ctx)
+
+        val arguments = ctx.methodSignature()?.methodArguments()
+
+//        smaliMethod.name = ctx.methodSignature().methodIdentifier().text
+//        smaliMethod.textRange = ctx.methodSignature().methodIdentifier().textRange
+
+//        println("Decl: ${smaliMethod.hashCode()} in range ${smaliMethod.textRange}")
+
+        if (arguments != null) {
+            var offset = arguments.start.startIndex
+
+            smaliMethod.parametersInternal.addAll(parseCompound(arguments.text)
+                    .mapNotNull {
+                        val parameterType = project.getOrCreateClass(it)
+                        if (parameterType == null) {
+                            smaliClass.ranges.add(Error(offset until offset + it.length, "Unknown type \"$it\""))
+                        }
+                        offset += it.length
+                        parameterType
+                    })
+        }
+
+
+        visitChildren(ctx)
+
+//        if (smaliMethod.name == "a")
+//            println("Method ${smaliMethod.name}, params = ${smaliMethod.parameters.joinToString { it.fullname }}, hash = ${smaliMethod.hashCode()}, range = ${smaliMethod.textRange}" + "; Parent ${smaliMethod.parentClass}, hash = ${smaliMethod.parentClass.hashCode()}")
+
+        return smaliClass
     }
 
     override fun visitMethodBody(ctx: SmaliParser.MethodBodyContext): SmaliClass {
@@ -602,7 +948,22 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
         return visitChildren(ctx)
     }
 
+    // TODO implement synthetic, transient, volatile, enum
     override fun visitFieldModifier(ctx: SmaliParser.FieldModifierContext): SmaliClass {
+        val parent = ctx.parent
+        if (parent is FieldDeclarationContextWrapper) {
+            when (ctx.text) {
+                "public" -> smaliClass.setModifierBit(Modifier.PUBLIC)
+                "protected" -> smaliClass.setModifierBit(Modifier.PROTECTED)
+                "private" -> smaliClass.setModifierBit(Modifier.PRIVATE)
+                "final" -> smaliClass.setModifierBit(Modifier.FINAL)
+                "static" -> smaliClass.setModifierBit(Modifier.STATIC)
+            }
+        }
+
+        smaliClass.ranges.add(RangeStatusBaseV2(ctx.textRange, ctx.text,"FieldModifier", listOf("keyword")))
+//        smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "FieldModifier", listOf("keyword")))
+
         return visitChildren(ctx)
     }
 
@@ -834,6 +1195,7 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitStringLiteral(ctx: SmaliParser.StringLiteralContext): SmaliClass {
+        smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "String", listOf("string")))
         return visitChildren(ctx)
     }
 
@@ -878,6 +1240,7 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitSourceDirective(ctx: SmaliParser.SourceDirectiveContext): SmaliClass {
+        smaliClass.ranges.add(RangeStatusBase(ctx.SOURCE_DIRECTIVE().textRange, "Class", listOf("keyword")))
         return visitChildren(ctx)
     }
 
@@ -889,7 +1252,20 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
         return smaliClass
     }
 
+    // TODO implement synthetic, annotation, enum
     override fun visitClassModifier(ctx: SmaliParser.ClassModifierContext): SmaliClass {
+        when (ctx.text) {
+            "public" -> smaliClass.setModifierBit(Modifier.PUBLIC)
+            "protected" -> smaliClass.setModifierBit(Modifier.PROTECTED)
+            "private" -> smaliClass.setModifierBit(Modifier.PRIVATE)
+            "final" -> smaliClass.setModifierBit(Modifier.FINAL)
+            "static" -> smaliClass.setModifierBit(Modifier.STATIC)
+            "abstract" -> smaliClass.setModifierBit(Modifier.ABSTRACT)
+            "interface" -> smaliClass.setModifierBit(Modifier.INTERFACE)
+        }
+
+        smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "ClassModifier", listOf("keyword")))
+
         return visitChildren(ctx)
     }
 
@@ -922,11 +1298,15 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitErrorNode(node: ErrorNode): SmaliClass {
+//        println("Error $node, line=${node.symbol.line} range=${node.symbol.startIndex}..${node.symbol.stopIndex} text=${node.text} for $smaliClass")
+        smaliClass.ranges.find { it.range.first == node.symbol.startIndex } ?: smaliClass.ranges.add(Error.from(node))
         return super.visitErrorNode(node)
     }
 
     override fun visitClassName(ctx: SmaliParser.ClassNameContext): SmaliClass {
-//        smaliClass.parentPackage = project.getPackageForClassName(ctx.text) ?: return smaliClass
+        smaliClass.parentPackage = project.getPackageForClassName(ctx.text) ?: kotlin.run {
+            return smaliClass
+        }
 
         return smaliClass
     }
@@ -964,6 +1344,7 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitRegistersDirective(ctx: SmaliParser.RegistersDirectiveContext): SmaliClass {
+        findMethod(ctx)?.registers = ctx.numericLiteral().text.toInt()
         return visitChildren(ctx)
     }
 
@@ -1332,11 +1713,13 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitFieldInvocationTarget(ctx: SmaliParser.FieldInvocationTargetContext): SmaliClass {
-        val targetClass = project.classByName(ctx.referenceOrArrayType().text)
-        val targetMethod = targetClass?.fields?.find { it.name == ctx.fieldNameAndType().fieldName().text }
-        if (targetClass == null || targetMethod == null) {
-            smaliClass.ranges.add(Error(ctx.fieldNameAndType().textRange, "Field not found"))
-        }
+        val targetClass = project.getOrCreateClass(ctx.referenceOrArrayType().text)
+        val targetField = targetClass?.findOrCreateField(ctx.fieldNameAndType().fieldName().text,
+                ctx.fieldNameAndType().fieldType().text)
+
+//        println("Field $targetField")
+
+        smaliClass.ranges.add(DynamicRangeStatusDef(ctx.fieldNameAndType().fieldName().textRange, targetField))
 
         return visitChildren(ctx)
     }
@@ -1446,18 +1829,21 @@ class SmaliDependencyAnalyzer(val project: ProjectAnalyzeResult, var smaliClass:
     }
 
     override fun visitImplementsDirective(ctx: SmaliParser.ImplementsDirectiveContext): SmaliClass {
+        smaliClass.ranges.add(RangeStatusBase(ctx.IMPLEMENTS_DIRECTIVE().textRange, "Implements interface", listOf("keyword")))
         return visitChildren(ctx)
     }
 
-    override fun visitEnumType(ctx: SmaliParser.EnumTypeContext?): SmaliClass {
+    override fun visitEnumType(ctx: SmaliParser.EnumTypeContext): SmaliClass {
         return visitChildren(ctx)
     }
 
-    override fun visitEnumDirective(ctx: SmaliParser.EnumDirectiveContext?): SmaliClass {
+    override fun visitEnumDirective(ctx: SmaliParser.EnumDirectiveContext): SmaliClass {
         return visitChildren(ctx)
     }
 
-    override fun visitSubannotationDirective(ctx: SmaliParser.SubannotationDirectiveContext?): SmaliClass {
+    override fun visitSubannotationDirective(ctx: SmaliParser.SubannotationDirectiveContext): SmaliClass {
+        smaliClass.ranges.add(RangeStatusBase(ctx.SUBANNOTATION_DIRECTIVE().textRange, "Subannotation", listOf("keyword")))
+        smaliClass.ranges.add(RangeStatusBase(ctx.SUBANNOTATION_END_DIRECTIVE().textRange, "Subannotation", listOf("keyword")))
         return visitChildren(ctx)
     }
 

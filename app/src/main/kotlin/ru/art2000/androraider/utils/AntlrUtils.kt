@@ -6,7 +6,7 @@ import org.antlr.v4.runtime.tree.TerminalNode
 
 val ParserRuleContext.textRange: IntRange
     get() {
-        return start.startIndex..stop.stopIndex
+        return start.textRange.first..stop.textRange.last
     }
 
 val TerminalNode.textRange: IntRange
@@ -16,12 +16,15 @@ val TerminalNode.textRange: IntRange
 
 val Token.textRange: IntRange
     get() {
-        return startIndex..stopIndex
+        return startIndex..(stopIndex + 1)
     }
 
-public fun parseCompound(string: String): List<String> {
+public fun parseCompound(string: String?): List<String> {
+    if (string == null)
+        return emptyList()
+
     val list = mutableListOf<String>()
-    var tmpString = string
+    var tmpString: String = string
     while (tmpString.isNotEmpty()) {
         if (tmpString.startsWith('L')) {
             val i = tmpString.indexOf(';')

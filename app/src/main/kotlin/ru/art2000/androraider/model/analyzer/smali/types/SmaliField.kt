@@ -1,6 +1,8 @@
 package ru.art2000.androraider.model.analyzer.smali.types
 
-class SmaliField {
+import java.io.File
+
+class SmaliField : SmaliComponent {
 
     var name: String = ""
     var type: SmaliClass = SmaliClass.Primitives.INT
@@ -14,6 +16,31 @@ class SmaliField {
         }
 
     var modifier = 0
+    override val file: File?
+        get() = parentClass?.associatedFile
+
+    override var textRange: IntRange = -1..0
+    override val fullname: String
+        get() = name
+
+    override fun exists(): SmaliComponent? {
+        var parent = parentClass
+        var field: SmaliField? = this
+        while (parent != null) {
+            if (field != null && field.textRange.first >= 0)
+                break
+
+            field = parent.findField(name, type)
+            parent = parent.parentClass
+        }
+
+        if (field != null && field != this) {
+            parentClass?.removeField(this)
+            return field
+        }
+
+        return field ?: this
+    }
 
     public fun setModifierBit(modifierBit: Int) {
         modifier = modifier or modifierBit

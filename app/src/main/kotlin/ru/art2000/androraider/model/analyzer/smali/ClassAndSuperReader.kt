@@ -4,7 +4,6 @@ import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
 import org.antlr.v4.runtime.tree.ErrorNode
 import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
-import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 
 class ClassAndSuperReader(val project: ProjectAnalyzeResult, var smaliClass: SmaliClass) :
         AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
@@ -273,11 +272,6 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult, var smaliClass: Sma
     }
 
     override fun visitMethodIdentifier(ctx: SmaliParser.MethodIdentifierContext): SmaliClass {
-        val grandfather = ctx.parent.parent
-        if (grandfather is MethodDeclarationContextWrapper) {
-            grandfather.smaliMethod.name = ctx.text
-        }
-
         return smaliClass
     }
 
@@ -464,10 +458,6 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult, var smaliClass: Sma
         return smaliClass
     }
 
-    override fun visitSimpleParamDirective(ctx: SmaliParser.SimpleParamDirectiveContext): SmaliClass {
-        return smaliClass
-    }
-
     override fun visitAndLong2addrInstruction(ctx: SmaliParser.AndLong2addrInstructionContext): SmaliClass {
         return smaliClass
     }
@@ -508,23 +498,8 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult, var smaliClass: Sma
         return smaliClass
     }
 
-    inner class MethodDeclarationContextWrapper(ctx: SmaliParser.MethodDeclarationContext) :
-            SmaliParser.MethodDeclarationContext(ctx.getParent(), ctx.invokingState) {
-
-        val smaliMethod = SmaliMethod()
-
-        init {
-            children = ctx.children
-            children.forEach {
-                it.setParent(this)
-            }
-            smaliMethod.parentClass = smaliClass
-        }
-
-    }
-
     override fun visitMethodDeclaration(ctx: SmaliParser.MethodDeclarationContext): SmaliClass {
-        return visitChildren(MethodDeclarationContextWrapper(ctx))
+        return smaliClass
     }
 
     override fun visitMethodBody(ctx: SmaliParser.MethodBodyContext): SmaliClass {
@@ -920,7 +895,7 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult, var smaliClass: Sma
     }
 
     override fun visitClassName(ctx: SmaliParser.ClassNameContext): SmaliClass {
-        smaliClass.parentPackage = project.getPackageForClassName(ctx.text) ?: return smaliClass
+//        smaliClass.parentPackage = project.getPackageForClassName(ctx.text) ?: return smaliClass
 
         return smaliClass
     }
@@ -1434,6 +1409,30 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult, var smaliClass: Sma
     }
 
     override fun visitImplementsDirective(ctx: SmaliParser.ImplementsDirectiveContext): SmaliClass {
+        return smaliClass
+    }
+
+    override fun visitEnumType(ctx: SmaliParser.EnumTypeContext?): SmaliClass {
+        return smaliClass
+    }
+
+    override fun visitEnumDirective(ctx: SmaliParser.EnumDirectiveContext?): SmaliClass {
+        return smaliClass
+    }
+
+    override fun visitSubannotationDirective(ctx: SmaliParser.SubannotationDirectiveContext?): SmaliClass {
+        return smaliClass
+    }
+
+    override fun visitCharLiteral(ctx: SmaliParser.CharLiteralContext?): SmaliClass {
+        return smaliClass
+    }
+
+    override fun visitAbstarctMethodBodyStatement(ctx: SmaliParser.AbstarctMethodBodyStatementContext?): SmaliClass {
+        return smaliClass
+    }
+
+    override fun visitFullParamDirective(ctx: SmaliParser.FullParamDirectiveContext?): SmaliClass {
         return smaliClass
     }
 

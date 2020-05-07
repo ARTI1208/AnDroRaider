@@ -1,11 +1,12 @@
 package ru.art2000.androraider.model.analyzer.smali.types
 
+import javafx.scene.control.Separator
 import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
 import ru.art2000.androraider.model.analyzer.result.RangeAnalyzeStatus
 import java.io.File
 
 @Suppress("RedundantVisibilityModifier")
-open class SmaliClass() : FileAnalyzeResult {
+open class SmaliClass() : FileAnalyzeResult, SmaliComponent {
 
     object Primitives {
 
@@ -38,7 +39,7 @@ open class SmaliClass() : FileAnalyzeResult {
         modifier = modifier or modifierBit
     }
 
-    public val fullname: String
+    public override val fullname: String
         get() {
 
             if (isArray) {
@@ -55,6 +56,22 @@ open class SmaliClass() : FileAnalyzeResult {
             }
             return result
         }
+
+    public fun fullname(prefix: String = "", separator: String = "."): String {
+        if (isArray) {
+            var array = parentClass?.fullname ?: ""
+            repeat(arrayCount) { array = "[$array" }
+            return array
+        }
+
+        var result = name
+        var parent = parentPackage
+        while (parent != null) {
+            result = parent.name + separator + result
+            parent = parent.parentPackage
+        }
+        return prefix + result
+    }
 
     val isPrimitive: Boolean
         get() {
@@ -121,11 +138,135 @@ open class SmaliClass() : FileAnalyzeResult {
 
     }
 
+    public fun findField(name: String, typeClass: SmaliClass): SmaliField? {
+        var res: SmaliField? = null
+
+        var parent: SmaliClass? = this
+//        while (parent!= null) {
+//            val tmp = parent.fields.find { field ->
+//                return@find field.name == name && field.type == typeClass
+//            }
+//            if (tmp != null) {
+//                res = tmp
+//                break
+//            }
+//            parent = parent.parentClass
+//        }
+
+        val tmp = parent?.fields?.find { field ->
+            return@find field.name == name && field.type == typeClass
+        }
+        if (tmp != null) {
+            res = tmp
+        }
+
+        return res
+    }
+
+    public fun findOrCreateField(name: String, type: String): SmaliField? {
+//        println("find $name")
+
+        val prj = parentPackage?.project ?: return null
+
+        val typeClass = prj.getOrCreateClass(type)!!
+
+        return findField(name, typeClass) ?: SmaliField().apply {
+            this.name = name
+            this.type = typeClass
+            parentClass = this@SmaliClass
+        }
+    }
+
+    public fun findMethod(name: String, parameters: List<SmaliClass>, returnType: String): SmaliMethod? {
+//        println("find $name")
+
+        var res: SmaliMethod? = null
+
+        var parent: SmaliClass? = this
+//        while (parent!= null) {
+//            val tmp = parent.methods.find { method ->
+//                val parametersReal = method.parametersInternal
+//
+////                if (name == "g" && fullname == "a.b.g") {
+////                    println("Searching g: $method")
+////                }
+//
+//                val firstPart = method.name == name
+//                        && parameters.size == parametersReal.size
+//
+//                if (!firstPart)
+//                    return@find false
+//
+//                for (i in parametersReal.indices) {
+//                    if (parametersReal[i].fullname != parameters[i].fullname)
+//                        return@find false
+//                }
+//
+//                return@find true
+//            }
+//            if (tmp != null) {
+//                res = tmp
+//                break
+//            }
+//            parent = parent.parentClass
+//        }
+
+
+        val tmp = parent?.methods?.find { method ->
+            val parametersReal = method.parametersInternal
+
+            val firstPart = method.name == name
+                    && parameters.size == parametersReal.size
+
+            if (!firstPart)
+                return@find false
+
+            for (i in parametersReal.indices) {
+                if (parametersReal[i].fullname != parameters[i].fullname)
+                    return@find false
+            }
+
+            return@find true
+        }
+        if (tmp != null) {
+            res = tmp
+        }
+
+        return res
+    }
+
+    public fun findOrCreateMethod(name: String, parameters: List<String>, returnType: String): SmaliMethod? {
+//        println("find $name")
+
+        val prj = parentPackage?.project ?: return null
+        val requiredParameters = parameters.mapNotNull {
+            prj.getOrCreateClass(it)
+        }
+
+        return findMethod(name, requiredParameters, returnType) ?: createMethod(name, requiredParameters, returnType)
+    }
+
+    private fun createMethod(name: String, parameters: List<SmaliClass>, returnType: String): SmaliMethod? {
+        val prj = parentPackage?.project ?: return null
+        return SmaliMethod(name, prj.getOrCreateClass(returnType)!!, this).also {
+            it.parametersInternal.addAll(parameters)
+        }
+    }
+
     override val rangeStatuses: List<RangeAnalyzeStatus>
         get() = ranges
 
     override fun toString(): String {
         return fullname
+    }
+
+    override val file: File?
+        get() = associatedFile
+
+    override val textRange: IntRange = 0..0
+
+    override fun exists(): SmaliComponent? {
+        return this
     }
 
     override fun equals(other: Any?): Boolean {

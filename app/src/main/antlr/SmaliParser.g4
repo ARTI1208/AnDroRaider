@@ -33,6 +33,7 @@ options {
 // Helpers
 
 registerIdentifier:             IDENTIFIER;
+charLiteral:                    CHAR_LITERAL;
 stringLiteral:                  STRING_LITERAL;
 negativeNumericLiteral:         SUB positiveNumericLiteral;
 
@@ -119,7 +120,7 @@ nullLiteral:                NULL_LITERAL;
 
 booleanLiteral:             BOOL_LITERAL;
 
-assignableValue:            anyType | stringLiteral | numericLiteral | nullLiteral | booleanLiteral;
+assignableValue:            anyType | stringLiteral | numericLiteral | nullLiteral | booleanLiteral | charLiteral;
 
 // Modifiers
 
@@ -537,8 +538,6 @@ shrIntInstruction:              OP_SHR_INT targetRegister COMMA leftRegister COM
 
 ushrIntInstruction:             OP_USHR_INT targetRegister COMMA leftRegister COMMA rightRegister;
 
-rsubIntInstruction:             OP_RSUB_INT targetRegister COMMA leftRegister COMMA rightRegister;
-
 addLongInstruction:             OP_ADD_LONG targetRegister COMMA leftRegister COMMA rightRegister;
 
 subLongInstruction:             OP_SUB_LONG targetRegister COMMA leftRegister COMMA rightRegister;
@@ -582,6 +581,8 @@ divDoubleInstruction:           OP_DIV_DOUBLE targetRegister COMMA leftRegister 
 remDoubleInstruction:           OP_REM_DOUBLE targetRegister COMMA leftRegister COMMA rightRegister;
 
 addIntLit16Instruction:         OP_ADD_INT_LIT16 targetRegister COMMA leftRegister COMMA numericLiteral;
+
+rsubIntInstruction:             OP_RSUB_INT targetRegister COMMA leftRegister COMMA numericLiteral;
 
 mulIntLit16Instruction:         OP_MUL_INT_LIT16 targetRegister COMMA leftRegister COMMA numericLiteral;
 
@@ -958,6 +959,10 @@ className:                  referenceType;
 
 classDirective:             CLASS_DIRECTIVE classModifier* className;
 
+enumType:                   referenceType;
+
+enumDirective:              ENUM_DIRECTIVE fieldInvocationTarget;
+
 superName:                  referenceType;
 
 superDirective:             SUPER_DIRECTIVE superName;
@@ -984,13 +989,15 @@ annotationScope:            IDENTIFIER;
 
 annotationType:             referenceType;
 
-annotationFieldValue:       (methodInvocationTarget | fieldInvocationTarget | assignableValue | referenceType);
+annotationFieldValue:       (methodInvocationTarget | fieldInvocationTarget | assignableValue | referenceType | enumDirective | subannotationDirective);
 
 annotationValueScoped:      LBRACE (annotationFieldValue (COMMA annotationFieldValue)*)? RBRACE;
 
 annotationField:            fieldName ASSIGN (annotationFieldValue|annotationValueScoped);
 
 annotationDirective:        ANNOTATION_DIRECTIVE annotationScope annotationType annotationField* ANNOTATION_END_DIRECTIVE;
+
+subannotationDirective:     SUBANNOTATION_DIRECTIVE annotationScope? annotationType annotationField* SUBANNOTATION_END_DIRECTIVE;
 
 locaDirectiveVariableName:  stringLiteral;
 
@@ -1025,7 +1032,12 @@ methodBodyStatement:
     | sparseSwitchDirective
     ;
 
-methodBody:                 (registersDirective | localsDirective) methodBodyStatement+;
+abstarctMethodBodyStatement:
+    paramDirective*
+    annotationDirective*
+    ;
+
+methodBody:                 ((registersDirective | localsDirective) methodBodyStatement+) | abstarctMethodBodyStatement;
 
 packedSwitchIdent:          numericLiteral;
 
@@ -1035,17 +1047,17 @@ packedSwitchDirectiveLabels:packedSwitchDirectiveLabel+;
 
 packedSwitchDirective:      PACKED_SWITCH_DIRECTIVE packedSwitchIdent packedSwitchDirectiveLabels? PACKED_SWITCH_END_DIRECTIVE;
 
-methodDirective:            METHOD_DIRECTIVE methodDeclaration methodBody? METHOD_END_DIRECTIVE;
+methodDirective:            METHOD_DIRECTIVE methodDeclaration methodBody METHOD_END_DIRECTIVE;
 
 registersDirective:         REGISTERS_DIRECTIVE numericLiteral;
 
 localsDirective:            LOCALS_DIRECTIVE numericLiteral;
 
-simpleParamDirective:       COMMA stringLiteral;
+extendedParamDirective:     COMMA stringLiteral;
 
-extendedParamDirective:     annotationDirective* PARAM_END_DIRECTIVE;
+fullParamDirective:         annotationDirective* PARAM_END_DIRECTIVE;
 
-paramDirective:             PARAM_DIRECTIVE registerIdentifier (extendedParamDirective | simpleParamDirective);
+paramDirective:             PARAM_DIRECTIVE registerIdentifier extendedParamDirective? fullParamDirective?;
 
 lineDirective:              LINE_DIRECTIVE numericLiteral;
 

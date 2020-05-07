@@ -56,6 +56,7 @@ COMPOUND_METHOD_ARG_LITERAL:
 METHOD_DIRECTIVE:               '.method';
 METHOD_END_DIRECTIVE:           '.end method';
 CLASS_DIRECTIVE:                '.class';
+ENUM_DIRECTIVE:                 '.enum';
 SOURCE_DIRECTIVE:               '.source';
 SUPER_DIRECTIVE:                '.super';
 IMPLEMENTS_DIRECTIVE:           '.implements';
@@ -70,6 +71,8 @@ CATCH_DIRECTIVE:                '.catch';
 CATCHALL_DIRECTIVE:             '.catchall';
 ANNOTATION_DIRECTIVE:           '.annotation';
 ANNOTATION_END_DIRECTIVE:       '.end annotation';
+SUBANNOTATION_DIRECTIVE:        '.subannotation';
+SUBANNOTATION_END_DIRECTIVE:    '.end subannotation';
 LOCAL_DIRECTIVE:                '.local';
 LOCAL_END_DIRECTIVE:            '.end local';
 RESTART_LOCAL_DIRECTIVE:        '.restart local';

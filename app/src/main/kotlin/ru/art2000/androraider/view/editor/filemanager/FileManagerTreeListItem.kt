@@ -46,9 +46,9 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
 
         private val UNKNOWN_FILE_ICON = ::FileManagerTreeListItem.javaClass.getDrawable("unknown.png")
 
-        private val ARROW_ICON = ::FileManagerTreeListItem.javaClass.getDrawable("arrow.png")
+        val ARROW_ICON = ::FileManagerTreeListItem.javaClass.getDrawable("arrow.png")
 
-        private const val DEFAULT_SIZE = 26.0
+        const val DEFAULT_SIZE = 26.0
     }
 
     init {

@@ -4,6 +4,7 @@ import io.reactivex.Observable
 import io.reactivex.disposables.Disposable
 import javafx.stage.Window
 import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
+import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.editor.getOrInitProject
 import ru.art2000.androraider.model.io.DirectoryObserver
 import ru.art2000.androraider.mvp.IPresenter
@@ -45,8 +46,10 @@ class EditorPresenter(private val window: Window, private val baseFolder: File) 
     }
 
     fun generateProjectIndex() : Observable<out FileAnalyzeResult>? {
-        return getOrInitProject(window, baseFolder).indexProject()
+        return project.indexProject()
     }
+
+    val project: ProjectAnalyzeResult by lazy { getOrInitProject(window, baseFolder) }
 
     override fun isDisposed() = disposed
 

@@ -3,10 +3,8 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
-<?import org.fxmisc.flowless.VirtualizedScrollPane?>
-<?import ru.art2000.androraider.view.editor.codearea.CodeEditorArea?>
-<?import ru.art2000.androraider.view.editor.filemanager.FileManagerView?>
 <?import ru.art2000.androraider.view.editor.ConsoleView?>
+<?import ru.art2000.androraider.view.editor.filemanager.FileManagerView?>
 <?import ru.art2000.androraider.view.editor.menu.search.SearchMenuItem?>
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml">
@@ -14,6 +12,8 @@
         <Menu text="_File">
             <MenuItem fx:id="home" text="Go home"/>
             <MenuItem fx:id="settings" text="Settings"/>
+            <MenuItem fx:id="projectSettings" text="Project settings"/>
+            <MenuItem fx:id="dataViewer" text="Project data viewer"/>
             <MenuItem fx:id="recompile" text="Recompile"/>
         </Menu>
         <Menu fx:id="searchMenu" text="_Search">
@@ -28,7 +28,7 @@
             <FileManagerView fx:id="fileManagerView"/>
             <SplitPane orientation="VERTICAL">
                 <VBox fx:id="codeEditorContainer" minWidth="0" minHeight="0">
-                    <TabPane fx:id="editorTabPane" />
+                    <TabPane fx:id="editorTabPane"/>
                 </VBox>
                 <ConsoleView minWidth="0" minHeight="0" fx:id="console"/>
             </SplitPane>

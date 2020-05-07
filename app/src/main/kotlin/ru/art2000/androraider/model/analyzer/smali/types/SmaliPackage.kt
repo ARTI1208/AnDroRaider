@@ -1,6 +1,9 @@
 package ru.art2000.androraider.model.analyzer.smali.types
 
-class SmaliPackage(val name: String, var parentPackage: SmaliPackage? = null) {
+import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
+import java.io.File
+
+class SmaliPackage(val project: ProjectAnalyzeResult, val name: String, var parentPackage: SmaliPackage? = null):SmaliComponent {
 
     init {
         parentPackage?.addSubPackage(this)
@@ -10,7 +13,9 @@ class SmaliPackage(val name: String, var parentPackage: SmaliPackage? = null) {
 
     val classes = mutableListOf<SmaliClass>()
 
-    val fullname: String
+    var folder = File("")
+
+    override val fullname: String
         get() {
             var result = name
             var parent = parentPackage
@@ -45,6 +50,15 @@ class SmaliPackage(val name: String, var parentPackage: SmaliPackage? = null) {
     public fun removeClass(smaliClass: SmaliClass) {
         smaliClass.parentPackage = null
         classes.remove(smaliClass)
+    }
+
+    override val file: File?
+        get() = null
+    override val textRange: IntRange
+        get() = -1..0
+
+    override fun exists(): SmaliComponent? {
+        return if (folder.exists()) this else null
     }
 
     override fun toString(): String {

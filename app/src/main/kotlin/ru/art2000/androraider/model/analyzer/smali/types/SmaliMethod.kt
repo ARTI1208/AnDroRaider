@@ -1,6 +1,8 @@
 package ru.art2000.androraider.model.analyzer.smali.types
 
-class SmaliMethod() {
+import java.io.File
+
+class SmaliMethod(): SmaliComponent {
 
     object Modifier {
 
@@ -31,6 +33,32 @@ class SmaliMethod() {
 
     public fun setModifierBit(modifierBit: Int) {
         modifier = modifier or modifierBit
+    }
+
+    override val file: File?
+        get() = parentClass?.associatedFile
+
+    override var textRange = -1..0
+    override val fullname: String
+        get() = name
+
+    override fun exists(): SmaliComponent? {
+        var parent = parentClass
+        var method: SmaliMethod? = this
+        while (parent != null) {
+            if (method != null)
+                break
+
+            method = parent.findMethod(name, parametersInternal, returnType.fullname("L", "/"))
+            parent = parent.parentClass
+        }
+
+        if (method != null && method != this) {
+            parentClass?.removeMethod(this)
+            return method
+        }
+
+        return method ?: this
     }
 
     override fun toString(): String {

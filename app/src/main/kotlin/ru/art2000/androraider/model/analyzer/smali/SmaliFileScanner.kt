@@ -7,8 +7,8 @@ import ru.art2000.androraider.model.analyzer.result.Error
 import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.analyzer.result.RangeStatusBase
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
-import ru.art2000.androraider.model.analyzer.smali.types.SmaliField
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
+import ru.art2000.androraider.model.analyzer.smali.types.SmaliField
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
 import java.lang.Exception
@@ -735,10 +735,6 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
     }
 
     override fun visitIndexRegister(ctx: SmaliParser.IndexRegisterContext): SmaliClass {
-        return visitChildren(ctx)
-    }
-
-    override fun visitSimpleParamDirective(ctx: SmaliParser.SimpleParamDirectiveContext): SmaliClass {
         return visitChildren(ctx)
     }
 
@@ -1761,6 +1757,29 @@ class SmaliFileScanner(val project: ProjectAnalyzeResult, var smaliClass: SmaliC
         return visitChildren(ctx)
     }
 
+    override fun visitEnumType(ctx: SmaliParser.EnumTypeContext?): SmaliClass {
+        return visitChildren(ctx)
+    }
+
+    override fun visitEnumDirective(ctx: SmaliParser.EnumDirectiveContext?): SmaliClass {
+        return visitChildren(ctx)
+    }
+
+    override fun visitSubannotationDirective(ctx: SmaliParser.SubannotationDirectiveContext?): SmaliClass {
+        return visitChildren(ctx)
+    }
+
+    override fun visitCharLiteral(ctx: SmaliParser.CharLiteralContext?): SmaliClass {
+        return visitChildren(ctx)
+    }
+
+    override fun visitAbstarctMethodBodyStatement(ctx: SmaliParser.AbstarctMethodBodyStatementContext?): SmaliClass {
+        return visitChildren(ctx)
+    }
+
+    override fun visitFullParamDirective(ctx: SmaliParser.FullParamDirectiveContext?): SmaliClass {
+        return visitChildren(ctx)
+    }
 
 //    override fun visitComment(ctx: SmaliParser.CommentContext): SmaliClass {
 //
