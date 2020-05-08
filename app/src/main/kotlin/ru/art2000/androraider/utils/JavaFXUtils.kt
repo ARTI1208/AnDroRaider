@@ -5,6 +5,7 @@ import javafx.beans.value.ObservableValue
 import javafx.scene.Node
 import javafx.scene.Parent
 import javafx.scene.control.IndexRange
+import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyCodeCombination
 import javafx.scene.input.KeyCombination
 import javafx.scene.input.KeyEvent
@@ -22,7 +23,7 @@ operator fun IndexRange.contains(int: Int): Boolean {
 }
 
 fun KeyEvent.toKeyCodeCombination(): KeyCodeCombination? {
-    if (code.isModifierKey)
+    if (code.isModifierKey || code == KeyCode.UNDEFINED)
         return null
 
     val modifiers = mutableListOf<KeyCombination.Modifier>()

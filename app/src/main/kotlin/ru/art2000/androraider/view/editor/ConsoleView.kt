@@ -1,14 +1,17 @@
 package ru.art2000.androraider.view.editor
 
+import io.reactivex.Single
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
+import io.reactivex.schedulers.Schedulers
 import javafx.application.Platform
 import javafx.beans.property.StringProperty
 import javafx.beans.property.StringPropertyBase
-import javafx.concurrent.Task
 import javafx.geometry.Insets
 import javafx.scene.control.ScrollPane
 import org.fxmisc.flowless.VirtualizedScrollPane
 import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.StyleClassedTextArea
+import org.fxmisc.richtext.model.ReadOnlyStyledDocument
 import ru.art2000.androraider.model.editor.SearchSpanList
 import ru.art2000.androraider.model.io.StreamOutput
 import java.io.BufferedReader
@@ -113,33 +116,56 @@ class ConsoleView : ScrollPane(), StreamOutput, Searchable<String> {
     }
 
     override fun findAll(valueToFind: String) {
-        currentSearchValue = valueToFind.toLowerCase()
-        searchSpanList.searchString = currentSearchValue
-        textArea.clearStyle(0, textArea.text.length)
-        if (currentSearchValue.isNotEmpty()) {
-            var currentFound = false
-            val pattern = Pattern.compile("(?<SEARCH>$currentSearchValue)")
-            val searchMatcher = pattern.matcher(textArea.text.toLowerCase())
-            if (pattern.pattern().isNotEmpty()) {
-                while (searchMatcher.find()) {
-                    searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
-                    if (!currentFound && searchMatcher.end() >= textArea.caretPosition) {
-                        currentFound = true
-                        selectSearchRange(-1, searchSpanList.size - 1)
-                    } else {
-                        textArea.setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
+        currentSearchValue = valueToFind
+        Single.fromCallable {
+            var b = textArea.createMultiChange()
+            var ch = false
+            searchSpanList.searchString = currentSearchValue
+            if (currentSearchValue.isNotEmpty()) {
+//                var currentFound = false
+                val pattern = Pattern.compile(Pattern.quote(currentSearchValue.toLowerCase()))
+                val searchMatcher = pattern.matcher(textArea.text.toLowerCase())
+                if (pattern.pattern().isNotEmpty()) {
+                    while (searchMatcher.find()) {
+                        searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
+//                        if (!currentFound && searchMatcher.end() >= caretPosition) {
+//                            currentFound = true
+//                            selectSearchRange(-1, searchSpanList.size - 1)
+//                        }
+//                                else {
+//                        setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
+
+
+                        val doc = ReadOnlyStyledDocument.fromString(
+                                textArea.getText(searchMatcher.start(), searchMatcher.end()),
+                                textArea.getParagraphStyleForInsertionAt(searchMatcher.start() + 1),
+                                mutableListOf("search"),
+                                textArea.segOps
+                        )
+
+
+                        ch = true
+                        b = b.replaceAbsolutely(searchMatcher.start(), searchMatcher.end(), doc)
+//                                }
                     }
-                }
-                if (!currentFound) {
-                    selectSearchRange(-1, 0)
+//                    if (!currentFound) {
+//                        selectSearchRange(-1, 0)
+//                    }
                 }
             }
-        }
+            ch to b
+        }.subscribeOn(Schedulers.computation())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe { (hasChanges, builder) ->
+                    textArea.clearStyle(0, textArea.length)
+                    if (hasChanges) {
+                        builder.commit()
+                    }
+                }
     }
 
     private fun selectSearchRange(previous: Int, new: Int) {
         searchSpanList.currentPosition = new
-        ru.art2000.androraider.model.io.println(this, "NewSearchPos", new)
 
 //        if (previous in 0..searchSpanList.lastIndex) {
 //            textArea.clearStyle(searchSpanList[previous].first, searchSpanList[previous].last)

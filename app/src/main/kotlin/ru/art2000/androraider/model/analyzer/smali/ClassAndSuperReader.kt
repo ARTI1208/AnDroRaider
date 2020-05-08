@@ -2,8 +2,12 @@ package ru.art2000.androraider.model.analyzer.smali
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
 import org.antlr.v4.runtime.tree.ErrorNode
+import ru.art2000.androraider.model.analyzer.result.DynamicRangeStatusDef
 import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
+import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
+import ru.art2000.androraider.utils.parseCompound
+import ru.art2000.androraider.utils.textRange
 
 class ClassAndSuperReader(val project: ProjectAnalyzeResult) :
         AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
@@ -30,7 +34,27 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult) :
         return smaliClass
     }
 
+    inner class FieldDeclarationContextWrapper(ctx: SmaliParser.FieldDirectiveContext) :
+            SmaliParser.FieldDirectiveContext(ctx.getParent(), ctx.invokingState) {
+
+        val smaliField = smaliClass.findOrCreateField(
+                ctx.fieldNameAndType()?.fieldName()?.text ?: "Dummy",
+                ctx.fieldNameAndType()?.fieldType()?.text ?: "I"
+        )!!
+
+        init {
+            children = ctx.children
+            children.forEach {
+                it.setParent(this)
+            }
+            smaliField.parentClass = smaliClass
+            smaliField.textRange = ctx.fieldNameAndType()?.fieldName()?.textRange ?: -1..0
+        }
+
+    }
+
     override fun visitFieldDirective(ctx: SmaliParser.FieldDirectiveContext): SmaliClass {
+        FieldDeclarationContextWrapper(ctx)
         return smaliClass
     }
 
@@ -42,7 +66,24 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult) :
         return smaliClass
     }
 
+    private fun smaliMethodFromDeclarationContext(ctx: SmaliParser.MethodDeclarationContext): SmaliMethod {
+        val name = ctx.methodSignature()?.methodIdentifier()?.text ?: "DummyMethod"
+        val params = parseCompound(ctx.methodSignature()?.methodArguments()?.text)
+        val returnType = ctx.methodSignature()?.methodReturnType()?.text ?: "V"
+
+//        if (params.contains("[")) {
+//            println("uuuuu")
+//        }
+
+//        if (name == "<init>" && params.size == 0 && smaliClass.fullname == "a.c.a")
+//            println("FromDecl")
+
+        return smaliClass.findOrCreateMethod(name, params, returnType, 0)!!
+    }
+
     override fun visitMethodDirective(ctx: SmaliParser.MethodDirectiveContext): SmaliClass {
+        val smaliMethod = smaliMethodFromDeclarationContext(ctx.methodDeclaration())
+        smaliMethod.textRange = ctx.methodDeclaration()?.methodSignature()?.methodIdentifier()?.textRange ?: -1..0
         return smaliClass
     }
 
@@ -119,9 +160,12 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult) :
     }
 
     override fun visitSuperDirective(ctx: SmaliParser.SuperDirectiveContext): SmaliClass {
-        project.classByName(ctx.superName().text)?.also {
+        val superName = ctx.superName()?.text ?: return smaliClass
+
+        project.getOrCreateClass(superName)?.also {
             smaliClass.parentClass = it
         }
+
         return smaliClass
     }
 
@@ -619,6 +663,9 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult) :
     override fun visitParse(ctx: SmaliParser.ParseContext): SmaliClass {
         visitClassDirective(ctx.classDirective())
         visitSuperDirective(ctx.superDirective())
+        ctx.implementsDirective()?.forEach { visitImplementsDirective(it) }
+        ctx.fieldDirective()?.forEach { visitFieldDirective(it) }
+        ctx.methodDirective()?.forEach { visitMethodDirective(it) }
         return smaliClass
     }
 
@@ -1411,6 +1458,9 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult) :
     }
 
     override fun visitImplementsDirective(ctx: SmaliParser.ImplementsDirectiveContext): SmaliClass {
+        project.getOrCreateClass(ctx.referenceType().text)?.also {
+            smaliClass.interfaces.add(it)
+        }
         return smaliClass
     }
 

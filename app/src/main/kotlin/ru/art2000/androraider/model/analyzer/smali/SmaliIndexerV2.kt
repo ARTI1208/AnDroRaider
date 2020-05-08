@@ -20,7 +20,7 @@ object SmaliIndexerV2 : Indexer<SmaliClass> {
         val tokenStream = CommonTokenStream(lexer as TokenSource)
         val parser = SmaliParser(tokenStream as TokenStream)
         parser.removeErrorListeners()
-        val tree = parser.classDirective()
+        val tree = parser.parse()
 
         return ClassAndSuperReader(project).visit(tree as ParseTree).also { it.associatedFile = file }
     }
@@ -72,6 +72,7 @@ object SmaliIndexerV2 : Indexer<SmaliClass> {
     override fun indexProject(project: ProjectAnalyzeResult): Observable<SmaliClass> {
         return project.smaliFolders.fold(Observable.fromIterable(emptyList<SmaliClass>())) { acc, folder ->
             acc.concatWith(analyzeFilesInDir(project, folder))
-        }.map { analyzeFile(project, it.associatedFile!!) }
+        }
+//                .map { analyzeFile(project, it.associatedFile!!) }
     }
 }

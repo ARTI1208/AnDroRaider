@@ -7,10 +7,7 @@ import javafx.application.Platform
 import javafx.collections.ListChangeListener
 import javafx.event.EventHandler
 import javafx.scene.control.*
-import javafx.scene.input.KeyCode
-import javafx.scene.input.KeyCodeCombination
-import javafx.scene.input.KeyCombination
-import javafx.scene.input.KeyEvent
+import javafx.scene.input.*
 import javafx.scene.layout.Background
 import javafx.scene.layout.BackgroundFill
 import javafx.scene.layout.HBox
@@ -61,6 +58,13 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
     override val presenter: EditorPresenter
 
+    private val searchEvent: (KeyEvent) -> Unit = {
+        if (it.isShortcutDown && it.code == KeyCode.F) {
+            searchMenu.show()
+            search.searchField.requestFocus()
+        }
+    }
+
     init {
         icons.add(App.LOGO)
         title = "Project Editor"
@@ -70,6 +74,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
         addEventHandler(WindowEvent.WINDOW_SHOWN) {
             registerStreamOutput(this, console)
+            console.addEventHandler(KeyEvent.KEY_PRESSED, searchEvent)
             showLoadingDialog()
             loadProject()
         }
@@ -132,7 +137,9 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         if (!projectFolder.exists())
             projectFolder.mkdirs()
 
-        onSettingsUpdate(presenter.project.projectSettings)
+        if (!onSettingsUpdate(presenter.project.projectSettings)) {
+            runIndexing()
+        }
 
         title = "${projectFolder.name} - Project Editor"
 
@@ -144,7 +151,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
     }
 
     private fun loadProject() {
-        loadingLabel.text = "Loading project..."
+        loadingLabel.text = "Loading1 project..."
         Observable
                 .fromIterable(onLoadRunnables)
                 .subscribeOn(Schedulers.io())
@@ -215,13 +222,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                             it.file?.also { fileToOpen -> openFile(fileToOpen, it.offset) }
                         }
                     }
-                    addEventHandler(KeyEvent.KEY_PRESSED) {
-                        if (it.isShortcutDown && it.code == KeyCode.F) {
-                            searchMenu.show()
-                            search.searchField.requestFocus()
-                        }
-                    }
-
+                    addEventHandler(KeyEvent.KEY_PRESSED, searchEvent)
                     edit(newFile, Runnable {
                         moveToAndPlaceLineInCenter(caretPosition)
                     })
@@ -243,6 +244,8 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
             openFile(newFile)
         }
 
+        fileManagerView.addEventHandler(KeyEvent.KEY_PRESSED, searchEvent)
+
         presenter.addFileListener { file, kind ->
             when (kind) {
                 StandardWatchEventKinds.ENTRY_DELETE -> fileManagerView.removeBranch(file)
@@ -252,13 +255,16 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         fileManagerView.updateFileList()
     }
 
-    private fun onSettingsUpdate(settings: PreferenceManager) {
+    private fun onSettingsUpdate(settings: PreferenceManager): Boolean {
         val frameworkFolder = File(settings.getString(ProjectSettingsDialog.KEY_DECOMPILED_FRAMEWORK_PATH))
         if (frameworkFolder.isDirectory && frameworkFolder.exists()) {
             presenter.project.addProjectFolder(frameworkFolder)
             showLoadingDialog()
             runIndexing()
+            return true
         }
+
+        return false
     }
 
     private fun setupMenu() {
@@ -301,7 +307,11 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         }
 
         // Menu/Search
-        searchMenu.accelerator = KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN)
+//        searchMenu.accelerator = KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN)
+//        searchMenu.setOnAction {
+//            searchMenu.show()
+//        }
+
 //        searchMenu.onShown = EventHandler {
 //            search.searchField.requestFocus()
 //        }
@@ -313,6 +323,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 //        }
 
         scene.focusOwnerProperty().addListener { _, _, newValue ->
+            println(newValue)
             @Suppress("UNCHECKED_CAST")
             search.currentSearchable = newValue as? Searchable<String>
         }

@@ -114,6 +114,6 @@ class DynamicRangeStatusDef(override val range: IntRange, component: SmaliCompon
     override val offset = component?.textRange?.last ?: 0
 
     override fun toString(): String {
-        return "Dynamic: $component at $range, desc = $description"
+        return "Dynamic: $component at $range, in parent = ${component?.textRange}"
     }
 }

@@ -182,15 +182,15 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
     }
 
     public fun findMethodInInterfaces(name: String, parameters: List<SmaliClass>, returnType: String): SmaliMethod? {
-        if (name == "get")
-            println("finding $name in ${interfaces.size} in $fullname")
+//        if (name == "get")
+//            println("finding $name in ${interfaces.size} in $fullname")
 
         var res: SmaliMethod? = null
 
         for (cl in interfaces) {
-            if (name == "get")
-                println("inter $name in ${interfaces.size} in ${cl.fullname}")
-            var parent: SmaliClass? = this
+//            if (name == "get")
+//                println("inter $name in ${interfaces.size} in ${cl.fullname}")
+            var parent: SmaliClass? = cl
             while (parent != null) {
                 val tmp = parent.methods.find { method ->
                     val parametersReal = method.parametersInternal
@@ -198,6 +198,9 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
                     val firstPart = method.name == name
                             && parameters.size == parametersReal.size
 
+                    if (name == "get" && fullname == "java.util.concurrent.ConcurrentMap") {
+                        println("Cmp2: $method in $parent")
+                    }
 //                if (name == "<init>" && fullname == "a.c.a") {
 //                    println("Cmp: $method")
 //                }
@@ -232,6 +235,12 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
         var lvl= scanLevel
         var res: SmaliMethod? = null
 
+        val noBorder = scanLevel < 0
+
+        if (name == "get" && fullname == "java.util.concurrent.ConcurrentMap") {
+            println("searching $lvl")
+        }
+
         var parent: SmaliClass? = this
         while (parent!= null) {
             val tmp = parent.methods.find { method ->
@@ -239,6 +248,10 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
 
                 val firstPart = method.name == name
                         && parameters.size == parametersReal.size
+
+                if (name == "get" && fullname == "java.util.concurrent.ConcurrentMap") {
+                    println("Cmp: $method in $parent")
+                }
 
 //                if (name == "<init>" && fullname == "a.c.a") {
 //                    println("Cmp: $method")
@@ -254,7 +267,7 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
 
                 return@find true
             }
-            if (tmp != null || lvl < 1) {
+            if (tmp != null || (lvl < 1 && !noBorder)) {
                 res = tmp
                 break
             }
@@ -262,17 +275,17 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
             parent = parent.parentClass
         }
 
-        if (fullname == "a.a" || fullname == "-\$Lambda\$S9HjrJh0nDg7IyU6wZdPArnZWRQ\$1") {
-            println("found $name in $parent")
-        }
+//        if (fullname == "a.a" || fullname == "-\$Lambda\$S9HjrJh0nDg7IyU6wZdPArnZWRQ\$1") {
+//            println("found $name in $parent")
+//        }
 
         return res ?: findMethodInInterfaces(name, parameters, returnType)
     }
 
     public fun findOrCreateMethod(name: String, parameters: List<String>, returnType: String, scanLevel: Int = -1): SmaliMethod? {
-        if (fullname == "a.a" || fullname == "-\$Lambda\$S9HjrJh0nDg7IyU6wZdPArnZWRQ\$1") {
-            println("finding $name")
-        }
+//        if (fullname == "a.a" || fullname == "-\$Lambda\$S9HjrJh0nDg7IyU6wZdPArnZWRQ\$1") {
+//            println("finding $name")
+//        }
 
         val prj = parentPackage?.project ?: return null
         val requiredParameters = parameters.mapNotNull {
@@ -286,9 +299,9 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
         val prj = parentPackage?.project ?: return null
         return SmaliMethod(name, prj.getOrCreateClass(returnType)!!, this).also {
             it.parametersInternal.addAll(parameters)
-            if (fullname == "a.a" || fullname == "-\$Lambda\$S9HjrJh0nDg7IyU6wZdPArnZWRQ\$1") {
-                println("create $name in $this")
-            }
+//            if (fullname == "a.a" || fullname == "-\$Lambda\$S9HjrJh0nDg7IyU6wZdPArnZWRQ\$1") {
+//                println("create $name in $this")
+//            }
 //            println("Created $it//${it.hashCode()}//in ${hashCode()}//${this}")
         }
     }
@@ -306,11 +319,11 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
     override val textRange: IntRange = 0..0
 
     override fun recheck(): SmaliComponent? {
-        return if (file == null) null else this
+        return if (exists()) this else null
     }
 
     override fun exists(): Boolean {
-        return file != null
+        return file != null || isPrimitive || isVoid || (isArray && parentClass?.exists() == true)
     }
 
     override fun equals(other: Any?): Boolean {

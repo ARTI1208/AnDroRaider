@@ -1,6 +1,7 @@
 package ru.art2000.androraider.view.editor.menu.search
 
 import javafx.event.EventHandler
+import javafx.event.EventType
 import javafx.scene.control.CustomMenuItem
 import javafx.scene.input.KeyCode
 import ru.art2000.androraider.utils.bind
@@ -24,6 +25,7 @@ class SearchMenuItem : CustomMenuItem(), ISearchItemController by SearchItemCont
                 searchMapping[s] = newValue
             }
         }
+
 
         searchField.disableProperty().bind(currentSearchableProperty) { it == null }
         findPreviousButton.disableProperty().bind(currentSearchableProperty) { it == null }
