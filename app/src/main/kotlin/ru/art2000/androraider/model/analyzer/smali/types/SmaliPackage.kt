@@ -61,6 +61,10 @@ class SmaliPackage(val project: ProjectAnalyzeResult, val name: String, var pare
         return this
     }
 
+    override fun markAsNotExisting() {
+
+    }
+
     override fun exists(): Boolean {
         return true
     }

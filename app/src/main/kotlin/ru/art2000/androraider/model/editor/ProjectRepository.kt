@@ -51,3 +51,7 @@ public fun getProjectForNode(node: Node): ProjectAnalyzeResult? {
 
     return getProjectForWindow(node.scene.window)
 }
+
+public fun removeProject(window: Window) {
+    projectForWindow.remove(window.hashCode())
+}

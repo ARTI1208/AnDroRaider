@@ -12,8 +12,8 @@
       prefHeight="400.0" prefWidth="600.0">
     <Text text="Decompiled framework path" />
     <HBox>
-        <TextField fx:id="frameworkFolderPath" />
-        <Button fx:id="frameworkFolderPathSelector" text="Select" />
+        <Button fx:id="frameworkFolderPathSelector" text="Add" />
+        <Button fx:id="frameworkFolderPathRemover" text="Remove" />
     </HBox>
     <ListView fx:id="listView" />
 </VBox>

@@ -10,5 +10,7 @@ interface SmaliComponent {
     // null if not exists, other value if exists or found in parent
     fun recheck(): SmaliComponent?
 
+    fun markAsNotExisting()
+
     fun exists(): Boolean
 }

@@ -206,7 +206,9 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
                     replaceText(it)
                     moveToAndPlaceLineInCenter(0)
                     undoManager.forgetHistory()
-                    onTextSet.run()
+                    Platform.runLater {
+                        onTextSet.run()
+                    }
                 }.subscribe()
     }
 
@@ -269,7 +271,10 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
 //        println(this, "Scroll", "$newLine|$lineHeight|$visibleLinesCount|${visibleParagraphs.size}")
 
 //        moveTo(newPosition) // move caret to new position
-        scrollYToPixel((lineHeight * lineToScroll))
+        println((lineHeight * lineToScroll).toString() + "||" + lineToScroll + "lineHeight")
+        Platform.runLater {
+            scrollYToPixel((lineHeight * lineToScroll))
+        }
     }
 
     public override fun findNext() {
@@ -371,7 +376,7 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
 
     }
 
-    private fun updateHighlighting() {
+    public fun updateHighlighting() {
         val file = currentEditingFile ?: return
 
 //        if (getProjectForNode(this)?.canAnalyzeFile(file) != true) {

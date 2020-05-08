@@ -316,14 +316,18 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
     override val file: File?
         get() = associatedFile
 
-    override val textRange: IntRange = 0..0
+    override var textRange: IntRange = -1..0
 
     override fun recheck(): SmaliComponent? {
         return if (exists()) this else null
     }
 
+    override fun markAsNotExisting() {
+        textRange = -1..0
+    }
+
     override fun exists(): Boolean {
-        return file != null || isPrimitive || isVoid || (isArray && parentClass?.exists() == true)
+        return (file != null && textRange.first >= 0) || isPrimitive || isVoid || (isArray && parentClass?.exists() == true)
     }
 
     override fun equals(other: Any?): Boolean {

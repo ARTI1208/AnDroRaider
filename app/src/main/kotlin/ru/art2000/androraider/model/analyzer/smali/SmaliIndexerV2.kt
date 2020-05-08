@@ -9,6 +9,7 @@ import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.analyzer.result.RangeStatusBase
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.utils.textRange
+import ru.art2000.androraider.view.editor.codearea.CodeEditorScrollPane
 import java.io.File
 
 object SmaliIndexerV2 : Indexer<SmaliClass> {
@@ -33,15 +34,15 @@ object SmaliIndexerV2 : Indexer<SmaliClass> {
         val tree = parser.parse()
 
 //        println("==========================$file")
-        val smaliClass = project.fileToClassMapping[file] ?: throw IllegalStateException("ClassNotFound")
+        var smaliClass = project.fileToClassMapping[file] ?: throw IllegalStateException("ClassNotFound")
 
         smaliClass.ranges.clear()
+        smaliClass.fields.forEach { it.markAsNotExisting() }
+        smaliClass.methods.forEach { it.markAsNotExisting() }
+        smaliClass.interfaces.clear()
 
-        SmaliAllInOneAnalyzer(project, smaliClass, withRanges).visit(tree as ParseTree)
-
-//        smaliClass.ranges.forEach {
-//            println("${it.range}:${it.style}:${it.description}")
-//        }
+        smaliClass = SmaliAllInOneAnalyzer(project, smaliClass, withRanges).visit(tree as ParseTree)
+        project.fileToClassMapping[file] = smaliClass.apply { associatedFile = file }
 
         tokenStream.tokens.forEach {
             if (it.channel == 1) { // hidden channel

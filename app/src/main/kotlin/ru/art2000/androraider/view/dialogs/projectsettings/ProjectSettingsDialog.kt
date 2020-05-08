@@ -1,9 +1,7 @@
 package ru.art2000.androraider.view.dialogs.projectsettings
 
 import javafx.event.EventHandler
-import javafx.scene.control.ButtonType
-import javafx.scene.control.Dialog
-import javafx.scene.control.DialogPane
+import javafx.scene.control.*
 import javafx.stage.DirectoryChooser
 import ru.art2000.androraider.model.settings.PreferenceManager
 import java.io.File
@@ -27,30 +25,44 @@ class ProjectSettingsDialog(private val settings: PreferenceManager) : Dialog<Un
 
         setup()
         loadFromSettings()
-        addListeners()
+        frameworkFolderPathRemover.disableProperty().bind(listView.selectionModel.selectedItemProperty().isNull)
     }
 
     private fun setup() {
         frameworkFolderPathSelector.onAction = EventHandler {
             DirectoryChooser()
-                    .apply { initialDirectory = File(frameworkFolderPath.text).parentFile }
+                    .apply {
+                        val path = if (listView.selectionModel.selectedItem != null)
+                            listView.selectionModel.selectedItem
+                        else
+                            listView.items.firstOrNull() ?: return@apply
+
+                        initialDirectory = File(path).parentFile
+                    }
                     .showDialog(owner)
-                    ?.absolutePath
-                    ?.also { frameworkFolderPath.text = it }
+                    ?.also { addDependency(it) }
         }
+
+        frameworkFolderPathRemover.onAction = EventHandler {
+            listView.selectionModel.selectedItem?.also {
+                removeDependency(it)
+            }
+        }
+    }
+
+
+    private fun addDependency(file: File) {
+        listView.items.add(file.absolutePath)
+        settings.putStringArray(KEY_DECOMPILED_FRAMEWORK_PATH, listView.items)
+    }
+
+    private fun removeDependency(path: String) {
+        listView.items.remove(path)
+        settings.putStringArray(KEY_DECOMPILED_FRAMEWORK_PATH, listView.items)
     }
 
     private fun loadFromSettings() {
-        frameworkFolderPath.text = settings.getString(KEY_DECOMPILED_FRAMEWORK_PATH)
+        listView.items.addAll(settings.getStringArray(KEY_DECOMPILED_FRAMEWORK_PATH))
     }
 
-    private fun addListeners() {
-        frameworkFolderPath.textProperty().addListener { _, _, newValue ->
-            settings.putString(KEY_DECOMPILED_FRAMEWORK_PATH, newValue)
-
-            frameworkFolderPath.styleClass.remove("error")
-            if (!File(newValue).exists())
-                frameworkFolderPath.styleClass.add("error")
-        }
-    }
 }

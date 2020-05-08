@@ -63,6 +63,10 @@ class SmaliMethod(): SmaliComponent {
         return method ?: this
     }
 
+    override fun markAsNotExisting() {
+        textRange = -1..0
+    }
+
     override fun exists(): Boolean {
         return textRange.first >= 0
     }

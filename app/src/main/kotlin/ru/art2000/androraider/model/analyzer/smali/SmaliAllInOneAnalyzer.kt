@@ -5,7 +5,6 @@ import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
 import org.antlr.v4.runtime.tree.ErrorNode
 import ru.art2000.androraider.model.analyzer.result.*
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
-import ru.art2000.androraider.model.analyzer.smali.types.SmaliField
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
@@ -16,10 +15,24 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
 
     override fun visitClassDirective(ctx: SmaliParser.ClassDirectiveContext): SmaliClass {
+
+        val clazz = project.getOrCreateClass(ctx.className().text)
+        if (clazz !== smaliClass) {
+            smaliClass.markAsNotExisting()
+            if (clazz != null) {
+                smaliClass = clazz
+            }
+        }
+
+        smaliClass.textRange = ctx.className().textRange
+
         if (ctx.CLASS_DIRECTIVE() == null || !withRanges) {
 //            println("null cld " + ctx.text + " in " + smaliClass.associatedFile)
             return visitChildren(ctx)
         }
+
+
+
         smaliClass.ranges.add(RangeStatusBaseV2(ctx.CLASS_DIRECTIVE().textRange, ctx.CLASS_DIRECTIVE().text, "Class", listOf("keyword")))
         return visitChildren(ctx)
     }
@@ -70,7 +83,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
             smaliField.parentClass = smaliClass
             smaliField.textRange = ctx.fieldNameAndType()?.fieldName()?.textRange ?: -1..0
             if (withRanges)
-                smaliClass.ranges.add(DynamicRangeStatusDef(smaliField.textRange, smaliField))
+                smaliClass.ranges.add(DynamicRangeStatus(smaliField.textRange, smaliField))
         }
 
     }
@@ -394,7 +407,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         if (withRanges) {
             parseCompound(ctx.text).forEach { parameterText ->
                 val parameterClass = project.classByName(parameterText)
-                smaliClass.ranges.add(DynamicRangeStatusDef(
+                smaliClass.ranges.add(DynamicRangeStatus(
                         (ctx.start.startIndex + offset)..(ctx.start.startIndex + offset + parameterText.lastIndex),
                         parameterClass)
                 )
@@ -420,7 +433,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 //        if (clazz?.fullname == "java.lang.Thread")
 //            println("Thread at: ${ctx.textRange}")
         if (withRanges)
-            smaliClass.ranges.add(DynamicRangeStatusDef(ctx.textRange, clazz))
+            smaliClass.ranges.add(DynamicRangeStatus(ctx.textRange, clazz))
 
         return visitChildren(ctx)
     }
@@ -837,7 +850,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 //            println("${findMethod(ctx)}: invokingTextor ${targetClass}//$methodName//${targetMethod}//${targetMethod?.hashCode()} = ${targetClass?.hashCode()}")
 
         if (withRanges)
-            smaliClass.ranges.add(DynamicRangeStatusDef(ctx.methodSignature().methodIdentifier().textRange, targetMethod))
+            smaliClass.ranges.add(DynamicRangeStatus(ctx.methodSignature().methodIdentifier().textRange, targetMethod))
 
         return visitChildren(ctx)
     }
@@ -869,7 +882,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
             if (withRanges) {
 //                println("range ${smaliMethod.textRange} for ${ctx.methodDeclaration().text} in ${ctx.methodDeclaration()?.methodSignature()?.methodIdentifier()?.textRange}")
-                smaliClass.ranges.add(DynamicRangeStatusDef(smaliMethod.textRange, smaliMethod))
+                smaliClass.ranges.add(DynamicRangeStatus(smaliMethod.textRange, smaliMethod))
             }
         }
 
@@ -1755,7 +1768,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
 //        println("Field $targetField")
 
-        smaliClass.ranges.add(DynamicRangeStatusDef(ctx.fieldNameAndType().fieldName().textRange, targetField))
+        smaliClass.ranges.add(DynamicRangeStatus(ctx.fieldNameAndType().fieldName().textRange, targetField))
 
         return visitChildren(ctx)
     }

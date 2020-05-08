@@ -2,7 +2,6 @@ package ru.art2000.androraider.model.analyzer.smali
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
 import org.antlr.v4.runtime.tree.ErrorNode
-import ru.art2000.androraider.model.analyzer.result.DynamicRangeStatusDef
 import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
@@ -18,6 +17,8 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult) :
         project.getOrCreateClass(ctx.className().text)?.also {
             smaliClass = it
         }
+
+        smaliClass.textRange = ctx.className().textRange
 
         return smaliClass
     }

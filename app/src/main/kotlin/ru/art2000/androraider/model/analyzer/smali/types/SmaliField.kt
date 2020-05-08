@@ -42,6 +42,10 @@ class SmaliField : SmaliComponent {
         return field ?: this
     }
 
+    override fun markAsNotExisting() {
+        textRange = -1..0
+    }
+
     override fun exists(): Boolean {
         return textRange.first >= 0
     }

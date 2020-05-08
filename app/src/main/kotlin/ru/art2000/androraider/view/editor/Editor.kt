@@ -84,15 +84,25 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
             presenter.dispose()
         }
 
+        loadingDialog.title = "Loading..."
+        loadingDialog.width = 400.0
+        loadingLabel.text = "Loading project..."
+        loadingDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
+        (loadingDialog.dialogPane.lookupButton(ButtonType.CLOSE) as Button).isDisable = true
+
         codeEditorContainer.background = Background(BackgroundFill(Color.GRAY, null, null))
 
         editorTabPane.prefHeightProperty().bind(codeEditorContainer.heightProperty())
         editorTabPane.prefWidthProperty().bind(widthProperty().subtract(fileManagerView.prefWidthProperty()))
-        editorTabPane.selectionModel.selectedItemProperty().addListener { _, _, newValue ->
+        editorTabPane.selectionModel.selectedItemProperty().addListener { _, oldValue, newValue ->
             title = if (newValue?.userData as? File == null) {
                 "${projectFolder.name} - Project Editor"
             } else {
                 "${(newValue.userData as File).absolutePath} - Project Editor"
+            }
+
+            if (oldValue != null && newValue != null) {
+                (newValue.content as CodeEditorScrollPane).content.updateHighlighting()
             }
         }
 
@@ -101,12 +111,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
     private fun showLoadingDialog() {
         if (!loadingDialog.isShowing) {
-            loadingDialog.title = "Loading..."
-            loadingDialog.width = 400.0
-            loadingLabel.text = "Loading project..."
-            loadingDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
-            (loadingDialog.dialogPane.lookupButton(ButtonType.CLOSE) as Button).isDisable = true
-
             loadingDialog.show()
         }
     }
@@ -256,15 +260,20 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
     }
 
     private fun onSettingsUpdate(settings: PreferenceManager): Boolean {
-        val frameworkFolder = File(settings.getString(ProjectSettingsDialog.KEY_DECOMPILED_FRAMEWORK_PATH))
-        if (frameworkFolder.isDirectory && frameworkFolder.exists()) {
-            presenter.project.addProjectFolder(frameworkFolder)
-            showLoadingDialog()
-            runIndexing()
-            return true
+        val frameworkFolder = settings.getStringArray(ProjectSettingsDialog.KEY_DECOMPILED_FRAMEWORK_PATH)
+                .map { File(it) }
+                .filter { it.isDirectory && it.exists() }
+
+        frameworkFolder.forEach {
+            presenter.project.addProjectFolder(it)
         }
 
-        return false
+        if (frameworkFolder.isNotEmpty()) {
+            showLoadingDialog()
+            runIndexing()
+        }
+
+        return frameworkFolder.isNotEmpty()
     }
 
     private fun setupMenu() {
