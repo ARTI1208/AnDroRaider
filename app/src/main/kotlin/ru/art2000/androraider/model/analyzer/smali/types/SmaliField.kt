@@ -23,7 +23,7 @@ class SmaliField : SmaliComponent {
     override val fullname: String
         get() = name
 
-    override fun exists(): SmaliComponent? {
+    override fun recheck(): SmaliComponent? {
         var parent = parentClass
         var field: SmaliField? = this
         while (parent != null) {
@@ -40,6 +40,10 @@ class SmaliField : SmaliComponent {
         }
 
         return field ?: this
+    }
+
+    override fun exists(): Boolean {
+        return textRange.first >= 0
     }
 
     public fun setModifierBit(modifierBit: Int) {

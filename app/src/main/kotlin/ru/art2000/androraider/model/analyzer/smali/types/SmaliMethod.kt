@@ -15,9 +15,11 @@ class SmaliMethod(): SmaliComponent {
     var parentClass: SmaliClass? = null
         set(value) {
             if (value != field) {
-                field?.methods?.remove(this)
-                value?.methods?.add(this)
+                val fcp = field
                 field = value
+
+                fcp?.removeMethod(this)
+                value?.methods?.add(this)
             }
         }
 
@@ -42,7 +44,7 @@ class SmaliMethod(): SmaliComponent {
     override val fullname: String
         get() = name
 
-    override fun exists(): SmaliComponent? {
+    override fun recheck(): SmaliComponent? {
         var parent = parentClass
         var method: SmaliMethod? = this
         while (parent != null) {
@@ -54,11 +56,15 @@ class SmaliMethod(): SmaliComponent {
         }
 
         if (method != null && method != this) {
-            parentClass?.removeMethod(this)
+//            parentClass?.removeMethod(this)
             return method
         }
 
         return method ?: this
+    }
+
+    override fun exists(): Boolean {
+        return textRange.first >= 0
     }
 
     override fun toString(): String {

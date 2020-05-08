@@ -43,7 +43,7 @@ fun KeyEvent.toKeyCodeCombination(): KeyCodeCombination? {
     if (isShiftDown)
         modifiers.add(KeyCombination.SHIFT_DOWN)
 
-    println(this)
+//    println(this)
 
     return KeyCodeCombination(code, *modifiers.toTypedArray())
 }

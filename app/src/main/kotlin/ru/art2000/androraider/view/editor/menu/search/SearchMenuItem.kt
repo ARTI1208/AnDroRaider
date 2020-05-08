@@ -13,13 +13,6 @@ class SearchMenuItem : CustomMenuItem(), ISearchItemController by SearchItemCont
     init {
         isHideOnClick = false
         content = root
-        content.hoverProperty().addListener { _, _, now ->
-            if (now) {
-                searchField.requestFocus()
-                searchField.positionCaret(searchField.text?.length ?: 0)
-                searchField.deselect()
-            }
-        }
 
         searchScopeLabel.textProperty().bind(currentSearchableProperty) {
             it?.javaClass?.simpleName ?: "No searchable nodes focused"

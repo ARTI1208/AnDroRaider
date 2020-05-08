@@ -5,11 +5,13 @@ import org.antlr.v4.runtime.tree.ErrorNode
 import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 
-class ClassAndSuperReader(val project: ProjectAnalyzeResult, var smaliClass: SmaliClass) :
+class ClassAndSuperReader(val project: ProjectAnalyzeResult) :
         AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
 
+    private lateinit var smaliClass: SmaliClass
+
     override fun visitClassDirective(ctx: SmaliParser.ClassDirectiveContext): SmaliClass {
-        project.classByName(ctx.className().text)?.also {
+        project.getOrCreateClass(ctx.className().text)?.also {
             smaliClass = it
         }
 

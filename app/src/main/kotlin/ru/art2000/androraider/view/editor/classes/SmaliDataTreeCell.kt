@@ -24,7 +24,7 @@ class SmaliDataTreeCell: TreeCell<SmaliComponent>() {
             return
         }
 
-        text = item.fullname
+        text = item.toString() + "///" + item.hashCode()
 
         if (treeItem?.isExpanded == true)
             disclosureNode.rotate = 0.0

@@ -8,5 +8,7 @@ interface SmaliComponent {
     val fullname: String
 
     // null if not exists, other value if exists or found in parent
-    fun exists(): SmaliComponent?
+    fun recheck(): SmaliComponent?
+
+    fun exists(): Boolean
 }

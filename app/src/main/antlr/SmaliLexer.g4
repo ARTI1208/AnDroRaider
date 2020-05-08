@@ -424,7 +424,7 @@ LINE_COMMENT
     ;
 
 // Fragment rules
-fragment SimpleName:        (Letter (LetterOrDigit | LetterOrDigitOrSign)* (LetterOrDigit)+ | Letter);
+fragment SimpleName:        ((Letter|'-' Letter) (LetterOrDigit | LetterOrDigitOrSign)* (LetterOrDigit)+ | Letter);
 
 // Fragment rules
 

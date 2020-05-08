@@ -42,9 +42,9 @@ class SmaliPackage(val project: ProjectAnalyzeResult, val name: String, var pare
         val rem = classes.removeIf {
             it.fullname == smaliClass.fullname
         }
-        if (rem) {
-            println("Removed prev version of: ${smaliClass.fullname}")
-        }
+//        if (rem) {
+//            println("Removed prev version of: ${smaliClass.fullname}")
+//        }
     }
 
     public fun removeClass(smaliClass: SmaliClass) {
@@ -57,8 +57,12 @@ class SmaliPackage(val project: ProjectAnalyzeResult, val name: String, var pare
     override val textRange: IntRange
         get() = -1..0
 
-    override fun exists(): SmaliComponent? {
-        return if (folder.exists()) this else null
+    override fun recheck(): SmaliComponent? {
+        return this
+    }
+
+    override fun exists(): Boolean {
+        return true
     }
 
     override fun toString(): String {

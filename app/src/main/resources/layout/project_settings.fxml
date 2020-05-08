@@ -15,4 +15,5 @@
         <TextField fx:id="frameworkFolderPath" />
         <Button fx:id="frameworkFolderPathSelector" text="Select" />
     </HBox>
+    <ListView fx:id="listView" />
 </VBox>

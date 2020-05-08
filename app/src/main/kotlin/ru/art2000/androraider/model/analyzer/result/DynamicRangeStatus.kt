@@ -86,13 +86,13 @@ class DynamicRangeStatusDef(override val range: IntRange, component: SmaliCompon
 
     private fun update() {
 //        component = component?.exists()
-        val ex = component?.file != null && component?.let { it.textRange.first >= 0 } ?: false
-        currentDescription = if (ex) {
+//        val ex = component?.file != null && component?.let { it.textRange.first >= 0 } ?: false
+        currentDescription = if (component?.exists() == true) {
             currentStyle.clear()
             "$component in ${component?.file}//${component.hashCode()}"
         } else {
             currentStyle.add("error")
-            "$component not found//${component.hashCode()}"
+            "$component not found//${component.hashCode()}//${component?.textRange}"
         }
     }
 
@@ -112,4 +112,8 @@ class DynamicRangeStatusDef(override val range: IntRange, component: SmaliCompon
         get() = component?.file
 
     override val offset = component?.textRange?.last ?: 0
+
+    override fun toString(): String {
+        return "Dynamic: $component at $range, desc = $description"
+    }
 }

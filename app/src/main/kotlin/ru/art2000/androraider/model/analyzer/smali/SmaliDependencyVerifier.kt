@@ -25,7 +25,7 @@ object SmaliDependencyVerifier : Indexer<SmaliClass> {
         val tree = parser.parse()
 
         var smaliClass = project.fileToClassMapping[file] ?: SmaliClass(file)
-        smaliClass = ClassAndSuperReader(project, smaliClass).visit(tree as ParseTree)
+        smaliClass = ClassAndSuperReader(project).visit(tree as ParseTree)
         SmaliDependencyAnalyzer(project, smaliClass).visit(tree as ParseTree)
 
         return smaliClass

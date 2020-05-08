@@ -17,8 +17,6 @@ class DecompileDialog(private val app: File, private val settings: PreferenceMan
 
     companion object {
         private const val KEY_USE_CUSTOM_FRAMEWORK = "use_custom_framework"
-        private const val KEY_FOLDER_NAME = "folder_name"
-        private const val KEY_FOLDER_PATH = "folder_path"
         private const val KEY_OVERRIDE = "override"
         private const val KEY_APKTOOL_PATH = SettingsPresenter.KEY_APKTOOL_PATH
         private const val KEY_FRAMEWORK_PATH = SettingsPresenter.KEY_FRAMEWORK_PATH
@@ -97,6 +95,9 @@ class DecompileDialog(private val app: File, private val settings: PreferenceMan
                     ?.absolutePath
                     ?.also { customFramePathField.text = it }
         }
+
+        folderNameField.text = app.nameWithoutExtension
+        projectPathField.text = app.parent
     }
 
     private fun loadFromSettings() {
@@ -105,8 +106,6 @@ class DecompileDialog(private val app: File, private val settings: PreferenceMan
         apktoolPathField.text = settings.getString(KEY_APKTOOL_PATH)
         customFramePathField.text = settings.getString(KEY_FRAMEWORK_PATH)
         customFrameRadio.isSelected = settings.getBoolean(KEY_USE_CUSTOM_FRAMEWORK)
-        folderNameField.text = settings.getString(KEY_FOLDER_NAME, app.nameWithoutExtension)
-        projectPathField.text = settings.getString(KEY_FOLDER_PATH, app.parent)
         overrideIfExistsCheckBox.isSelected = settings.getBoolean(KEY_OVERRIDE)
     }
 
@@ -115,10 +114,8 @@ class DecompileDialog(private val app: File, private val settings: PreferenceMan
     }
 
     private fun addListeners() {
-        settings ?: return
-
         customFramePathField.textProperty().addListener { _, _, newValue ->
-//            settings.putString(KEY_FRAMEWORK_PATH, newValue)
+//            settings?.putString(KEY_FRAMEWORK_PATH, newValue)
 
             customFramePathField.styleClass.remove("error")
             if (!File(newValue).exists())

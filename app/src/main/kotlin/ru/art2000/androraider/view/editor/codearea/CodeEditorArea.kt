@@ -1,8 +1,10 @@
 package ru.art2000.androraider.view.editor.codearea
 
+import io.reactivex.Maybe
 import io.reactivex.Single
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
+import javafx.application.Platform
 import javafx.beans.property.ObjectPropertyBase
 import javafx.scene.control.Control
 import javafx.scene.control.Label
@@ -13,28 +15,30 @@ import javafx.scene.input.ScrollEvent
 import javafx.stage.Popup
 import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
+import org.fxmisc.richtext.MultiChangeBuilder
 import org.fxmisc.richtext.event.MouseOverTextEvent
-import org.fxmisc.richtext.model.TwoDimensional
-import ru.art2000.androraider.model.analyzer.result.NavigableRange
+import org.fxmisc.richtext.model.*
+import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
 import ru.art2000.androraider.model.analyzer.result.RangeAnalyzeStatus
-import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.editor.SearchSpanList
 import ru.art2000.androraider.model.editor.getProjectForNode
 import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.utils.getStyle
+import ru.art2000.androraider.utils.toKeyCodeCombination
+import ru.art2000.androraider.view.editor.Searchable
 import java.io.File
 import java.nio.file.Files
 import java.time.Duration
+import java.util.*
+import java.util.concurrent.Callable
 import java.util.regex.Pattern
-import ru.art2000.androraider.model.io.println
-import ru.art2000.androraider.utils.toKeyCodeCombination
-import ru.art2000.androraider.view.editor.Searchable
 import kotlin.math.max
+import kotlin.system.measureTimeMillis
 
 @Suppress("RedundantVisibilityModifier", "MemberVisibilityCanBePrivate")
 class CodeEditorArea() : CodeArea(), Searchable<String> {
 
-    constructor(file: File, runnable: Runnable = Runnable{}) : this() {
+    constructor(file: File, runnable: Runnable = Runnable {}) : this() {
         edit(file, runnable)
     }
 
@@ -95,7 +99,7 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
 
         val popup = Popup()
         val popupMsg = Label()
-        popupMsg.styleClass.add("popup")
+        popupMsg.styleClass.add("editor-popup")
         popup.content.add(popupMsg)
 
         mouseOverTextDelay = Duration.ofSeconds(1)
@@ -122,15 +126,12 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
 
         addEventHandler(KeyEvent.KEY_PRESSED) { event ->
             isSearching = false
-            println(event.toKeyCodeCombination())
+//            println(event.toKeyCodeCombination())
             keyListeners[event.toKeyCodeCombination()]?.also { listener ->
-                println("CombFound")
                 val prj = getProjectForNode(this)
                 prj?.fileToClassMapping?.get(currentEditingFile)?.also { clazz ->
                     val pos = caretPosition
-                    println("CurClassFound")
                     clazz.ranges.find { pos in it.range }?.apply {
-                        println("RangeFound: $description")
                         listener.invoke(this)
                     }
                 }
@@ -141,19 +142,6 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
                 // assume tab was already inserted
                 replaceText(caretPosition - 1, caretPosition, " ".repeat(4))
                 return@addEventHandler
-            }
-
-            if (event.isShortcutDown && event.code == KeyCode.B) {
-                val prj = getProjectForNode(this)
-                val clazz = prj?.fileToClassMapping?.get(currentEditingFile)
-                if (clazz != null) {
-                    val pos = caretPosition
-                    val navigable = (clazz.ranges.find { pos in it.range && it is NavigableRange } as? NavigableRange)
-                    if (navigable != null) {
-                        //open
-                        println("Open ${navigable.file} at ${navigable.offset}")
-                    }
-                }
             }
 
             if (event.isShortcutDown && (event.code == KeyCode.SLASH || event.code == KeyCode.PERIOD)) {
@@ -229,7 +217,7 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
     public override fun findAll(valueToFind: String) {
         isSearching = true
         currentSearchValue = valueToFind
-        updateHighlighting()
+        highlightSearch()
         currentSearchCursor = 0
     }
 
@@ -258,20 +246,27 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
     }
 
     public fun moveToAndPlaceLineInCenter(newPosition: Int, prevLine: Int? = null) {
+        if (newPosition !in text.indices) {
+            println("Error moving to $newPosition: not in range ${text.indices}")
+            return
+        }
+
         val previousPosition = caretPosition
         val previousLine = prevLine ?: currentParagraph
-        println(this, "Position", newPosition.toString() + "|vs|" + previousPosition)
+//        println(this, "Position", newPosition.toString() + "|vs|" + previousPosition)
         moveTo(newPosition) // move to gather new line index
         val newLine = offsetToPosition(newPosition, TwoDimensional.Bias.Backward).major
 //        moveTo(previousPosition) // move back to prevent bug with wrong scroll
 
-        val lineHeight = (getParagraphGraphic(previousLine) as Control).also { println(this, "gr", it) }.height
+        val lineHeight = (getParagraphGraphic(previousLine) as Control).also {
+//            println(this, "gr", it)
+        }.height
         val visibleLinesCount = max((height / lineHeight).toInt(), visibleParagraphs.size)
         // so that our newLine will be in the center of screen (if it position allows)
         val lineToScroll = (newLine - visibleLinesCount / 2).let { if (it < 0) 0 else it }
         scrollYToPixel((lineHeight * lineToScroll))
 
-        println(this, "Scroll", "$newLine|$lineHeight|$visibleLinesCount|${visibleParagraphs.size}")
+//        println(this, "Scroll", "$newLine|$lineHeight|$visibleLinesCount|${visibleParagraphs.size}")
 
 //        moveTo(newPosition) // move caret to new position
         scrollYToPixel((lineHeight * lineToScroll))
@@ -305,57 +300,137 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
         selectSearchRange(searchSpanList.currentPosition, newPos)
     }
 
+//    private fun computeHighlighting(): StyleSpansBuilder<String> {
+//
+//    }
+
+    private fun <T> computationSingle(f: () -> T): Single<T> {
+        return Single.fromCallable {
+            f()
+        }.subscribeOn(Schedulers.computation())
+    }
+
+    private fun highlightSearch() {
+        computationSingle {
+            var b = createMultiChange()
+            var ch = false
+
+            searchSpanList.forEach {
+                val doc = ReadOnlyStyledDocument.fromString(
+                        getText(it.first, it.last),
+                        getParagraphStyleForInsertionAt(it.first + 1),
+                        mutableListOf<String>().apply {
+                            addAll(getTextStyleForInsertionAt(it.first + 1))
+                            remove("search")
+                        },
+                        segOps
+                )
+                ch = true
+                b = b.replaceAbsolutely(it.first, it.last, doc)
+            }
+            searchSpanList.searchString = currentSearchValue
+            if (currentSearchValue.isNotEmpty()) {
+                var currentFound = false
+                val pattern = Pattern.compile(Pattern.quote(currentSearchValue.toLowerCase()))
+                val searchMatcher = pattern.matcher(text.toLowerCase())
+                if (pattern.pattern().isNotEmpty()) {
+                    while (searchMatcher.find()) {
+                        searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
+                        if (!currentFound && searchMatcher.end() >= caretPosition) {
+                            currentFound = true
+//                            selectSearchRange(-1, searchSpanList.size - 1)
+                        }
+//                                else {
+//                        setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
+
+
+                        val doc = ReadOnlyStyledDocument.fromString(
+                                getText(searchMatcher.start(), searchMatcher.end()),
+                                getParagraphStyleForInsertionAt(searchMatcher.start() + 1),
+                                mutableListOf("search").apply { addAll(getTextStyleForInsertionAt(searchMatcher.start() + 1))
+                                println("+search: ${joinToString()}")},
+                                segOps
+                        )
+
+
+                        ch = true
+                        b = b.replaceAbsolutely(searchMatcher.start(), searchMatcher.end(), doc)
+//                                }
+                    }
+                    if (!currentFound) {
+//                        selectSearchRange(-1, 0)
+                    }
+                }
+            }
+            ch to b
+        }.observeOn(JavaFxScheduler.platform())
+                .subscribe { (hasChanges, builder) ->
+                    if (hasChanges)
+                        builder.commit()
+                }
+
+    }
+
     private fun updateHighlighting() {
         val file = currentEditingFile ?: return
 
-        Single
-                .fromCallable {
-                    getProjectForNode(this)?.analyzeFile(file)
-                }.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
+//        if (getProjectForNode(this)?.canAnalyzeFile(file) != true) {
+//            return
+//        }
+
+        val maybe = if (getProjectForNode(this)?.canAnalyzeFile(file) == true) {
+            Maybe.fromCallable {
+                getProjectForNode(this)?.analyzeFile(file)
+            }.subscribeOn(Schedulers.io())
+        } else
+            Maybe.empty<FileAnalyzeResult>()
+
+        maybe.observeOn(JavaFxScheduler.platform())
+                .doOnSubscribe {
+                    clearStyle(0, text.length)
+                }
                 .doOnSuccess { result ->
                     if (result == null)
                         return@doOnSuccess
 
-                    clearStyle(0, text.length)
+                    computationSingle {
+                        var b = createMultiChange()
+                        var ch = false
 
-                    println("Methods")
-                    if (result is SmaliClass) {
-                        result.methods.forEach { println(it) }
-                    }
-
-                    result.rangeStatuses.forEach { status ->
+                        result.rangeStatuses.forEach { status ->
+                            if (status.style.isEmpty())
+                                return@forEach
 //                        println("${status.range}:${status.style}:${status.description}")
-                        try {
-                            setStyle(status.range.first, status.range.last, status.style)
-                        } catch (e: Exception) {
-                            println("Error: ${status.style}")
-                            e.printStackTrace()
-                        }
-                    }
+                            if (status.range.first in text.indices && status.range.last in text.indices) {
+                                val doc = ReadOnlyStyledDocument.fromString(
+                                        getText(status.range.first, status.range.last),
+                                        getParagraphStyleForInsertionAt(0),
+                                        status.style,
+                                        segOps
+                                )
 
-                    searchSpanList.searchString = currentSearchValue
-                    if (currentSearchValue.isNotEmpty()) {
-                        var currentFound = false
-                        val pattern = Pattern.compile("(?<SEARCH>$currentSearchValue)")
-                        val searchMatcher = pattern.matcher(text)
-                        if (pattern.pattern().isNotEmpty()) {
-                            while (searchMatcher.find()) {
-                                searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
-                                if (!currentFound && searchMatcher.end() >= caretPosition) {
-                                    currentFound = true
-                                    selectSearchRange(-1, searchSpanList.size - 1)
-                                }
-//                                else {
-                                setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
-//                                }
-                            }
-                            if (!currentFound) {
-                                selectSearchRange(-1, 0)
+                                ch = true
+                                b = b.replaceAbsolutely(status.range.first, status.range.last, doc)
+                            } else {
+                                println("Error styling for: $status")
                             }
                         }
-                    }
+                        ch to b
+                    }.observeOn(JavaFxScheduler.platform())
+                            .subscribe { (hasChanges, builder) ->
+                                val t = measureTimeMillis {
+                                    if (hasChanges)
+                                        builder.commit()
+                                }
+
+                                println("SyntaxStyling: $t")
+                            }
+                }
+                .doFinally {
+                    highlightSearch()
                 }
                 .subscribe()
+
+
     }
 }

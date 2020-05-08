@@ -98,34 +98,34 @@
 }
 
 
-.button {
-    -fx-alignment: center;
-    -fx-background-color: #e5e5e5;
-    -fx-border-color: gray;
-    -fx-border-width: 1 1 1 1;
-    -fx-padding: 2 5 2 5;
-    -fx-border-radius: 1;
-    -fx-min-height: 20px;
-}
+/*.button {*/
+/*    -fx-alignment: center;*/
+/*    -fx-background-color: #e5e5e5;*/
+/*    -fx-border-color: gray;*/
+/*    -fx-border-width: 1 1 1 1;*/
+/*    -fx-padding: 2 5 2 5;*/
+/*    -fx-border-radius: 1;*/
+/*    -fx-min-height: 20px;*/
+/*}*/
 
-.button:disabled {
-    -fx-fill: lightgray;
-}
+/*.button:disabled {*/
+/*    -fx-fill: lightgray;*/
+/*}*/
 
-.button-base {
-    -fx-background-size: 30px;
-    -fx-background-color: #fadc69;
-}
+/*.button-base {*/
+/*    -fx-background-size: 30px;*/
+/*    -fx-background-color: #fadc69;*/
+/*}*/
 
-.button:focused {
-    -fx-border-color: chocolate;
-    -fx-background-color: #fadc69;
-}
+/*.button:focused {*/
+/*    -fx-border-color: chocolate;*/
+/*    -fx-background-color: #fadc69;*/
+/*}*/
 
-.button:hover {
-    -fx-background-color: chocolate;
-    -fx-text-fill: white;
-}
+/*.button:hover {*/
+/*    -fx-background-color: chocolate;*/
+/*    -fx-text-fill: white;*/
+/*}*/
 
 .custom-menu-item:hover {
     -fx-background-color: #fafafa;
@@ -263,7 +263,7 @@
     -fx-font-weight: bold;
 }
 
-.popup {
+.editor-popup {
     -fx-background-color: black;
     -fx-text-fill: white;
     -fx-padding: 5;

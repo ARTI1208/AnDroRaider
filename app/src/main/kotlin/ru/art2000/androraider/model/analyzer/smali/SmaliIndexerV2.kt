@@ -13,6 +13,8 @@ import java.io.File
 
 object SmaliIndexerV2 : Indexer<SmaliClass> {
 
+    public var withRanges = false
+
     public fun readSmaliClassNameAndSuper(project: ProjectAnalyzeResult, file: File): SmaliClass {
         val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
         val tokenStream = CommonTokenStream(lexer as TokenSource)
@@ -20,7 +22,7 @@ object SmaliIndexerV2 : Indexer<SmaliClass> {
         parser.removeErrorListeners()
         val tree = parser.classDirective()
 
-        return ClassAndSuperReader(project, SmaliClass(file)).visit(tree as ParseTree).also { it.associatedFile = file }
+        return ClassAndSuperReader(project).visit(tree as ParseTree).also { it.associatedFile = file }
     }
 
     override fun analyzeFile(project: ProjectAnalyzeResult, file: File): SmaliClass {
@@ -30,12 +32,12 @@ object SmaliIndexerV2 : Indexer<SmaliClass> {
         parser.removeErrorListeners()
         val tree = parser.parse()
 
-        println("==========================$file")
+//        println("==========================$file")
         val smaliClass = project.fileToClassMapping[file] ?: throw IllegalStateException("ClassNotFound")
 
         smaliClass.ranges.clear()
 
-        SmaliAllInOneAnalyzer(project, smaliClass).visit(tree as ParseTree)
+        SmaliAllInOneAnalyzer(project, smaliClass, withRanges).visit(tree as ParseTree)
 
 //        smaliClass.ranges.forEach {
 //            println("${it.range}:${it.style}:${it.description}")
@@ -54,8 +56,15 @@ object SmaliIndexerV2 : Indexer<SmaliClass> {
         return Observable
                 .fromIterable(directory.walk().asIterable())
                 .subscribeOn(Schedulers.io())
-                .filter { !it.isDirectory }
-                .map { file ->
+                .filter {
+                    val isFile = !it.isDirectory
+
+//                    if (!isFile) {
+//                        project.getOrCreatePackage()
+//                    }
+
+                    isFile
+                }.map { file ->
                     readSmaliClassNameAndSuper(project, file).also { project.fileToClassMapping[file] = it  }
                 }
     }

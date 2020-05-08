@@ -4,10 +4,7 @@ import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.fxml.Initializable
-import javafx.scene.control.Button
-import javafx.scene.control.ContentDisplay
-import javafx.scene.control.Control
-import javafx.scene.control.ListCell
+import javafx.scene.control.*
 import javafx.scene.effect.Blend
 import javafx.scene.effect.BlendMode
 import javafx.scene.effect.ColorInput
@@ -28,9 +25,9 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
     @FXML
     lateinit var pane: AnchorPane
     @FXML
-    lateinit var projectName: Text
+    lateinit var projectName: Label
     @FXML
-    lateinit var projectLocation: Text
+    lateinit var projectLocation: Label
     @FXML
     lateinit var removeButton: Button
 
@@ -52,13 +49,18 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+
+        prefWidth = 0.0
+        projectName.prefWidthProperty().bind(widthProperty().subtract(10))
+        projectLocation.prefWidthProperty().bind(widthProperty().subtract(10))
+        projectName.textOverrun = OverrunStyle.CENTER_ELLIPSIS
+        projectLocation.textOverrun = OverrunStyle.LEADING_ELLIPSIS
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         removeButton.onAction = EventHandler {
             listView.items.remove(item)
         }
-        maxWidth = Control.USE_PREF_SIZE
 
         val imageView = ImageView(crossImage)
         imageView.fitHeight = 20.0
@@ -114,6 +116,8 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
 
     override fun updateItem(item: RecentProject?, empty: Boolean) {
         super.updateItem(item, empty)
+//        prefWidthProperty().bind(listView.widthProperty().subtract(20));
+//        setMaxWidth(Control.USE_PREF_SIZE);
         if (empty) {
             text = null
             contentDisplay = ContentDisplay.TEXT_ONLY

@@ -83,18 +83,27 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
         editorTabPane.prefHeightProperty().bind(codeEditorContainer.heightProperty())
         editorTabPane.prefWidthProperty().bind(widthProperty().subtract(fileManagerView.prefWidthProperty()))
+        editorTabPane.selectionModel.selectedItemProperty().addListener { _, _, newValue ->
+            title = if (newValue?.userData as? File == null) {
+                "${projectFolder.name} - Project Editor"
+            } else {
+                "${(newValue.userData as File).absolutePath} - Project Editor"
+            }
+        }
 
         fileManagerView.prefHeightProperty().bind(heightProperty())
     }
 
     private fun showLoadingDialog() {
-        loadingDialog.title = "Loading..."
-        loadingDialog.width = 400.0
-        loadingLabel.text = "Loading project..."
-        loadingDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
-        (loadingDialog.dialogPane.lookupButton(ButtonType.CLOSE) as Button).isDisable = true
+        if (!loadingDialog.isShowing) {
+            loadingDialog.title = "Loading..."
+            loadingDialog.width = 400.0
+            loadingLabel.text = "Loading project..."
+            loadingDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
+            (loadingDialog.dialogPane.lookupButton(ButtonType.CLOSE) as Button).isDisable = true
 
-        loadingDialog.show()
+            loadingDialog.show()
+        }
     }
 
     private fun runIndexing() {
@@ -124,7 +133,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
             projectFolder.mkdirs()
 
         onSettingsUpdate(presenter.project.projectSettings)
-        runIndexing()
 
         title = "${projectFolder.name} - Project Editor"
 
@@ -207,6 +215,13 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                             it.file?.also { fileToOpen -> openFile(fileToOpen, it.offset) }
                         }
                     }
+                    addEventHandler(KeyEvent.KEY_PRESSED) {
+                        if (it.isShortcutDown && it.code == KeyCode.F) {
+                            searchMenu.show()
+                            search.searchField.requestFocus()
+                        }
+                    }
+
                     edit(newFile, Runnable {
                         moveToAndPlaceLineInCenter(caretPosition)
                     })
@@ -229,7 +244,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         }
 
         presenter.addFileListener { file, kind ->
-            when(kind) {
+            when (kind) {
                 StandardWatchEventKinds.ENTRY_DELETE -> fileManagerView.removeBranch(file)
                 StandardWatchEventKinds.ENTRY_CREATE -> fileManagerView.addBranch(file)
             }
@@ -287,15 +302,15 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
         // Menu/Search
         searchMenu.accelerator = KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN)
-        searchMenu.onShown = EventHandler {
-            search.searchField.requestFocus()
-        }
+//        searchMenu.onShown = EventHandler {
+//            search.searchField.requestFocus()
+//        }
 
-        addEventHandler(WindowEvent.WINDOW_SHOWN) {
-            scene.accelerators[KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN)] = Runnable {
-                searchMenu.show()
-            }
-        }
+//        addEventHandler(WindowEvent.WINDOW_SHOWN) {
+//            scene.accelerators[KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN)] = Runnable {
+//                searchMenu.show()
+//            }
+//        }
 
         scene.focusOwnerProperty().addListener { _, _, newValue ->
             @Suppress("UNCHECKED_CAST")
