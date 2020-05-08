@@ -10,7 +10,7 @@ data class Error(override val range: IntRange, override val description: String)
 
     companion object {
         fun from(errorNode: ErrorNode): Error {
-            return Error(errorNode.textRange, "Hi")
+            return Error(errorNode.textRange, "Error")
         }
     }
 

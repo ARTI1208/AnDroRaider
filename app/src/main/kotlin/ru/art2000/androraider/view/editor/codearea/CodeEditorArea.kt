@@ -15,9 +15,9 @@ import javafx.scene.input.ScrollEvent
 import javafx.stage.Popup
 import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
-import org.fxmisc.richtext.MultiChangeBuilder
 import org.fxmisc.richtext.event.MouseOverTextEvent
-import org.fxmisc.richtext.model.*
+import org.fxmisc.richtext.model.ReadOnlyStyledDocument
+import org.fxmisc.richtext.model.TwoDimensional
 import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
 import ru.art2000.androraider.model.analyzer.result.RangeAnalyzeStatus
 import ru.art2000.androraider.model.editor.SearchSpanList
@@ -29,18 +29,11 @@ import ru.art2000.androraider.view.editor.Searchable
 import java.io.File
 import java.nio.file.Files
 import java.time.Duration
-import java.util.*
-import java.util.concurrent.Callable
 import java.util.regex.Pattern
 import kotlin.math.max
-import kotlin.system.measureTimeMillis
 
 @Suppress("RedundantVisibilityModifier", "MemberVisibilityCanBePrivate")
-class CodeEditorArea() : CodeArea(), Searchable<String> {
-
-    constructor(file: File, runnable: Runnable = Runnable {}) : this() {
-        edit(file, runnable)
-    }
+class CodeEditorArea : CodeArea(), Searchable<String> {
 
     val currentEditingFileProperty = object : ObjectPropertyBase<File?>() {
         override fun getName(): String {
@@ -85,7 +78,6 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
     private var isSearching = false
 
     init {
-//        paragraphGraphicFactory = LineNumberFactory.get(this)
         paragraphGraphicFactory = CodeEditorLineNumber(this)
 
         stylesheets.add(javaClass.getStyle("code.css"))
@@ -126,7 +118,6 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
 
         addEventHandler(KeyEvent.KEY_PRESSED) { event ->
             isSearching = false
-//            println(event.toKeyCodeCombination())
             keyListeners[event.toKeyCodeCombination()]?.also { listener ->
                 val prj = getProjectForNode(this)
                 prj?.fileToClassMapping?.get(currentEditingFile)?.also { clazz ->
@@ -136,7 +127,6 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
                     }
                 }
             }
-
 
             if (event.code == KeyCode.TAB && !event.isShortcutDown) {
                 // assume tab was already inserted
@@ -229,14 +219,8 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
 
         searchSpanList.currentPosition = new
 
-//        if (previous in 0..searchSpanList.lastIndex) {
-//            clearStyle(searchSpanList[previous].first, searchSpanList[previous].last)
-//            setStyle(searchSpanList[previous].first, searchSpanList[previous].last, listOf("search"))
-//        }
 
         if (new in 0..searchSpanList.lastIndex) {
-//            clearStyle(searchSpanList[new].first, searchSpanList[new].last)
-//            setStyle(searchSpanList[new].first, searchSpanList[new].last, listOf("search-current"))
 
             if (previous in 0..searchSpanList.lastIndex)
                 moveToAndPlaceLineInCenter(searchSpanList[new].last, offsetToPosition(searchSpanList[previous].last, TwoDimensional.Bias.Backward).major)
@@ -253,25 +237,16 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
             return
         }
 
-        val previousPosition = caretPosition
         val previousLine = prevLine ?: currentParagraph
-//        println(this, "Position", newPosition.toString() + "|vs|" + previousPosition)
         moveTo(newPosition) // move to gather new line index
         val newLine = offsetToPosition(newPosition, TwoDimensional.Bias.Backward).major
-//        moveTo(previousPosition) // move back to prevent bug with wrong scroll
 
-        val lineHeight = (getParagraphGraphic(previousLine) as Control).also {
-//            println(this, "gr", it)
-        }.height
+        val lineHeight = (getParagraphGraphic(previousLine) as Control).height
         val visibleLinesCount = max((height / lineHeight).toInt(), visibleParagraphs.size)
         // so that our newLine will be in the center of screen (if it position allows)
         val lineToScroll = (newLine - visibleLinesCount / 2).let { if (it < 0) 0 else it }
         scrollYToPixel((lineHeight * lineToScroll))
 
-//        println(this, "Scroll", "$newLine|$lineHeight|$visibleLinesCount|${visibleParagraphs.size}")
-
-//        moveTo(newPosition) // move caret to new position
-        println((lineHeight * lineToScroll).toString() + "||" + lineToScroll + "lineHeight")
         Platform.runLater {
             scrollYToPixel((lineHeight * lineToScroll))
         }
@@ -305,10 +280,6 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
         selectSearchRange(searchSpanList.currentPosition, newPos)
     }
 
-//    private fun computeHighlighting(): StyleSpansBuilder<String> {
-//
-//    }
-
     private fun <T> computationSingle(f: () -> T): Single<T> {
         return Single.fromCallable {
             f()
@@ -335,35 +306,21 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
             }
             searchSpanList.searchString = currentSearchValue
             if (currentSearchValue.isNotEmpty()) {
-                var currentFound = false
                 val pattern = Pattern.compile(Pattern.quote(currentSearchValue.toLowerCase()))
                 val searchMatcher = pattern.matcher(text.toLowerCase())
                 if (pattern.pattern().isNotEmpty()) {
                     while (searchMatcher.find()) {
                         searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
-                        if (!currentFound && searchMatcher.end() >= caretPosition) {
-                            currentFound = true
-//                            selectSearchRange(-1, searchSpanList.size - 1)
-                        }
-//                                else {
-//                        setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
-
 
                         val doc = ReadOnlyStyledDocument.fromString(
                                 getText(searchMatcher.start(), searchMatcher.end()),
                                 getParagraphStyleForInsertionAt(searchMatcher.start() + 1),
-                                mutableListOf("search").apply { addAll(getTextStyleForInsertionAt(searchMatcher.start() + 1))
-                                println("+search: ${joinToString()}")},
+                                mutableListOf("search").apply { addAll(getTextStyleForInsertionAt(searchMatcher.start() + 1)) },
                                 segOps
                         )
 
-
                         ch = true
                         b = b.replaceAbsolutely(searchMatcher.start(), searchMatcher.end(), doc)
-//                                }
-                    }
-                    if (!currentFound) {
-//                        selectSearchRange(-1, 0)
                     }
                 }
             }
@@ -378,10 +335,6 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
 
     public fun updateHighlighting() {
         val file = currentEditingFile ?: return
-
-//        if (getProjectForNode(this)?.canAnalyzeFile(file) != true) {
-//            return
-//        }
 
         val maybe = if (getProjectForNode(this)?.canAnalyzeFile(file) == true) {
             Maybe.fromCallable {
@@ -405,7 +358,7 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
                         result.rangeStatuses.forEach { status ->
                             if (status.style.isEmpty())
                                 return@forEach
-//                        println("${status.range}:${status.style}:${status.description}")
+
                             if (status.range.first in text.indices && status.range.last in text.indices) {
                                 val doc = ReadOnlyStyledDocument.fromString(
                                         getText(status.range.first, status.range.last),
@@ -423,12 +376,8 @@ class CodeEditorArea() : CodeArea(), Searchable<String> {
                         ch to b
                     }.observeOn(JavaFxScheduler.platform())
                             .subscribe { (hasChanges, builder) ->
-                                val t = measureTimeMillis {
-                                    if (hasChanges)
-                                        builder.commit()
-                                }
-
-                                println("SyntaxStyling: $t")
+                                if (hasChanges)
+                                    builder.commit()
                             }
                 }
                 .doFinally {

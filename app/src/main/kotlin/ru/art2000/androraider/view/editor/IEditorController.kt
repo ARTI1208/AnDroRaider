@@ -16,8 +16,6 @@ interface IEditorController : IController {
 
     val projectSettings: MenuItem
 
-    val dataViewer: MenuItem
-
     val recompile: MenuItem
 
     // Menu/Search

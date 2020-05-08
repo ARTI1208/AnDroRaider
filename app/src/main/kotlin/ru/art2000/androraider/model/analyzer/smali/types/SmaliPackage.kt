@@ -39,12 +39,6 @@ class SmaliPackage(val project: ProjectAnalyzeResult, val name: String, var pare
     public fun addClass(smaliClass: SmaliClass) {
         smaliClass.parentPackage = this
         classes.add(smaliClass)
-        val rem = classes.removeIf {
-            it.fullname == smaliClass.fullname
-        }
-//        if (rem) {
-//            println("Removed prev version of: ${smaliClass.fullname}")
-//        }
     }
 
     public fun removeClass(smaliClass: SmaliClass) {
@@ -54,12 +48,9 @@ class SmaliPackage(val project: ProjectAnalyzeResult, val name: String, var pare
 
     override val file: File?
         get() = null
+
     override val textRange: IntRange
         get() = -1..0
-
-    override fun recheck(): SmaliComponent? {
-        return this
-    }
 
     override fun markAsNotExisting() {
 

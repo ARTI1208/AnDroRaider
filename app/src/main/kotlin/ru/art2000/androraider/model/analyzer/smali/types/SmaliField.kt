@@ -16,31 +16,14 @@ class SmaliField : SmaliComponent {
         }
 
     var modifier = 0
+        private set
+
     override val file: File?
         get() = parentClass?.associatedFile
 
     override var textRange: IntRange = -1..0
     override val fullname: String
         get() = name
-
-    override fun recheck(): SmaliComponent? {
-        var parent = parentClass
-        var field: SmaliField? = this
-        while (parent != null) {
-            if (field != null && field.textRange.first >= 0)
-                break
-
-            field = parent.findField(name, type)
-            parent = parent.parentClass
-        }
-
-        if (field != null && field != this) {
-            parentClass?.removeField(this)
-            return field
-        }
-
-        return field ?: this
-    }
 
     override fun markAsNotExisting() {
         textRange = -1..0
@@ -50,13 +33,11 @@ class SmaliField : SmaliComponent {
         return textRange.first >= 0
     }
 
-    public fun setModifierBit(modifierBit: Int) {
+    fun setModifierBit(modifierBit: Int) {
         modifier = modifier or modifierBit
     }
 
     override fun toString(): String {
         return "SmaliField(name='$name', type=${type.fullname}, parentClass=${parentClass?.fullname}, modifier=$modifier)"
     }
-
-
 }

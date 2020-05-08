@@ -116,8 +116,6 @@ class RecentsListItem : ListCell<RecentProject>(), Initializable {
 
     override fun updateItem(item: RecentProject?, empty: Boolean) {
         super.updateItem(item, empty)
-//        prefWidthProperty().bind(listView.widthProperty().subtract(20));
-//        setMaxWidth(Control.USE_PREF_SIZE);
         if (empty) {
             text = null
             contentDisplay = ContentDisplay.TEXT_ONLY

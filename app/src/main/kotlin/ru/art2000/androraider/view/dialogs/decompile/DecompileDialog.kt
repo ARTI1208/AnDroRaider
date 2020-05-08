@@ -115,38 +115,20 @@ class DecompileDialog(private val app: File, private val settings: PreferenceMan
 
     private fun addListeners() {
         customFramePathField.textProperty().addListener { _, _, newValue ->
-//            settings?.putString(KEY_FRAMEWORK_PATH, newValue)
-
             customFramePathField.styleClass.remove("error")
             if (!File(newValue).exists())
                 customFramePathField.styleClass.add("error")
             ensureFilesAvailable()
         }
 
-//        customFrameRadio.selectedProperty().addListener { _, _, newValue ->
-//            settings.putBoolean(KEY_USE_CUSTOM_FRAMEWORK, newValue)
-//        }
-//
-//        folderNameField.textProperty().addListener { _, _, newValue ->
-//            settings.putString(KEY_FOLDER_NAME, newValue)
-//        }
-
         projectPathField.textProperty().addListener { _, _, newValue ->
-//            settings.putString(KEY_FOLDER_PATH, newValue)
-
             projectPathField.styleClass.remove("error")
             if (!File(newValue).exists())
                 projectPathField.styleClass.add("error")
             ensureFilesAvailable()
         }
 
-//        overrideIfExistsCheckBox.selectedProperty().addListener { _, _, newValue ->
-//            settings.putBoolean(KEY_OVERRIDE, newValue)
-//        }
-
         apktoolPathField.textProperty().addListener { _, _, newValue ->
-//            settings.putString(KEY_APKTOOL_PATH, newValue)
-
             apktoolPathField.styleClass.remove("error")
             if (!File(newValue).exists())
                 apktoolPathField.styleClass.add("error")

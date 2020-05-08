@@ -4,5 +4,5 @@ object DummyRefactoringRule : FileRefactoringRule {
 
     override fun isFragmentCommented(string: String) = false
 
-    override fun commentUncommentFragment(string: String) = emptyList<CommentingResult>()
+    override fun commentUncommentFragment(string: String) = listOf(CommentingResult(0, 0, string))
 }

@@ -9,27 +9,39 @@ import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.analyzer.result.RangeStatusBase
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.utils.textRange
+import ru.art2000.androraider.view.editor.codearea.CodeEditorScrollPane
 import java.io.File
 
 object SmaliIndexer : Indexer<SmaliClass> {
-    override fun analyzeFile(project: ProjectAnalyzeResult, file: File): SmaliClass {
-        require(!file.isDirectory) { "Method argument must be a file" }
 
+    public var withRanges = false
 
+    private fun readSmaliClassNameAndSuper(project: ProjectAnalyzeResult, file: File): SmaliClass {
         val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
         val tokenStream = CommonTokenStream(lexer as TokenSource)
         val parser = SmaliParser(tokenStream as TokenStream)
-
+        parser.removeErrorListeners()
         val tree = parser.parse()
 
-        var smaliClass = project.fileToClassMapping[file] ?: SmaliClass(file)
-        smaliClass = ClassAndSuperReader(project).visit(tree as ParseTree)
+        return ClassAndSuperReader(project).visit(tree as ParseTree).also { it.associatedFile = file }
+    }
 
-        smaliClass.associatedFile = file
-        project.fileToClassMapping[file] = smaliClass
+    override fun analyzeFile(project: ProjectAnalyzeResult, file: File): SmaliClass {
+        val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
+        val tokenStream = CommonTokenStream(lexer as TokenSource)
+        val parser = SmaliParser(tokenStream as TokenStream)
+        parser.removeErrorListeners()
+        val tree = parser.parse()
+
+        var smaliClass = project.fileToClassMapping[file] ?: throw IllegalStateException("ClassNotFound")
+
         smaliClass.ranges.clear()
+        smaliClass.fields.forEach { it.markAsNotExisting() }
+        smaliClass.methods.forEach { it.markAsNotExisting() }
+        smaliClass.interfaces.clear()
 
-        SmaliFileScanner(project, smaliClass).visit(tree as ParseTree)
+        smaliClass = SmaliAllInOneAnalyzer(project, smaliClass, withRanges).visit(tree as ParseTree)
+        project.fileToClassMapping[file] = smaliClass.apply { associatedFile = file }
 
         tokenStream.tokens.forEach {
             if (it.channel == 1) { // hidden channel
@@ -42,10 +54,12 @@ object SmaliIndexer : Indexer<SmaliClass> {
 
     override fun analyzeFilesInDir(project: ProjectAnalyzeResult, directory: File): Observable<SmaliClass> {
         return Observable
-                .fromIterable(directory.walk().asIterable().filter { !it.isDirectory })
+                .fromIterable(directory.walk().asIterable())
                 .subscribeOn(Schedulers.io())
-                .map {
-                    analyzeFile(project, it)
+                .filter {
+                    !it.isDirectory
+                }.map { file ->
+                    readSmaliClassNameAndSuper(project, file).also { project.fileToClassMapping[file] = it  }
                 }
     }
 
@@ -54,6 +68,4 @@ object SmaliIndexer : Indexer<SmaliClass> {
             acc.concatWith(analyzeFilesInDir(project, folder))
         }
     }
-
-
 }

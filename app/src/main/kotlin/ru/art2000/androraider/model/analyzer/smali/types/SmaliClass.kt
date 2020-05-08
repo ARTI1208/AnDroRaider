@@ -1,10 +1,8 @@
 package ru.art2000.androraider.model.analyzer.smali.types
 
-import javafx.scene.control.Separator
 import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
 import ru.art2000.androraider.model.analyzer.result.RangeAnalyzeStatus
 import java.io.File
-import java.util.*
 
 @Suppress("RedundantVisibilityModifier")
 class SmaliClass() : FileAnalyzeResult, SmaliComponent {
@@ -27,24 +25,14 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
 
     val interfaces = mutableListOf<SmaliClass>()
 
-    init {
-//        println("Created class0 ${this} // ${Objects.hash(this)}")
-    }
-
     constructor(name: String,
                 parentPackage: SmaliPackage? = null) : this() {
         this.name = name
         this.parentPackage = parentPackage
-//        println("Created class1 ${this} // ${Objects.hash(this)}")
     }
 
-    constructor(file: File) : this() {
-        this.associatedFile = file
-        this.name = file.nameWithoutExtension
-//        println("Created class2 ${this} // ${Objects.hash(this)}")
-    }
-
-    var modifier = 0
+    public var modifier = 0
+        private set
 
     public fun setModifierBit(modifierBit: Int) {
         modifier = modifier or modifierBit
@@ -68,23 +56,7 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
             return result
         }
 
-    public fun fullname(prefix: String = "", separator: String = "."): String {
-        if (isArray) {
-            var array = parentClass?.fullname ?: ""
-            repeat(arrayCount) { array = "[$array" }
-            return array
-        }
-
-        var result = name
-        var parent = parentPackage
-        while (parent != null) {
-            result = parent.name + separator + result
-            parent = parent.parentPackage
-        }
-        return prefix + result
-    }
-
-    val isPrimitive: Boolean
+    public val isPrimitive: Boolean
         get() {
             return when (fullname) {
                 "I", "J", "S", "B", "C", "Z", "F", "D" -> true
@@ -92,13 +64,8 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
             }
         }
 
-    val isVoid: Boolean
-        get() {
-            return when (fullname) {
-                "V" -> true
-                else -> false
-            }
-        }
+    public val isVoid: Boolean
+        get() = fullname == "V"
 
     var parentPackage: SmaliPackage? = null
         set(value) {
@@ -144,16 +111,13 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
     public fun removeMethod(smaliMethod: SmaliMethod) {
         smaliMethod.parentClass = null
         methods.remove(smaliMethod)
-//        if (smaliMethod.name == "<init>" && fullname == "a.c.a") {
-//            println("reeeeeeeem: ")
-//        }
     }
 
     public fun findField(name: String, typeClass: SmaliClass): SmaliField? {
         var res: SmaliField? = null
 
         var parent: SmaliClass? = this
-        while (parent!= null) {
+        while (parent != null) {
             val tmp = parent.fields.find { field ->
                 return@find field.name == name && field.type == typeClass
             }
@@ -168,8 +132,6 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
     }
 
     public fun findOrCreateField(name: String, type: String): SmaliField? {
-//        println("find $name")
-
         val prj = parentPackage?.project ?: return null
 
         val typeClass = prj.getOrCreateClass(type)!!
@@ -181,15 +143,10 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
         }
     }
 
-    public fun findMethodInInterfaces(name: String, parameters: List<SmaliClass>, returnType: String): SmaliMethod? {
-//        if (name == "get")
-//            println("finding $name in ${interfaces.size} in $fullname")
-
+    private fun findMethodInInterfaces(name: String, parameters: List<SmaliClass>, returnType: String): SmaliMethod? {
         var res: SmaliMethod? = null
 
         for (cl in interfaces) {
-//            if (name == "get")
-//                println("inter $name in ${interfaces.size} in ${cl.fullname}")
             var parent: SmaliClass? = cl
             while (parent != null) {
                 val tmp = parent.methods.find { method ->
@@ -197,13 +154,6 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
 
                     val firstPart = method.name == name
                             && parameters.size == parametersReal.size
-
-                    if (name == "get" && fullname == "java.util.concurrent.ConcurrentMap") {
-                        println("Cmp2: $method in $parent")
-                    }
-//                if (name == "<init>" && fullname == "a.c.a") {
-//                    println("Cmp: $method")
-//                }
 
                     if (!firstPart)
                         return@find false
@@ -229,33 +179,19 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
         return res
     }
 
-    public fun findMethod(name: String, parameters: List<SmaliClass>, returnType: String, scanLevel: Int = -1): SmaliMethod? {
-//        if (name == "<init>" && fullname == "a.c.a")
-//            println("finding $name in ${methods.size}")
-        var lvl= scanLevel
+    private fun findMethod(name: String, parameters: List<SmaliClass>, returnType: String, scanLevel: Int = -1): SmaliMethod? {
+        var lvl = scanLevel
         var res: SmaliMethod? = null
 
         val noBorder = scanLevel < 0
 
-        if (name == "get" && fullname == "java.util.concurrent.ConcurrentMap") {
-            println("searching $lvl")
-        }
-
         var parent: SmaliClass? = this
-        while (parent!= null) {
+        while (parent != null) {
             val tmp = parent.methods.find { method ->
                 val parametersReal = method.parametersInternal
 
                 val firstPart = method.name == name
                         && parameters.size == parametersReal.size
-
-                if (name == "get" && fullname == "java.util.concurrent.ConcurrentMap") {
-                    println("Cmp: $method in $parent")
-                }
-
-//                if (name == "<init>" && fullname == "a.c.a") {
-//                    println("Cmp: $method")
-//                }
 
                 if (!firstPart)
                     return@find false
@@ -275,34 +211,23 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
             parent = parent.parentClass
         }
 
-//        if (fullname == "a.a" || fullname == "-\$Lambda\$S9HjrJh0nDg7IyU6wZdPArnZWRQ\$1") {
-//            println("found $name in $parent")
-//        }
-
         return res ?: findMethodInInterfaces(name, parameters, returnType)
     }
 
     public fun findOrCreateMethod(name: String, parameters: List<String>, returnType: String, scanLevel: Int = -1): SmaliMethod? {
-//        if (fullname == "a.a" || fullname == "-\$Lambda\$S9HjrJh0nDg7IyU6wZdPArnZWRQ\$1") {
-//            println("finding $name")
-//        }
-
         val prj = parentPackage?.project ?: return null
         val requiredParameters = parameters.mapNotNull {
             prj.getOrCreateClass(it)
         }
 
-        return findMethod(name, requiredParameters, returnType, scanLevel) ?: createMethod(name, requiredParameters, returnType)
+        return findMethod(name, requiredParameters, returnType, scanLevel)
+                ?: createMethod(name, requiredParameters, returnType)
     }
 
     private fun createMethod(name: String, parameters: List<SmaliClass>, returnType: String): SmaliMethod? {
         val prj = parentPackage?.project ?: return null
         return SmaliMethod(name, prj.getOrCreateClass(returnType)!!, this).also {
             it.parametersInternal.addAll(parameters)
-//            if (fullname == "a.a" || fullname == "-\$Lambda\$S9HjrJh0nDg7IyU6wZdPArnZWRQ\$1") {
-//                println("create $name in $this")
-//            }
-//            println("Created $it//${it.hashCode()}//in ${hashCode()}//${this}")
         }
     }
 
@@ -317,10 +242,6 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
         get() = associatedFile
 
     override var textRange: IntRange = -1..0
-
-    override fun recheck(): SmaliComponent? {
-        return if (exists()) this else null
-    }
 
     override fun markAsNotExisting() {
         textRange = -1..0
@@ -342,11 +263,9 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
         return true
     }
 
-//    override fun hashCode(): Int {
-//        var result = fullname.hashCode()
-//        result = 31 * result + (associatedFile?.hashCode() ?: 0)
-//        return result
-//    }
-
-
+    override fun hashCode(): Int {
+        var result = fullname.hashCode()
+        result = 31 * result + (associatedFile?.hashCode() ?: 0)
+        return result
+    }
 }

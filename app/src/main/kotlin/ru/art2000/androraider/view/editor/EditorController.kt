@@ -19,9 +19,6 @@ class EditorController : BaseController(), IEditorController {
     override lateinit var projectSettings: MenuItem
 
     @FXML
-    override lateinit var dataViewer: MenuItem
-
-    @FXML
     override lateinit var recompile: MenuItem
 
     // Menu/Search

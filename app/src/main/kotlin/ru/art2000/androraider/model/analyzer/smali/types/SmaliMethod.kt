@@ -2,12 +2,12 @@ package ru.art2000.androraider.model.analyzer.smali.types
 
 import java.io.File
 
-class SmaliMethod(): SmaliComponent {
+class SmaliMethod() : SmaliComponent {
 
     object Modifier {
 
         // In [Modifier] it is *static final int BRIDGE*
-        public const val CONSTRUCTOR = 0x00000040
+        const val CONSTRUCTOR = 0x00000040
     }
 
     var name: String = ""
@@ -33,7 +33,7 @@ class SmaliMethod(): SmaliComponent {
 
     var modifier = 0
 
-    public fun setModifierBit(modifierBit: Int) {
+    fun setModifierBit(modifierBit: Int) {
         modifier = modifier or modifierBit
     }
 
@@ -43,25 +43,6 @@ class SmaliMethod(): SmaliComponent {
     override var textRange = -1..0
     override val fullname: String
         get() = name
-
-    override fun recheck(): SmaliComponent? {
-        var parent = parentClass
-        var method: SmaliMethod? = this
-        while (parent != null) {
-            if (method != null)
-                break
-
-            method = parent.findMethod(name, parametersInternal, returnType.fullname("L", "/"))
-            parent = parent.parentClass
-        }
-
-        if (method != null && method != this) {
-//            parentClass?.removeMethod(this)
-            return method
-        }
-
-        return method ?: this
-    }
 
     override fun markAsNotExisting() {
         textRange = -1..0
@@ -77,19 +58,19 @@ class SmaliMethod(): SmaliComponent {
 
     val parametersInternal = mutableListOf<SmaliClass>()
 
-    public fun addParameter(smaliClass: SmaliClass) {
+    fun addParameter(smaliClass: SmaliClass) {
         parametersInternal.add(smaliClass)
     }
 
-    public fun addParameters(vararg smaliClass: SmaliClass) {
+    fun addParameters(vararg smaliClass: SmaliClass) {
         parametersInternal.addAll(smaliClass)
     }
 
-    public fun addParameters(smaliClasses: List<SmaliClass>) {
+    fun addParameters(smaliClasses: List<SmaliClass>) {
         parametersInternal.addAll(smaliClasses)
     }
 
-    public val parameters: List<SmaliClass>
+    val parameters: List<SmaliClass>
         get() = if (java.lang.reflect.Modifier.isStatic(modifier))
             parametersInternal.toList()
         else

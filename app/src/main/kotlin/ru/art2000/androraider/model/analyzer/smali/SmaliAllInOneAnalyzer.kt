@@ -27,13 +27,10 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         smaliClass.textRange = ctx.className().textRange
 
         if (ctx.CLASS_DIRECTIVE() == null || !withRanges) {
-//            println("null cld " + ctx.text + " in " + smaliClass.associatedFile)
             return visitChildren(ctx)
         }
 
-
-
-        smaliClass.ranges.add(RangeStatusBaseV2(ctx.CLASS_DIRECTIVE().textRange, ctx.CLASS_DIRECTIVE().text, "Class", listOf("keyword")))
+        smaliClass.ranges.add(RangeStatusBase(ctx.CLASS_DIRECTIVE().textRange, "Class", listOf("keyword")))
         return visitChildren(ctx)
     }
 
@@ -46,7 +43,6 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMethodReturnType(ctx: SmaliParser.MethodReturnTypeContext): SmaliClass {
-
         val method = findMethod(ctx)
         if (method != null) {
             val returnType = project.getOrCreateClass(ctx.text)
@@ -90,7 +86,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitFieldDirective(ctx: SmaliParser.FieldDirectiveContext): SmaliClass {
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBaseV2(ctx.FIELD_DIRECTIVE().textRange, ctx.FIELD_DIRECTIVE().text,"Field", listOf("keyword")))
+            smaliClass.ranges.add(RangeStatusBase(ctx.FIELD_DIRECTIVE().textRange, "Field", listOf("keyword")))
 
         return visitChildren(FieldDeclarationContextWrapper(ctx))
     }
@@ -104,9 +100,6 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMethodDirective(ctx: SmaliParser.MethodDirectiveContext): SmaliClass {
-//        if (onlyClass)
-//            return smaliClass
-
         if (withRanges) {
             smaliClass.ranges.add(RangeStatusBase(ctx.METHOD_DIRECTIVE().textRange, "Method", listOf("keyword")))
             smaliClass.ranges.add(RangeStatusBase(ctx.METHOD_END_DIRECTIVE().textRange, "End method", listOf("keyword")))
@@ -406,14 +399,11 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         var offset = 0
         if (withRanges) {
             parseCompound(ctx.text).forEach { parameterText ->
-                val parameterClass = project.classByName(parameterText)
+                val parameterClass = project.getOrCreateClass(parameterText)
                 smaliClass.ranges.add(DynamicRangeStatus(
                         (ctx.start.startIndex + offset)..(ctx.start.startIndex + offset + parameterText.lastIndex),
                         parameterClass)
                 )
-//            if (!project.exists(clazz))
-//                smaliClass.ranges.add(Error((ctx.start.startIndex + offset)..(ctx.start.startIndex + offset + it.lastIndex), "Class ${it} not found"))
-
                 offset += parameterText.length
             }
         }
@@ -430,8 +420,6 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitReferenceType(ctx: SmaliParser.ReferenceTypeContext): SmaliClass {
         val clazz = project.getOrCreateClass(ctx.text)
-//        if (clazz?.fullname == "java.lang.Thread")
-//            println("Thread at: ${ctx.textRange}")
         if (withRanges)
             smaliClass.ranges.add(DynamicRangeStatus(ctx.textRange, clazz))
 
@@ -586,10 +574,6 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMethodIdentifier(ctx: SmaliParser.MethodIdentifierContext): SmaliClass {
-//        findMethod(ctx)?.name = ctx.text
-//        if (ctx.text == null || ctx.text == "move") {
-//            println("Found: " + ctx.text)}
-
         return visitChildren(ctx)
     }
 
@@ -622,9 +606,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitSuperName(ctx: SmaliParser.SuperNameContext): SmaliClass {
-
         smaliClass.parentClass = project.getOrCreateClass(ctx.text)
-
         return visitChildren(ctx)
     }
 
@@ -730,7 +712,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         }
 
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBaseV2(ctx.textRange, ctx.text,"MethodModifier", listOf("keyword")))
+            smaliClass.ranges.add(RangeStatusBase(ctx.textRange,"MethodModifier", listOf("keyword")))
 
         return visitChildren(ctx)
     }
@@ -752,7 +734,6 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitTargetRegister(ctx: SmaliParser.TargetRegisterContext): SmaliClass {
-
         return visitChildren(ctx)
     }
 
@@ -834,20 +815,11 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitMethodInvocationTarget(ctx: SmaliParser.MethodInvocationTargetContext): SmaliClass {
         val targetClass = project.getOrCreateClass(ctx.referenceOrArrayType().text)
-//        val targetMethod = targetClass?.methods?.find { it.name == ctx.methodSignature().methodIdentifier().text }
-
         val methodName = ctx.methodSignature().methodIdentifier().text
         // TODO optimize double invocation (here and in visitMethodArguments)
         val methodParameters = parseCompound(ctx.methodSignature().methodArguments()?.text)
-
         val methodReturnType = ctx.methodSignature().methodReturnType().text
-
-//        if (methodName == "<init>" && targetClass?.fullname == "a.c.a" && methodParameters.size == 0)
-//            println("From invok in ${smaliClass.associatedFile}")
         val targetMethod = targetClass?.findOrCreateMethod(methodName, methodParameters, methodReturnType)
-
-//        if (methodName == "a" && targetClass?.fullname == "a.b.g" && methodParameters.size == 4)
-//            println("${findMethod(ctx)}: invokingTextor ${targetClass}//$methodName//${targetMethod}//${targetMethod?.hashCode()} = ${targetClass?.hashCode()}")
 
         if (withRanges)
             smaliClass.ranges.add(DynamicRangeStatus(ctx.methodSignature().methodIdentifier().textRange, targetMethod))
@@ -859,10 +831,6 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         val name = ctx.methodSignature()?.methodIdentifier()?.text ?: "DummyMethod"
         val params = parseCompound(ctx.methodSignature()?.methodArguments()?.text)
         val returnType = ctx.methodSignature()?.methodReturnType()?.text ?: "V"
-
-//        if (name == "<init>" && params.size == 0 && smaliClass.fullname == "a.c.a")
-//            println("FromDecl")
-
         return smaliClass.findOrCreateMethod(name, params, returnType, 0)!!
     }
 
@@ -876,12 +844,10 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
             children.forEach {
                 it.setParent(this)
             }
-//            if (!smaliMethod.exists()) {
-                smaliMethod.textRange = ctx.methodDeclaration()?.methodSignature()?.methodIdentifier()?.textRange ?: -1..0
-//            }
+
+            smaliMethod.textRange = ctx.methodDeclaration()?.methodSignature()?.methodIdentifier()?.textRange ?: -1..0
 
             if (withRanges) {
-//                println("range ${smaliMethod.textRange} for ${ctx.methodDeclaration().text} in ${ctx.methodDeclaration()?.methodSignature()?.methodIdentifier()?.textRange}")
                 smaliClass.ranges.add(DynamicRangeStatus(smaliMethod.textRange, smaliMethod))
             }
         }
@@ -889,15 +855,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMethodDeclaration(ctx: SmaliParser.MethodDeclarationContext): SmaliClass {
-
-//        val smaliMethod = findMethod(ctx) ?: return visitChildren(ctx)
-
         val arguments = ctx.methodSignature()?.methodArguments()
-
-//        smaliMethod.name = ctx.methodSignature().methodIdentifier().text
-//        smaliMethod.textRange = ctx.methodSignature().methodIdentifier().textRange
-
-//        println("Decl: ${smaliMethod.hashCode()} in range ${smaliMethod.textRange}")
 
         if (arguments != null) {
             var offset = arguments.start.startIndex
@@ -913,13 +871,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
                     }
         }
 
-
-        visitChildren(ctx)
-
-//        if (smaliMethod.name == "a")
-//            println("Method ${smaliMethod.name}, params = ${smaliMethod.parameters.joinToString { it.fullname }}, hash = ${smaliMethod.hashCode()}, range = ${smaliMethod.textRange}" + "; Parent ${smaliMethod.parentClass}, hash = ${smaliMethod.parentClass.hashCode()}")
-
-        return smaliClass
+        return visitChildren(ctx)
     }
 
     override fun visitMethodBody(ctx: SmaliParser.MethodBodyContext): SmaliClass {
@@ -1004,8 +956,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         }
 
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBaseV2(ctx.textRange, ctx.text,"FieldModifier", listOf("keyword")))
-//        smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "FieldModifier", listOf("keyword")))
+            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "FieldModifier", listOf("keyword")))
 
         return visitChildren(ctx)
     }
@@ -1051,7 +1002,6 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitParse(ctx: SmaliParser.ParseContext): SmaliClass {
-//        ctx.statement()
         return visitChildren(ctx)
     }
 
@@ -1144,8 +1094,6 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMethodSignature(ctx: SmaliParser.MethodSignatureContext): SmaliClass {
-
-
         return visitChildren(ctx)
     }
 
@@ -1344,7 +1292,6 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitErrorNode(node: ErrorNode): SmaliClass {
-//        println("Error $node, line=${node.symbol.line} range=${node.symbol.startIndex}..${node.symbol.stopIndex} text=${node.text} for $smaliClass")
         if (withRanges)
             smaliClass.ranges.find { it.range.first == node.symbol.startIndex } ?: smaliClass.ranges.add(Error.from(node))
         return super.visitErrorNode(node)
@@ -1766,8 +1713,6 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         val targetField = targetClass?.findOrCreateField(ctx.fieldNameAndType().fieldName().text,
                 ctx.fieldNameAndType().fieldType().text)
 
-//        println("Field $targetField")
-
         smaliClass.ranges.add(DynamicRangeStatus(ctx.fieldNameAndType().fieldName().textRange, targetField))
 
         return visitChildren(ctx)
@@ -1881,7 +1826,6 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         if (withRanges)
             smaliClass.ranges.add(RangeStatusBase(ctx.IMPLEMENTS_DIRECTIVE().textRange, "Implements interface", listOf("keyword")))
 
-
         project.getOrCreateClass(ctx.referenceType().text)?.also {
             smaliClass.interfaces.add(it)
         }
@@ -1916,12 +1860,4 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     override fun visitFullParamDirective(ctx: SmaliParser.FullParamDirectiveContext?): SmaliClass {
         return visitChildren(ctx)
     }
-
-//    override fun visitComment(ctx: SmaliParser.CommentContext): SmaliClass {
-//
-//        smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "Comment", listOf("comment")))
-//
-//        return smaliClass
-//    }
-
 }

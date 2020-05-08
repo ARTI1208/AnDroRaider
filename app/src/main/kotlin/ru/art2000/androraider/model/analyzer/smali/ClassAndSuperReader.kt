@@ -35,27 +35,13 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult) :
         return smaliClass
     }
 
-    inner class FieldDeclarationContextWrapper(ctx: SmaliParser.FieldDirectiveContext) :
-            SmaliParser.FieldDirectiveContext(ctx.getParent(), ctx.invokingState) {
-
+    override fun visitFieldDirective(ctx: SmaliParser.FieldDirectiveContext): SmaliClass {
         val smaliField = smaliClass.findOrCreateField(
                 ctx.fieldNameAndType()?.fieldName()?.text ?: "Dummy",
                 ctx.fieldNameAndType()?.fieldType()?.text ?: "I"
         )!!
-
-        init {
-            children = ctx.children
-            children.forEach {
-                it.setParent(this)
-            }
-            smaliField.parentClass = smaliClass
-            smaliField.textRange = ctx.fieldNameAndType()?.fieldName()?.textRange ?: -1..0
-        }
-
-    }
-
-    override fun visitFieldDirective(ctx: SmaliParser.FieldDirectiveContext): SmaliClass {
-        FieldDeclarationContextWrapper(ctx)
+        smaliField.parentClass = smaliClass
+        smaliField.textRange = ctx.fieldNameAndType()?.fieldName()?.textRange ?: -1..0
         return smaliClass
     }
 
@@ -71,14 +57,6 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult) :
         val name = ctx.methodSignature()?.methodIdentifier()?.text ?: "DummyMethod"
         val params = parseCompound(ctx.methodSignature()?.methodArguments()?.text)
         val returnType = ctx.methodSignature()?.methodReturnType()?.text ?: "V"
-
-//        if (params.contains("[")) {
-//            println("uuuuu")
-//        }
-
-//        if (name == "<init>" && params.size == 0 && smaliClass.fullname == "a.c.a")
-//            println("FromDecl")
-
         return smaliClass.findOrCreateMethod(name, params, returnType, 0)!!
     }
 
@@ -1488,12 +1466,4 @@ class ClassAndSuperReader(val project: ProjectAnalyzeResult) :
     override fun visitFullParamDirective(ctx: SmaliParser.FullParamDirectiveContext?): SmaliClass {
         return smaliClass
     }
-
-//    override fun visitComment(ctx: SmaliParser.CommentContext): SmaliClass {
-//
-//        smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "Comment", listOf("comment")))
-//
-//        return smaliClass
-//    }
-
 }

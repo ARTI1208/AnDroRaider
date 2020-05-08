@@ -8,11 +8,6 @@ import java.util.function.IntFunction
 
 class CodeEditorLineNumber(val area: GenericStyledArea<*, *, *>) : IntFunction<Node> {
 
-    companion object {
-        val LINE_HEIGHT: Double = Label().apply { styleClass.add("lineno") }.height
-
-    }
-
     override fun apply(value: Int): Node {
         val label = Label().apply { styleClass.add("lineno") }
         val text = (value + 1).toString()

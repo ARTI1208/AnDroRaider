@@ -31,7 +31,6 @@ import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.projectsettings.ProjectSettingsDialog
 import ru.art2000.androraider.view.dialogs.recompile.RecompileDialog
 import ru.art2000.androraider.view.dialogs.showErrorMessage
-import ru.art2000.androraider.view.editor.classes.SmaliDataViewer
 import ru.art2000.androraider.view.editor.codearea.CodeEditorArea
 import ru.art2000.androraider.view.editor.codearea.CodeEditorScrollPane
 import ru.art2000.androraider.view.launcher.Launcher
@@ -119,9 +118,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         loadingLabel.text = "Indexing project..."
         (presenter.generateProjectIndex() ?: Observable.empty<SmaliClass>())
                 .observeOn(JavaFxScheduler.platform())
-//                .doOnNext {
-//                    loadingLabel.text = "Indexing $it..."
-//                }
                 .doOnSubscribe {
                     println(this, "ProjectAnalyzer", "Analyze started at ${Date()}")
                 }
@@ -173,16 +169,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         }
 
         editorTabPane.selectionModel.selectedItemProperty().addListener { _, _, newValue ->
-//            val timer = Timer()
-//            timer.schedule(object : TimerTask() {
-//                override fun run() {
-//                    Platform.runLater {
-//                        newValue?.content?.requestFocus()
-//                        timer.cancel()
-//                        timer.purge()
-//                    }
-//                }
-//            }, 25)
 
             Platform.runLater {
                 newValue?.content?.requestFocus()
@@ -292,9 +278,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 onSettingsUpdate(settings)
             }
         }
-        dataViewer.onAction = EventHandler {
-            SmaliDataViewer(presenter.project).also { it.initOwner(this) }.show()
-        }
         recompile.accelerator = KeyCodeCombination(KeyCode.R, KeyCombination.SHORTCUT_DOWN)
         recompile.onAction = EventHandler {
             val dialog = RecompileDialog(projectFolder, presenter.project.projectSettings)
@@ -316,23 +299,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         }
 
         // Menu/Search
-//        searchMenu.accelerator = KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN)
-//        searchMenu.setOnAction {
-//            searchMenu.show()
-//        }
-
-//        searchMenu.onShown = EventHandler {
-//            search.searchField.requestFocus()
-//        }
-
-//        addEventHandler(WindowEvent.WINDOW_SHOWN) {
-//            scene.accelerators[KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN)] = Runnable {
-//                searchMenu.show()
-//            }
-//        }
-
         scene.focusOwnerProperty().addListener { _, _, newValue ->
-            println(newValue)
             @Suppress("UNCHECKED_CAST")
             search.currentSearchable = newValue as? Searchable<String>
         }

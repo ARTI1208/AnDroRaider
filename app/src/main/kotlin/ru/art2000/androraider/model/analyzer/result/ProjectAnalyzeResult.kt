@@ -1,9 +1,8 @@
 package ru.art2000.androraider.model.analyzer.result
 
 import io.reactivex.Observable
-import ru.art2000.androraider.model.analyzer.smali.SmaliIndexerV2
+import ru.art2000.androraider.model.analyzer.smali.SmaliIndexer
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
-import ru.art2000.androraider.model.analyzer.smali.types.SmaliField
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliPackage
 import ru.art2000.androraider.model.editor.ProjectSettings
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
@@ -11,11 +10,9 @@ import java.io.File
 
 class ProjectAnalyzeResult(val baseFolder: File) {
 
-    val projectFolders = mutableListOf<File>()
+    private val projectFolders = mutableListOf<File>()
 
-    val rootPackage = SmaliPackage(this, "/")
-
-    val packages = mutableListOf<SmaliPackage>()
+    private val packages = mutableListOf<SmaliPackage>()
 
     val fileToClassMapping = mutableMapOf<File, SmaliClass>()
 
@@ -23,7 +20,7 @@ class ProjectAnalyzeResult(val baseFolder: File) {
 
     val smaliFolders = mutableListOf<File>()
 
-    val smaliFolderNameRegex = Regex("^((smali)|(smali_classes\\d+))\$")
+    private val smaliFolderNameRegex = Regex("^((smali)|(smali_classes\\d+))\$")
 
     init {
         addProjectFolder(baseFolder)
@@ -39,7 +36,7 @@ class ProjectAnalyzeResult(val baseFolder: File) {
         projectFolders.add(file)
     }
 
-    fun getOrCreatePackage(name: String): SmaliPackage {
+    private fun getOrCreatePackage(name: String): SmaliPackage {
         val packageToReturn = findPackage(packages, name)
         if (packageToReturn != null)
             return packageToReturn
@@ -56,42 +53,8 @@ class ProjectAnalyzeResult(val baseFolder: File) {
         }
     }
 
-//    fun getOrCreatePackage(folder: File): SmaliPackage {
-////        val packageToReturn = findPackage(packages, name)
-////        if (packageToReturn != null)
-////            return packageToReturn
-//
-//
-//        folder.toPath().
-//
-//        val lastDot = name.lastIndexOf('.')
-//        return if (lastDot == -1) {
-//            val rootPackage = SmaliPackage(this, name)
-//            packages.add(rootPackage)
-//            rootPackage
-//        } else {
-//            val parentPackageName = name.substring(0, lastDot)
-//            val packageName = name.substring(lastDot + 1)
-//            SmaliPackage(this, packageName, getOrCreatePackage(parentPackageName))
-//        }
-//    }
-
     fun canAnalyzeFile(file: File): Boolean {
         return fileToClassMapping[file] != null
-    }
-
-    fun exists(smaliClass: SmaliClass?): Boolean {
-        if (smaliClass == null)
-            return false
-
-        return smaliClass.associatedFile != null || smaliClass.isPrimitive || smaliClass.isVoid || (smaliClass.isArray && exists(smaliClass.parentClass))
-    }
-
-    fun exists(smaliField: SmaliField?): Boolean {
-        if (smaliField == null)
-            return false
-
-        return smaliField.textRange.first >= 0
     }
 
     fun getPackageForClassName(name: String): SmaliPackage? {
@@ -113,48 +76,6 @@ class ProjectAnalyzeResult(val baseFolder: File) {
                 getOrCreatePackage(parentPackageName)
             }
         } else {
-            return null
-        }
-    }
-
-    fun classByName(name: String): SmaliClass? {
-
-        // Primitive type or void
-        when (name) {
-            "V" -> return SmaliClass.Primitives.VOID
-            "I" -> return SmaliClass.Primitives.INT
-            "J" -> return SmaliClass.Primitives.LONG
-            "S" -> return SmaliClass.Primitives.SHORT
-            "B" -> return SmaliClass.Primitives.BYTE
-            "Z" -> return SmaliClass.Primitives.BOOLEAN
-            "C" -> return SmaliClass.Primitives.CHAR
-            "F" -> return SmaliClass.Primitives.FLOAT
-            "D" -> return SmaliClass.Primitives.DOUBLE
-        }
-
-        // Reference type
-        if (name.startsWith('L')) {
-            var referenceClassName = name.substring(1).replace('/', '.')
-            if (referenceClassName.endsWith(';'))
-                referenceClassName = referenceClassName.substring(0, referenceClassName.lastIndex)
-
-            val classToReturn = findClass(packages, referenceClassName)
-            if (classToReturn != null)
-                return classToReturn
-
-            return null
-        } else if (name.startsWith('[')) { // Array
-            var arrayLevel = 0
-            for (c in name) {
-                if (c == '[')
-                    arrayLevel++
-                else
-                    break
-            }
-
-            return classByName(name.substring(arrayLevel))
-        } else {
-//            throw IllegalStateException("Unknown class type for $name")
             return null
         }
     }
@@ -185,18 +106,12 @@ class ProjectAnalyzeResult(val baseFolder: File) {
                 return classToReturn
 
             val lastDot = referenceClassName.lastIndexOf('.')
-            if (lastDot == -1) {
-//                throw IllegalStateException("Class $name must be in package")
-
-
-                return null
+            return if (lastDot == -1) {
+                null
             } else {
                 val parentPackageName = referenceClassName.substring(0, lastDot)
                 val className = referenceClassName.substring(lastDot + 1)
-                val clazz = SmaliClass(className, getOrCreatePackage(parentPackageName)).also {
-
-                }
-                return clazz
+                SmaliClass(className, getOrCreatePackage(parentPackageName))
             }
         } else if (name.startsWith('[')) { // Array
             val smaliClass = SmaliClass()
@@ -211,7 +126,6 @@ class ProjectAnalyzeResult(val baseFolder: File) {
 
             return smaliClass
         } else {
-//            throw IllegalStateException("Unknown class type for $name")
             return null
         }
     }
@@ -244,14 +158,11 @@ class ProjectAnalyzeResult(val baseFolder: File) {
     }
 
     fun indexProject(): Observable<out FileAnalyzeResult> {
-//        return SmaliIndexer.indexProject(this).concatWith(SmaliDependencyVerifier.indexProject(this))
-        return SmaliIndexerV2.indexProject(this)
+        return SmaliIndexer.indexProject(this)
     }
 
     fun analyzeFile(file: File, withRanges: Boolean = true): FileAnalyzeResult {
-//        SmaliIndexer.analyzeFile(this, file)
-//        return SmaliDependencyVerifier.analyzeFile(this, file)
-        SmaliIndexerV2.withRanges = withRanges
-        return SmaliIndexerV2.analyzeFile(this, file)
+        SmaliIndexer.withRanges = withRanges
+        return SmaliIndexer.analyzeFile(this, file)
     }
 }

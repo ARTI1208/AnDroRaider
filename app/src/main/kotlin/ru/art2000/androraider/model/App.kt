@@ -1,9 +1,5 @@
 package ru.art2000.androraider.model
 
-import javafx.scene.Node
-import javafx.stage.Window
-import ru.art2000.androraider.model.io.DefaultStreamOutput
-import ru.art2000.androraider.model.io.StreamOutput
 import ru.art2000.androraider.utils.getDrawable
 
 object App {

@@ -6,6 +6,6 @@ interface RangeAnalyzeStatus {
 
     val description: String
 
-    val style : Collection<String>
+    val style: Collection<String>
 
 }

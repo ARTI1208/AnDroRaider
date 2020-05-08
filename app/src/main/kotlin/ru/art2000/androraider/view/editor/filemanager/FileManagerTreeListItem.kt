@@ -103,10 +103,6 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
         prefHeight = DEFAULT_SIZE
         minHeight = prefHeight
         maxHeight = prefHeight
-
-//        HBox.setHgrow(textField, Priority.ALWAYS)
-//        l.alignment = Pos.CENTER_LEFT
-//        l.spacing = 5.0
     }
 
     private fun updateHighlighting(toFind: String?, text: String?) {
@@ -146,7 +142,6 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
         }
         textField.replaceText(item.name)
         textField.prefHeight = DEFAULT_SIZE
-//        textField.prefWidth = width
 
         icon.fitWidth = DEFAULT_SIZE
         icon.fitHeight = DEFAULT_SIZE

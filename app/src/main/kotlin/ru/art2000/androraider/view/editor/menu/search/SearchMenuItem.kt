@@ -2,8 +2,14 @@ package ru.art2000.androraider.view.editor.menu.search
 
 import javafx.event.EventHandler
 import javafx.event.EventType
+import javafx.geometry.Insets
 import javafx.scene.control.CustomMenuItem
 import javafx.scene.input.KeyCode
+import javafx.scene.layout.Background
+import javafx.scene.layout.BackgroundFill
+import javafx.scene.layout.CornerRadii
+import javafx.scene.layout.Region
+import javafx.scene.paint.Paint
 import ru.art2000.androraider.utils.bind
 import ru.art2000.androraider.view.editor.Searchable
 
@@ -38,7 +44,6 @@ class SearchMenuItem : CustomMenuItem(), ISearchItemController by SearchItemCont
                         ?.findAll(now)
             }
         }
-//        (root as Region).background = Background(BackgroundFill(Paint.valueOf("#dedede"), CornerRadii.EMPTY, Insets.EMPTY))
         findPreviousButton.onAction = EventHandler {
             currentSearchable?.findPrevious()
         }
