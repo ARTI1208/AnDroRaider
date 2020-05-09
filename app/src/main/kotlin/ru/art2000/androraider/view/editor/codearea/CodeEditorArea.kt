@@ -29,6 +29,7 @@ import ru.art2000.androraider.view.editor.Searchable
 import java.io.File
 import java.nio.file.Files
 import java.time.Duration
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.regex.Pattern
 import kotlin.math.max
 
@@ -329,12 +330,20 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
                 .subscribe { (hasChanges, builder) ->
                     if (hasChanges)
                         builder.commit()
+
+                    isUpdating.set(false)
                 }
 
     }
 
+    private val isUpdating = AtomicBoolean()
+
     public fun updateHighlighting() {
         val file = currentEditingFile ?: return
+
+        if (isUpdating.getAndSet(true)) {
+            return
+        }
 
         val maybe = if (getProjectForNode(this)?.canAnalyzeFile(file) == true) {
             Maybe.fromCallable {
