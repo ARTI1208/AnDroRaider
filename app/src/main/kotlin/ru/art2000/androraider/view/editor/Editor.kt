@@ -275,8 +275,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         }
         projectSettings.onAction = EventHandler {
             val settings = presenter.project.projectSettings
-            val res = ProjectSettingsDialog(settings).showAndWait()
-            if (res != null) {
+            ProjectSettingsDialog(settings).showAndWait().ifPresent {
                 onSettingsUpdate(settings)
             }
         }
