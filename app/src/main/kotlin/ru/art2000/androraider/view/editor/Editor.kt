@@ -85,6 +85,8 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
         loadingDialog.title = "Loading..."
         loadingDialog.width = 400.0
+        loadingDialog.dialogPane.prefWidth = 400.0
+        loadingDialog.dialogPane.minWidthProperty().bind(loadingDialog.dialogPane.prefWidthProperty())
         loadingLabel.text = "Loading project..."
         loadingDialog.dialogPane.buttonTypes.add(ButtonType.CLOSE)
         (loadingDialog.dialogPane.lookupButton(ButtonType.CLOSE) as Button).isDisable = true

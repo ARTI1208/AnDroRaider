@@ -107,7 +107,7 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
                 }
 
                 if (error != null) {
-                    popupMsg.text = error.toString()
+                    popupMsg.text = error.description
                     popup.show(this, pos.x, pos.y + 10)
                     return@addEventHandler
                 }
