@@ -9,10 +9,6 @@
     <padding>
         <Insets bottom="20" />
     </padding>
-    <HBox spacing="10">
-        <CheckBox fx:id="noCodeDecompile" id="-s" text="Do not decompile code"/>
-        <CheckBox fx:id="noResDecompile" id="-r" text="Do not decompile res"/>
-    </HBox>
 
     <fx:define>
         <ToggleGroup fx:id="frameworkType"/>
@@ -22,7 +18,8 @@
         <Tooltip fx:id="folderPathTooltip" text="${projectPathField.text}"/>
     </fx:define>
 
-    <HBox>
+    <HBox alignment="CENTER_LEFT" spacing="10">
+        <Text text="Apktool: "/>
         <TextField fx:id="apktoolPathField" tooltip="$apktoolPathTooltip"/>
         <Button fx:id="apktoolPathFileSelector" text="Select"/>
     </HBox>
@@ -42,5 +39,7 @@
         <TextField fx:id="projectPathField" tooltip="$folderPathTooltip" text="Path to folder"/>
         <Button fx:id="projectPathFieldSelector" text="Select"/>
     </HBox>
+    <CheckBox fx:id="noCodeDecompile" id="-s" text="Do not decompile code"/>
+    <CheckBox fx:id="noResDecompile" id="-r" text="Do not decompile res"/>
     <CheckBox fx:id="overrideIfExistsCheckBox" id="-f" text="Override if folder already exists"/>
 </VBox>

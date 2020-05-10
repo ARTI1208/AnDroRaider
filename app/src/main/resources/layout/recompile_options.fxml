@@ -18,7 +18,8 @@
         <Tooltip fx:id="filePathTooltip" text="${filePathField.text}"/>
     </fx:define>
 
-    <HBox>
+    <HBox alignment="CENTER_LEFT" spacing="10">
+        <Text text="Apktool: "/>
         <TextField fx:id="apktoolPathField" tooltip="$apktoolPathTooltip"/>
         <Button fx:id="apktoolPathFileSelector" text="Select"/>
     </HBox>
