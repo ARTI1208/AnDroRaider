@@ -8,7 +8,7 @@ import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
 
-class ClassAndSuperReader(val project: ProjectAnalyzeResult) :
+class SmaliShallowScanner(val project: ProjectAnalyzeResult) :
         AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
 
     private lateinit var smaliClass: SmaliClass

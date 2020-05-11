@@ -9,7 +9,6 @@ import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.analyzer.result.RangeStatusBase
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.utils.textRange
-import ru.art2000.androraider.view.editor.codearea.CodeEditorScrollPane
 import java.io.File
 
 object SmaliIndexer : Indexer<SmaliClass> {
@@ -23,7 +22,7 @@ object SmaliIndexer : Indexer<SmaliClass> {
         parser.removeErrorListeners()
         val tree = parser.parse()
 
-        return ClassAndSuperReader(project).visit(tree as ParseTree).also { it.associatedFile = file }
+        return SmaliShallowScanner(project).visit(tree as ParseTree).also { it.associatedFile = file }
     }
 
     override fun analyzeFile(project: ProjectAnalyzeResult, file: File): SmaliClass {
