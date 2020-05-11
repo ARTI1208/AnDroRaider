@@ -13,6 +13,32 @@ module app {
     requires org.apache.commons.io;
     requires undofx;
 
+
+    opens ru.art2000.androraider.view;
+    exports ru.art2000.androraider.view;
+
     opens ru.art2000.androraider.view.launcher;
     exports ru.art2000.androraider.view.launcher;
+
+    opens ru.art2000.androraider.view.settings;
+    exports ru.art2000.androraider.view.settings;
+
+    opens ru.art2000.androraider.view.editor;
+    exports ru.art2000.androraider.view.editor;
+
+    opens ru.art2000.androraider.view.editor.codearea;
+    exports ru.art2000.androraider.view.editor.codearea;
+
+    opens ru.art2000.androraider.view.editor.filemanager;
+    exports ru.art2000.androraider.view.editor.filemanager;
+
+    opens ru.art2000.androraider.view.editor.menu.search;
+    exports ru.art2000.androraider.view.editor.menu.search;
+
+    opens ru.art2000.androraider.view.dialogs.decompile;
+    exports ru.art2000.androraider.view.dialogs.decompile;
+    opens ru.art2000.androraider.view.dialogs.recompile;
+    exports ru.art2000.androraider.view.dialogs.recompile;
+    opens ru.art2000.androraider.view.dialogs.projectsettings;
+    exports ru.art2000.androraider.view.dialogs.projectsettings;
 }
