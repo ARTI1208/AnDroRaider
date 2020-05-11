@@ -15,7 +15,7 @@ object SmaliIndexer : Indexer<SmaliClass> {
 
     public var withRanges = false
 
-    private fun readSmaliClassNameAndSuper(project: ProjectAnalyzeResult, file: File): SmaliClass {
+    private fun generateFileIndex(project: ProjectAnalyzeResult, file: File): SmaliClass {
         val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
         val tokenStream = CommonTokenStream(lexer as TokenSource)
         val parser = SmaliParser(tokenStream as TokenStream)
@@ -58,7 +58,7 @@ object SmaliIndexer : Indexer<SmaliClass> {
                 .filter {
                     !it.isDirectory
                 }.map { file ->
-                    readSmaliClassNameAndSuper(project, file).also { project.fileToClassMapping[file] = it  }
+                    generateFileIndex(project, file).also { project.fileToClassMapping[file] = it  }
                 }
     }
 
