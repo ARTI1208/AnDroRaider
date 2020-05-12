@@ -5,16 +5,16 @@ import javafx.collections.ListChangeListener
 import javafx.collections.ObservableList
 import ru.art2000.androraider.model.launcher.RecentProject
 import ru.art2000.androraider.model.settings.PreferenceManager
-import ru.art2000.androraider.model.settings.SettingsManager
 import ru.art2000.androraider.mvp.IPresenter
-import ru.art2000.androraider.view.launcher.Launcher
+import ru.art2000.androraider.presenter.settings.SettingsPresenter
+import java.util.function.Consumer
 
 class LauncherPresenter : IPresenter, PreferenceManager by prefs {
 
     companion object {
         const val KEY_RECENTS = "recent_projects"
 
-        private val prefs = SettingsManager(Launcher::class.java)
+        private val prefs = SettingsPresenter.prefs
     }
 
     val recentsItems: ObservableList<RecentProject> = FXCollections.observableArrayList()
@@ -23,6 +23,9 @@ class LauncherPresenter : IPresenter, PreferenceManager by prefs {
         recentsItems.addAll(prefs.getStringArray(KEY_RECENTS).map { RecentProject(it) })
         recentsItems.addListener(ListChangeListener {
             prefs.putStringArray(KEY_RECENTS, recentsItems.map { it.projectLocation })
+        })
+        prefs.addRemoveListener(KEY_RECENTS, Runnable {
+            recentsItems.clear()
         })
     }
 

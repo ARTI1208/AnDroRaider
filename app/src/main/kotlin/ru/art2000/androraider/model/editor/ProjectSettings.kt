@@ -1,11 +1,11 @@
 package ru.art2000.androraider.model.editor
 
 import ru.art2000.androraider.model.settings.PreferenceManager
-import ru.art2000.androraider.model.settings.SettingsManager
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileWriter
 import java.util.*
+import java.util.function.Consumer
 
 
 class ProjectSettings(projectFolder: File, private val globalSettings: PreferenceManager): PreferenceManager {
@@ -13,6 +13,8 @@ class ProjectSettings(projectFolder: File, private val globalSettings: Preferenc
     private val settingsFile = File(projectFolder, SETTINGS_PATH)
 
     private val properties = Properties()
+
+    private val removeListeners = mutableMapOf<String, MutableList<Runnable>>()
 
     companion object {
         private val SETTINGS_PATH = ".androraider" + File.separator + "settings"
@@ -36,6 +38,7 @@ class ProjectSettings(projectFolder: File, private val globalSettings: Preferenc
 
     override fun remove(key: String) {
         properties.remove(key)
+        removeListeners[key]?.forEach { it.run() }
         saveToFile()
     }
 
@@ -69,5 +72,9 @@ class ProjectSettings(projectFolder: File, private val globalSettings: Preferenc
 
     override fun getStringArray(key: String, defaultArray: List<String>): List<String> {
         return properties.getProperty(key)?.split("|") ?: globalSettings.getStringArray(key, defaultArray)
+    }
+
+    override fun addRemoveListener(key: String, listener: Runnable) {
+        removeListeners[key] = removeListeners.getOrDefault(key, mutableListOf()).apply { add(listener) }
     }
 }

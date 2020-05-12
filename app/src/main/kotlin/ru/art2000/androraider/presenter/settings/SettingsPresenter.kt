@@ -58,5 +58,6 @@ class SettingsPresenter : IPresenter, PreferenceManager by prefs {
     fun clearData() {
         prefs.remove(LauncherPresenter.KEY_RECENTS)
         prefs.remove(KEY_APKTOOL_PATH)
+        prefs.remove(KEY_FRAMEWORK_PATH)
     }
 }

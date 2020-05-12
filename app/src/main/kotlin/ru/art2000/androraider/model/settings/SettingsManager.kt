@@ -1,13 +1,17 @@
 package ru.art2000.androraider.model.settings
 
+import java.util.function.Consumer
 import java.util.prefs.Preferences
 
 public class SettingsManager(forClass: Class<*>) : PreferenceManager {
 
     private val preferences = Preferences.userNodeForPackage(forClass)
 
+    private val removeListeners = mutableMapOf<String, MutableList<Runnable>>()
+
     public override fun remove(key: String) {
         preferences.remove(key)
+        removeListeners[key]?.forEach { it.run() }
     }
 
     override fun putString(key: String, value: String) {
@@ -43,4 +47,7 @@ public class SettingsManager(forClass: Class<*>) : PreferenceManager {
         return if (array != "") array.split("|") else defaultArray
     }
 
+    override fun addRemoveListener(key: String, listener: Runnable) {
+        removeListeners[key] = removeListeners.getOrDefault(key, mutableListOf()).apply { add(listener) }
+    }
 }

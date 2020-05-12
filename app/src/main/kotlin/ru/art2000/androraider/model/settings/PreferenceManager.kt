@@ -15,4 +15,6 @@ interface PreferenceManager {
     fun putStringArray(key: String, array: Collection<String>)
 
     fun getStringArray(key: String, defaultArray: List<String> = emptyList()): List<String>
+
+    fun addRemoveListener(key: String, listener: Runnable)
 }
