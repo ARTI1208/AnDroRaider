@@ -897,22 +897,26 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     // TODO implement synthetic, bridge, synchronized, strictfp, varargs
     override fun visitMethodModifier(ctx: SmaliParser.MethodModifierContext): SmaliClass {
-        val method = findMethod(ctx)
-        if (method != null) {
-            when (ctx.text) {
-                "public" -> method.setModifierBit(Modifier.PUBLIC)
-                "protected" -> method.setModifierBit(Modifier.PROTECTED)
-                "private" -> method.setModifierBit(Modifier.PRIVATE)
-                "final" -> method.setModifierBit(Modifier.FINAL)
-                "static" -> method.setModifierBit(Modifier.STATIC)
-                "abstract" -> method.setModifierBit(Modifier.ABSTRACT)
-                "native" -> method.setModifierBit(Modifier.NATIVE)
-                "constructor" -> method.setModifierBit(SmaliMethod.Modifier.CONSTRUCTOR)
-            }
-        }
 
         if (withRanges)
             smaliClass.ranges.add(RangeStatusBase(ctx.textRange,"MethodModifier", listOf("keyword")))
+
+        val method = findMethod(ctx) ?: return visitChildren(ctx)
+
+        when (ctx.text) {
+            "public" -> method.setModifierBit(Modifier.PUBLIC)
+            "protected" -> method.setModifierBit(Modifier.PROTECTED)
+            "private" -> method.setModifierBit(Modifier.PRIVATE)
+            "final" -> method.setModifierBit(Modifier.FINAL)
+            "static" -> method.setModifierBit(Modifier.STATIC)
+            "abstract" -> method.setModifierBit(Modifier.ABSTRACT)
+            "native" -> method.setModifierBit(Modifier.NATIVE)
+            "constructor" -> method.setModifierBit(SmaliMethod.Modifier.CONSTRUCTOR)
+        }
+
+        method.parameters.forEachIndexed { index, smaliClass ->
+            method.registerToClassMap["p$index"] = smaliClass
+        }
 
         return visitChildren(ctx)
     }
@@ -1088,9 +1092,6 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
             }
 
             smaliMethod.registerToClassMap.clear()
-            smaliMethod.parameters.forEachIndexed { index, smaliClass ->
-                smaliMethod.registerToClassMap["p$index"] = smaliClass
-            }
             smaliMethod.textRange = ctx.methodDeclaration()?.methodSignature()?.methodIdentifier()?.textRange ?: -1..0
 
             if (withRanges) {
