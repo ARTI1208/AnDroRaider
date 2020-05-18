@@ -36,7 +36,8 @@ class DynamicRangeStatus(override val range: IntRange, component: SmaliComponent
     override val file: File?
         get() = component?.file
 
-    override val offset = component?.textRange?.last ?: 0
+    override val offset: Int
+        get() = component?.textRange?.last ?: 0
 
     override fun toString(): String {
         return description

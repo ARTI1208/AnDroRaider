@@ -37,15 +37,17 @@ class SmaliMethod() : SmaliComponent {
         modifier = modifier or modifierBit
     }
 
+    val labels = mutableListOf<SmaliLabel>()
+
     override val file: File?
         get() = parentClass?.associatedFile
 
-    override var textRange = -1..0
+    override var textRange = SmaliComponent.EMPTY_RANGE
     override val fullname: String
         get() = name
 
     override fun markAsNotExisting() {
-        textRange = -1..0
+        textRange = SmaliComponent.EMPTY_RANGE
     }
 
     override fun exists(): Boolean {
@@ -69,6 +71,15 @@ class SmaliMethod() : SmaliComponent {
     fun addParameters(smaliClasses: List<SmaliClass>) {
         parametersInternal.addAll(smaliClasses)
     }
+
+    fun getOrCreateLabel(name: String): SmaliLabel {
+        val label = labels.find { it.fullname == name }
+        if (label != null)
+            return label
+
+        return SmaliLabel(name, this).also { labels.add(it) }
+    }
+
 
     val registerToClassMap = mutableMapOf<String, SmaliClass>()
 

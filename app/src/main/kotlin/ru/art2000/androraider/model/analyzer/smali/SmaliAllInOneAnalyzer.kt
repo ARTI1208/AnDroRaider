@@ -7,6 +7,7 @@ import org.antlr.v4.runtime.tree.ErrorNode
 import ru.art2000.androraider.model.analyzer.result.*
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliField
+import ru.art2000.androraider.model.analyzer.smali.types.SmaliLabel
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
@@ -216,6 +217,18 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitGotoInstruction(ctx: SmaliParser.GotoInstructionContext): SmaliClass {
+
+        if (withRanges) {
+            val currentMethod = findMethod(ctx) ?: return visitChildren(ctx)
+
+            val labelNameContext = ctx.label().labelName()
+
+            smaliClass.ranges.add(DynamicRangeStatus(
+                    labelNameContext.textRange,
+                    currentMethod.getOrCreateLabel(labelNameContext.text))
+            )
+        }
+
         return visitChildren(ctx)
     }
 
@@ -995,6 +1008,12 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitLineLabel(ctx: SmaliParser.LineLabelContext): SmaliClass {
+        val currentMethod = findMethod(ctx) ?: return visitChildren(ctx)
+
+        val labelNameContext = ctx.label().labelName()
+
+        currentMethod.getOrCreateLabel(labelNameContext.text).apply { textRange = labelNameContext.textRange }
+
         return visitChildren(ctx)
     }
 
@@ -1360,6 +1379,18 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitIfLabel(ctx: SmaliParser.IfLabelContext): SmaliClass {
+
+        if (withRanges) {
+            val currentMethod = findMethod(ctx) ?: return visitChildren(ctx)
+
+            val labelNameContext = ctx.label().labelName()
+
+            smaliClass.ranges.add(DynamicRangeStatus(
+                    labelNameContext.textRange,
+                    currentMethod.getOrCreateLabel(labelNameContext.text))
+            )
+        }
+
         return visitChildren(ctx)
     }
 
@@ -1822,6 +1853,18 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitGoto32Instruction(ctx: SmaliParser.Goto32InstructionContext): SmaliClass {
+
+        if (withRanges) {
+            val currentMethod = findMethod(ctx) ?: return visitChildren(ctx)
+
+            val labelNameContext = ctx.label().labelName()
+
+            smaliClass.ranges.add(DynamicRangeStatus(
+                    labelNameContext.textRange,
+                    currentMethod.getOrCreateLabel(labelNameContext.text))
+            )
+        }
+
         return visitChildren(ctx)
     }
 
@@ -2082,6 +2125,18 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitGoto16Instruction(ctx: SmaliParser.Goto16InstructionContext): SmaliClass {
+
+        if (withRanges) {
+            val currentMethod = findMethod(ctx) ?: return visitChildren(ctx)
+
+            val labelNameContext = ctx.label().labelName()
+
+            smaliClass.ranges.add(DynamicRangeStatus(
+                    labelNameContext.textRange,
+                    currentMethod.getOrCreateLabel(labelNameContext.text))
+            )
+        }
+
         return visitChildren(ctx)
     }
 

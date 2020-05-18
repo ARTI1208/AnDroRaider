@@ -3,7 +3,7 @@ package ru.art2000.androraider.model.analyzer.smali.types
 import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import java.io.File
 
-class SmaliPackage(val project: ProjectAnalyzeResult, val name: String, var parentPackage: SmaliPackage? = null):SmaliComponent {
+class SmaliPackage(val project: ProjectAnalyzeResult, val name: String, var parentPackage: SmaliPackage? = null) : SmaliComponent {
 
     init {
         parentPackage?.addSubPackage(this)
@@ -26,22 +26,22 @@ class SmaliPackage(val project: ProjectAnalyzeResult, val name: String, var pare
             return result
         }
 
-    public fun addSubPackage(smaliPackage: SmaliPackage) {
+    fun addSubPackage(smaliPackage: SmaliPackage) {
         smaliPackage.parentPackage = this
         subpackages.add(smaliPackage)
     }
 
-    public fun removeSubPackage(smaliPackage: SmaliPackage?) {
+    fun removeSubPackage(smaliPackage: SmaliPackage?) {
         smaliPackage?.parentPackage = null
         subpackages.remove(smaliPackage)
     }
 
-    public fun addClass(smaliClass: SmaliClass) {
+    fun addClass(smaliClass: SmaliClass) {
         smaliClass.parentPackage = this
         classes.add(smaliClass)
     }
 
-    public fun removeClass(smaliClass: SmaliClass) {
+    fun removeClass(smaliClass: SmaliClass) {
         smaliClass.parentPackage = null
         classes.remove(smaliClass)
     }
@@ -50,7 +50,7 @@ class SmaliPackage(val project: ProjectAnalyzeResult, val name: String, var pare
         get() = null
 
     override val textRange: IntRange
-        get() = -1..0
+        get() = SmaliComponent.EMPTY_RANGE
 
     override fun markAsNotExisting() {
 

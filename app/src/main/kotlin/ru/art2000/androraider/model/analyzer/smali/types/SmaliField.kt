@@ -21,12 +21,12 @@ class SmaliField : SmaliComponent {
     override val file: File?
         get() = parentClass?.associatedFile
 
-    override var textRange: IntRange = -1..0
+    override var textRange: IntRange = SmaliComponent.EMPTY_RANGE
     override val fullname: String
         get() = name
 
     override fun markAsNotExisting() {
-        textRange = -1..0
+        textRange = SmaliComponent.EMPTY_RANGE
     }
 
     override fun exists(): Boolean {

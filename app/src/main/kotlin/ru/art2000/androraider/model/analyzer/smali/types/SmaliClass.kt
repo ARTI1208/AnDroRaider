@@ -254,10 +254,10 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
     override val file: File?
         get() = associatedFile
 
-    override var textRange: IntRange = -1..0
+    override var textRange: IntRange = SmaliComponent.EMPTY_RANGE
 
     override fun markAsNotExisting() {
-        textRange = -1..0
+        textRange = SmaliComponent.EMPTY_RANGE
     }
 
     override fun exists(): Boolean {

@@ -210,7 +210,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 newTab.content = CodeEditorScrollPane(CodeEditorArea().apply {
                     keyListeners[KeyCodeCombination(KeyCode.B, KeyCombination.SHORTCUT_DOWN)] = {
                         if (it is NavigableRange) {
-                            println("File: ${it.file} in ${it.offset}")
                             it.file?.also { fileToOpen -> openFile(fileToOpen, it.offset) }
                         }
                     }
