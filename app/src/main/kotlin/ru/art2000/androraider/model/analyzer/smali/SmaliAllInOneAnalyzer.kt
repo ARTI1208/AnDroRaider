@@ -7,7 +7,6 @@ import org.antlr.v4.runtime.tree.ErrorNode
 import ru.art2000.androraider.model.analyzer.result.*
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliField
-import ru.art2000.androraider.model.analyzer.smali.types.SmaliLabel
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
@@ -164,17 +163,34 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
                     while (previousInstruction.childCount == 1) {
                         previousInstruction = previousInstruction.getChild(0)
                     }
-                    val invocationTarget = when (previousInstruction) {
-                        is SmaliParser.InvokeVirtualInstructionContext -> previousInstruction.methodInvocationTarget()
-                        is SmaliParser.InvokeSuperInstructionContext -> previousInstruction.methodInvocationTarget()
-                        is SmaliParser.InvokeDirectInstructionContext -> previousInstruction.methodInvocationTarget()
-                        is SmaliParser.InvokeStaticInstructionContext -> previousInstruction.methodInvocationTarget()
-                        is SmaliParser.InvokeInterfaceInstructionContext -> previousInstruction.methodInvocationTarget()
+
+                    val classNameContext = when (previousInstruction) {
+                        is SmaliParser.InvokeVirtualInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.InvokeSuperInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.InvokeDirectInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.InvokeStaticInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.InvokeInterfaceInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.FilledNewArrayInstructionContext ->
+                            previousInstruction.arrayElementType()
+
+                        is SmaliParser.FilledNewArrayRangeInstructionContext ->
+                            previousInstruction.arrayElementType()
+
                         else -> return@tunableVisitChildren
                     }
 
-                    val targetMethod = smaliMethodFromInvocationContext(invocationTarget) ?: return@tunableVisitChildren
-                    currentMethod.registerToClassMap[ctx.registerIdentifier().text] = targetMethod.returnType
+                    val clazz = project.getOrCreateClass(classNameContext.text) ?: return@tunableVisitChildren
+                    currentMethod.registerToClassMap[ctx.registerIdentifier().text] = clazz
                 }
             }
         }
@@ -475,17 +491,34 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
                     while (previousInstruction.childCount == 1) {
                         previousInstruction = previousInstruction.getChild(0)
                     }
-                    val invocationTarget = when (previousInstruction) {
-                        is SmaliParser.InvokeVirtualInstructionContext -> previousInstruction.methodInvocationTarget()
-                        is SmaliParser.InvokeSuperInstructionContext -> previousInstruction.methodInvocationTarget()
-                        is SmaliParser.InvokeDirectInstructionContext -> previousInstruction.methodInvocationTarget()
-                        is SmaliParser.InvokeStaticInstructionContext -> previousInstruction.methodInvocationTarget()
-                        is SmaliParser.InvokeInterfaceInstructionContext -> previousInstruction.methodInvocationTarget()
+
+                    val classNameContext = when (previousInstruction) {
+                        is SmaliParser.InvokeVirtualInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.InvokeSuperInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.InvokeDirectInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.InvokeStaticInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.InvokeInterfaceInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.FilledNewArrayInstructionContext ->
+                            previousInstruction.arrayElementType()
+
+                        is SmaliParser.FilledNewArrayRangeInstructionContext ->
+                            previousInstruction.arrayElementType()
+
                         else -> return@tunableVisitChildren
                     }
 
-                    val targetMethod = smaliMethodFromInvocationContext(invocationTarget) ?: return@tunableVisitChildren
-                    currentMethod.registerToClassMap[ctx.registerIdentifier().text] = targetMethod.returnType
+                    val clazz = project.getOrCreateClass(classNameContext.text) ?: return@tunableVisitChildren
+                    currentMethod.registerToClassMap[ctx.registerIdentifier().text] = clazz
                 }
             }
         }
@@ -565,7 +598,11 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitInstanceOfInstruction(ctx: SmaliParser.InstanceOfInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val method = findMethod(ctx) ?: return@tunableVisitChildren
+
+            method.registerToClassMap[ctx.targetRegister().text] = SmaliClass.Primitives.INT
+        }
     }
 
     override fun visitAputInstruction(ctx: SmaliParser.AputInstructionContext): SmaliClass {
@@ -808,6 +845,18 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitFillArrayDataInstruction(ctx: SmaliParser.FillArrayDataInstructionContext): SmaliClass {
+
+        if (withRanges) {
+            val currentMethod = findMethod(ctx) ?: return visitChildren(ctx)
+
+            val labelNameContext = ctx.filledArrayDataLabel().label().labelName()
+
+            smaliClass.ranges.add(DynamicRangeStatus(
+                    labelNameContext.textRange,
+                    currentMethod.getOrCreateLabel(labelNameContext.text))
+            )
+        }
+
         return visitChildren(ctx)
     }
 
@@ -1732,17 +1781,34 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
                     while (previousInstruction.childCount == 1) {
                         previousInstruction = previousInstruction.getChild(0)
                     }
-                    val invocationTarget = when (previousInstruction) {
-                        is SmaliParser.InvokeVirtualInstructionContext -> previousInstruction.methodInvocationTarget()
-                        is SmaliParser.InvokeSuperInstructionContext -> previousInstruction.methodInvocationTarget()
-                        is SmaliParser.InvokeDirectInstructionContext -> previousInstruction.methodInvocationTarget()
-                        is SmaliParser.InvokeStaticInstructionContext -> previousInstruction.methodInvocationTarget()
-                        is SmaliParser.InvokeInterfaceInstructionContext -> previousInstruction.methodInvocationTarget()
+
+                    val classNameContext = when (previousInstruction) {
+                        is SmaliParser.InvokeVirtualInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.InvokeSuperInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.InvokeDirectInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.InvokeStaticInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.InvokeInterfaceInstructionContext ->
+                            previousInstruction.methodInvocationTarget().methodSignature().methodReturnType()
+
+                        is SmaliParser.FilledNewArrayInstructionContext ->
+                            previousInstruction.arrayElementType()
+
+                        is SmaliParser.FilledNewArrayRangeInstructionContext ->
+                            previousInstruction.arrayElementType()
+
                         else -> return@tunableVisitChildren
                     }
 
-                    val targetMethod = smaliMethodFromInvocationContext(invocationTarget) ?: return@tunableVisitChildren
-                    currentMethod.registerToClassMap[ctx.registerIdentifier().text] = targetMethod.returnType
+                    val clazz = project.getOrCreateClass(classNameContext.text) ?: return@tunableVisitChildren
+                    currentMethod.registerToClassMap[ctx.registerIdentifier().text] = clazz
                 }
             }
         }

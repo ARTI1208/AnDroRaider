@@ -7,8 +7,10 @@ import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
+import java.io.File
+import java.lang.Exception
 
-class SmaliShallowScanner(val project: ProjectAnalyzeResult) :
+class SmaliShallowScanner(val project: ProjectAnalyzeResult, val file: File) :
         AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
 
     private lateinit var smaliClass: SmaliClass
@@ -17,6 +19,8 @@ class SmaliShallowScanner(val project: ProjectAnalyzeResult) :
         project.getOrCreateClass(ctx.className().text)?.also {
             smaliClass = it
         }
+
+        smaliClass.associatedFile = file
 
         smaliClass.textRange = ctx.className().textRange
 

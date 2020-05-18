@@ -22,7 +22,7 @@ object SmaliIndexer : Indexer<SmaliClass> {
         parser.removeErrorListeners()
         val tree = parser.parse()
 
-        return SmaliShallowScanner(project).visit(tree as ParseTree).also { it.associatedFile = file }
+        return SmaliShallowScanner(project, file).visit(tree as ParseTree).also { it.associatedFile = file }
     }
 
     override fun analyzeFile(project: ProjectAnalyzeResult, file: File): SmaliClass {
@@ -56,7 +56,7 @@ object SmaliIndexer : Indexer<SmaliClass> {
                 .fromIterable(directory.walk().asIterable())
                 .subscribeOn(Schedulers.io())
                 .filter {
-                    !it.isDirectory
+                    !it.isDirectory && it.extension == "smali"
                 }.map { file ->
                     generateFileIndex(project, file).also { project.fileToClassMapping[file] = it  }
                 }
