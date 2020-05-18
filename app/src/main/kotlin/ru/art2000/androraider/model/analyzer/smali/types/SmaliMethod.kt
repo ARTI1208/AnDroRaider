@@ -70,6 +70,8 @@ class SmaliMethod() : SmaliComponent {
         parametersInternal.addAll(smaliClasses)
     }
 
+    val registerToClassMap = mutableMapOf<String, SmaliClass>()
+
     val parameters: List<SmaliClass>
         get() = if (java.lang.reflect.Modifier.isStatic(modifier))
             parametersInternal.toList()

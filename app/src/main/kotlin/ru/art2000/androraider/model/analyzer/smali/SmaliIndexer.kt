@@ -39,7 +39,7 @@ object SmaliIndexer : Indexer<SmaliClass> {
         smaliClass.methods.forEach { it.markAsNotExisting() }
         smaliClass.interfaces.clear()
 
-        smaliClass = SmaliAllInOneAnalyzer(project, smaliClass, withRanges).visit(tree as ParseTree)
+        smaliClass = SmaliAllInOneAnalyzer(project, smaliClass, withRanges, SmaliVisitorSettings()).visit(tree as ParseTree)
         project.fileToClassMapping[file] = smaliClass.apply { associatedFile = file }
 
         tokenStream.tokens.forEach {

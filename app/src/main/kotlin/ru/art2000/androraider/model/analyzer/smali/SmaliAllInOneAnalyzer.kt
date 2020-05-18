@@ -1,18 +1,32 @@
 package ru.art2000.androraider.model.analyzer.smali
 
+import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RuleContext
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
 import org.antlr.v4.runtime.tree.ErrorNode
 import ru.art2000.androraider.model.analyzer.result.*
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
+import ru.art2000.androraider.model.analyzer.smali.types.SmaliField
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
 import java.lang.Exception
 import java.lang.reflect.Modifier
 
-class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: SmaliClass, val withRanges: Boolean) :
+class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: SmaliClass, val withRanges: Boolean, val settings: SmaliVisitorSettings) :
         AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
+
+
+    private fun tunableVisitChildren(ctx: ParserRuleContext, action: () -> Unit): SmaliClass {
+        return if (settings.childrenBeforeAction) {
+            val res = visitChildren(ctx)
+            action.invoke()
+            res
+        } else {
+            action.invoke()
+            visitChildren(ctx)
+        }
+    }
 
     override fun visitClassDirective(ctx: SmaliParser.ClassDirectiveContext): SmaliClass {
 
@@ -92,11 +106,20 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitNewArrayInstruction(ctx: SmaliParser.NewArrayInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+            val clazz = project.getOrCreateClass(ctx.arrayElementType().text) ?: return@tunableVisitChildren
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = clazz
+        }
     }
 
     override fun visitAgetInstruction(ctx: SmaliParser.AgetInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+            val arrayType = currentMethod.registerToClassMap[ctx.arrayRegister().text] ?: return@tunableVisitChildren
+            val arrayElementType = arrayType.underlyingArrayType ?: return@tunableVisitChildren
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = arrayElementType
+        }
     }
 
     override fun visitMethodDirective(ctx: SmaliParser.MethodDirectiveContext): SmaliClass {
@@ -121,7 +144,39 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMoveResultInstruction(ctx: SmaliParser.MoveResultInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            var parent: RuleContext = ctx.parent
+            var currentHolder: RuleContext = ctx
+
+            while (parent.childCount == 1) {
+                currentHolder = parent
+                parent = parent.parent
+            }
+
+            if (parent is ParserRuleContext) {
+                val i = parent.children.indexOf(currentHolder)
+                if (i > 0) {
+                    var previousInstruction = parent.children[i - 1]
+                    while (previousInstruction.childCount == 1) {
+                        previousInstruction = previousInstruction.getChild(0)
+                    }
+                    val invocationTarget = when (previousInstruction) {
+                        is SmaliParser.InvokeVirtualInstructionContext -> previousInstruction.methodInvocationTarget()
+                        is SmaliParser.InvokeSuperInstructionContext -> previousInstruction.methodInvocationTarget()
+                        is SmaliParser.InvokeDirectInstructionContext -> previousInstruction.methodInvocationTarget()
+                        is SmaliParser.InvokeStaticInstructionContext -> previousInstruction.methodInvocationTarget()
+                        is SmaliParser.InvokeInterfaceInstructionContext -> previousInstruction.methodInvocationTarget()
+                        else -> return@tunableVisitChildren
+                    }
+
+                    val targetMethod = smaliMethodFromInvocationContext(invocationTarget) ?: return@tunableVisitChildren
+                    currentMethod.registerToClassMap[ctx.registerIdentifier().text] = targetMethod.returnType
+                }
+            }
+        }
     }
 
     override fun visitPackedSwitchDirective(ctx: SmaliParser.PackedSwitchDirectiveContext): SmaliClass {
@@ -129,11 +184,35 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitIgetBooleanInstruction(ctx: SmaliParser.IgetBooleanInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            if (withRanges && fieldClass !== SmaliClass.Primitives.BOOLEAN) {
+                //TODO: highlight error
+            }
+
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = fieldClass
+        }
     }
 
     override fun visitIgetCharInstruction(ctx: SmaliParser.IgetCharInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            if (withRanges && fieldClass !== SmaliClass.Primitives.CHAR) {
+                //TODO: highlight error
+            }
+
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = fieldClass
+        }
     }
 
     override fun visitGotoInstruction(ctx: SmaliParser.GotoInstructionContext): SmaliClass {
@@ -161,7 +240,13 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitConst16Instruction(ctx: SmaliParser.Const16InstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = SmaliClass.Primitives.INT
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitNumericLiteral(ctx: SmaliParser.NumericLiteralContext): SmaliClass {
@@ -353,8 +438,44 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         return visitChildren(ctx)
     }
 
+    private inline fun <reified T: SmaliParser.InstructionContext> getFromBodyStatement(ctx: SmaliParser.MethodBodyStatementContext): T? {
+        return ctx.instruction()?.children?.find { it is T } as? T
+    }
+
     override fun visitMoveResultObjectInstruction(ctx: SmaliParser.MoveResultObjectInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            var parent: RuleContext = ctx.parent
+            var currentHolder: RuleContext = ctx
+
+            while (parent.childCount == 1) {
+                currentHolder = parent
+                parent = parent.parent
+            }
+
+            if (parent is ParserRuleContext) {
+                val i = parent.children.indexOf(currentHolder)
+                if (i > 0) {
+                    var previousInstruction = parent.children[i - 1]
+                    while (previousInstruction.childCount == 1) {
+                        previousInstruction = previousInstruction.getChild(0)
+                    }
+                    val invocationTarget = when (previousInstruction) {
+                        is SmaliParser.InvokeVirtualInstructionContext -> previousInstruction.methodInvocationTarget()
+                        is SmaliParser.InvokeSuperInstructionContext -> previousInstruction.methodInvocationTarget()
+                        is SmaliParser.InvokeDirectInstructionContext -> previousInstruction.methodInvocationTarget()
+                        is SmaliParser.InvokeStaticInstructionContext -> previousInstruction.methodInvocationTarget()
+                        is SmaliParser.InvokeInterfaceInstructionContext -> previousInstruction.methodInvocationTarget()
+                        else -> return@tunableVisitChildren
+                    }
+
+                    val targetMethod = smaliMethodFromInvocationContext(invocationTarget) ?: return@tunableVisitChildren
+                    currentMethod.registerToClassMap[ctx.registerIdentifier().text] = targetMethod.returnType
+                }
+            }
+        }
     }
 
     override fun visitIfLtzInstruction(ctx: SmaliParser.IfLtzInstructionContext): SmaliClass {
@@ -439,7 +560,15 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitIgetWideInstruction(ctx: SmaliParser.IgetWideInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = fieldClass
+        }
     }
 
     override fun visitFloatNumericLiteral(ctx: SmaliParser.FloatNumericLiteralContext): SmaliClass {
@@ -447,7 +576,16 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitIgetObjectInstruction(ctx: SmaliParser.IgetObjectInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = fieldClass
+        }
     }
 
     override fun visitXorIntInstruction(ctx: SmaliParser.XorIntInstructionContext): SmaliClass {
@@ -493,10 +631,16 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
                         )
                     }
                     else -> {
-                        smaliClass.ranges.add(RangeStatusBase(
+//                        smaliClass.ranges.add(RangeStatusBase(
+//                                ctx.textRange,
+//                                "Param $num, max ${method.parameters.size - 1}",
+//                                listOf("param"))
+//                        )
+
+                        smaliClass.ranges.add(RegisterRangeStatus(
                                 ctx.textRange,
-                                "Param $num, max ${method.parameters.size - 1}",
-                                listOf("param"))
+                                Register.PARAM,
+                                method.registerToClassMap[txt])
                         )
                     }
                 }
@@ -520,10 +664,16 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
                         )
                     }
                     else -> {
-                        smaliClass.ranges.add(RangeStatusBase(
+//                        smaliClass.ranges.add(RangeStatusBase(
+//                                ctx.textRange,
+//                                "Local $num, max ${method.locals - 1}",
+//                                listOf("local"))
+//                        )
+
+                        smaliClass.ranges.add(RegisterRangeStatus(
                                 ctx.textRange,
-                                "Local $num, max ${method.locals - 1}",
-                                listOf("local"))
+                                Register.LOCAL,
+                                method.registerToClassMap[txt])
                         )
                     }
                 }
@@ -554,7 +704,13 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMoveWide16Instruction(ctx: SmaliParser.MoveWide16InstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val newClassInRegister = currentMethod.registerToClassMap[ctx.rightRegister().text] ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.leftRegister().text] = newClassInRegister
+        }
     }
 
     override fun visitRemIntLit8Instruction(ctx: SmaliParser.RemIntLit8InstructionContext): SmaliClass {
@@ -566,7 +722,12 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitAgetObjectInstruction(ctx: SmaliParser.AgetObjectInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+            val arrayType = currentMethod.registerToClassMap[ctx.arrayRegister().text] ?: return@tunableVisitChildren
+            val arrayElementType = arrayType.underlyingArrayType ?: return@tunableVisitChildren
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = arrayElementType
+        }
     }
 
     override fun visitAddDoubleInstruction(ctx: SmaliParser.AddDoubleInstructionContext): SmaliClass {
@@ -586,7 +747,14 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitConstWideHigh16Instruction(ctx: SmaliParser.ConstWideHigh16InstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = SmaliClass.Primitives.INT
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitUshrLong2addrInstruction(ctx: SmaliParser.UshrLong2addrInstructionContext): SmaliClass {
@@ -636,7 +804,14 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitConstHigh16Instruction(ctx: SmaliParser.ConstHigh16InstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = SmaliClass.Primitives.INT
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitReferenceOrArrayType(ctx: SmaliParser.ReferenceOrArrayTypeContext): SmaliClass {
@@ -684,7 +859,19 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitIgetShortInstruction(ctx: SmaliParser.IgetShortInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            if (withRanges && fieldClass !== SmaliClass.Primitives.SHORT) {
+                //TODO: highlight error
+            }
+
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = fieldClass
+        }
     }
 
     override fun visitVoidType(ctx: SmaliParser.VoidTypeContext): SmaliClass {
@@ -730,7 +917,13 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMoveFrom16Instruction(ctx: SmaliParser.MoveFrom16InstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val newClassInRegister = currentMethod.registerToClassMap[ctx.rightRegister().text] ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.leftRegister().text] = newClassInRegister
+        }
     }
 
     override fun visitTargetRegister(ctx: SmaliParser.TargetRegisterContext): SmaliClass {
@@ -770,7 +963,19 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitIgetByteInstruction(ctx: SmaliParser.IgetByteInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            if (withRanges && fieldClass !== SmaliClass.Primitives.BYTE) {
+                //TODO: highlight error
+            }
+
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = fieldClass
+        }
     }
 
     override fun visitIndexRegister(ctx: SmaliParser.IndexRegisterContext): SmaliClass {
@@ -794,7 +999,14 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitConstInstruction(ctx: SmaliParser.ConstInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = SmaliClass.Primitives.INT
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitFilledArrayDataLabel(ctx: SmaliParser.FilledArrayDataLabelContext): SmaliClass {
@@ -814,17 +1026,28 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMethodInvocationTarget(ctx: SmaliParser.MethodInvocationTargetContext): SmaliClass {
-        val targetClass = project.getOrCreateClass(ctx.referenceOrArrayType().text)
-        val methodName = ctx.methodSignature().methodIdentifier().text
-        // TODO optimize double invocation (here and in visitMethodArguments)
-        val methodParameters = parseCompound(ctx.methodSignature().methodArguments()?.text)
-        val methodReturnType = ctx.methodSignature().methodReturnType().text
-        val targetMethod = targetClass?.findOrCreateMethod(methodName, methodParameters, methodReturnType)
+        val targetMethod = smaliMethodFromInvocationContext(ctx)
 
         if (withRanges)
             smaliClass.ranges.add(DynamicRangeStatus(ctx.methodSignature().methodIdentifier().textRange, targetMethod))
 
         return visitChildren(ctx)
+    }
+
+    private fun smaliFieldFromInvocationContext(ctx: SmaliParser.FieldInvocationTargetContext): SmaliField? {
+        val targetClass = project.getOrCreateClass(ctx.referenceOrArrayType().text)
+        val fieldName = ctx.fieldNameAndType().fieldName().text
+        val fieldType = ctx.fieldNameAndType().fieldType().text
+        return targetClass?.findOrCreateField(fieldName, fieldType)
+    }
+
+    private fun smaliMethodFromInvocationContext(ctx: SmaliParser.MethodInvocationTargetContext): SmaliMethod? {
+        val targetClass = project.getOrCreateClass(ctx.referenceOrArrayType().text)
+        val methodName = ctx.methodSignature().methodIdentifier().text
+        // TODO optimize double invocation (here and in visitMethodArguments)
+        val methodParameters = parseCompound(ctx.methodSignature().methodArguments()?.text)
+        val methodReturnType = ctx.methodSignature().methodReturnType().text
+        return targetClass?.findOrCreateMethod(methodName, methodParameters, methodReturnType)
     }
 
     private fun smaliMethodFromDeclarationContext(ctx: SmaliParser.MethodDeclarationContext): SmaliMethod {
@@ -845,6 +1068,10 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
                 it.setParent(this)
             }
 
+            smaliMethod.registerToClassMap.clear()
+            smaliMethod.parameters.forEachIndexed { index, smaliClass ->
+                smaliMethod.registerToClassMap["p$index"] = smaliClass
+            }
             smaliMethod.textRange = ctx.methodDeclaration()?.methodSignature()?.methodIdentifier()?.textRange ?: -1..0
 
             if (withRanges) {
@@ -907,7 +1134,15 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitIgetInstruction(ctx: SmaliParser.IgetInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = fieldClass
+        }
     }
 
     override fun visitPackedSwitchRegister(ctx: SmaliParser.PackedSwitchRegisterContext): SmaliClass {
@@ -962,7 +1197,13 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMove16Instruction(ctx: SmaliParser.Move16InstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val newClassInRegister = currentMethod.registerToClassMap[ctx.rightRegister().text] ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.leftRegister().text] = newClassInRegister
+        }
     }
 
     override fun visitDivIntLit8Instruction(ctx: SmaliParser.DivIntLit8InstructionContext): SmaliClass {
@@ -974,7 +1215,17 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitAgetShortInstruction(ctx: SmaliParser.AgetShortInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+            val arrayType = currentMethod.registerToClassMap[ctx.arrayRegister().text] ?: return@tunableVisitChildren
+            val arrayElementType = arrayType.underlyingArrayType ?: return@tunableVisitChildren
+
+            if (withRanges && arrayElementType !== SmaliClass.Primitives.SHORT) {
+                //TODO: highlight error
+            }
+
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = arrayElementType
+        }
     }
 
     override fun visitAndIntLit8Instruction(ctx: SmaliParser.AndIntLit8InstructionContext): SmaliClass {
@@ -986,7 +1237,13 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMoveWideFrom16Instruction(ctx: SmaliParser.MoveWideFrom16InstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val newClassInRegister = currentMethod.registerToClassMap[ctx.rightRegister().text] ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.leftRegister().text] = newClassInRegister
+        }
     }
 
     override fun visitSubInt2addrInstruction(ctx: SmaliParser.SubInt2addrInstructionContext): SmaliClass {
@@ -1030,7 +1287,20 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitSGetBooleanInstruction(ctx: SmaliParser.SGetBooleanInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            if (withRanges && fieldClass !== SmaliClass.Primitives.BOOLEAN) {
+                //TODO: highlight error
+            }
+
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitIfNezInstruction(ctx: SmaliParser.IfNezInstructionContext): SmaliClass {
@@ -1078,7 +1348,15 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitSGetInstruction(ctx: SmaliParser.SGetInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitIfLabel(ctx: SmaliParser.IfLabelContext): SmaliClass {
@@ -1086,7 +1364,15 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitSGetWideInstruction(ctx: SmaliParser.SGetWideInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitRightRegister(ctx: SmaliParser.RightRegisterContext): SmaliClass {
@@ -1102,7 +1388,13 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMoveObjectFrom16Instruction(ctx: SmaliParser.MoveObjectFrom16InstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val newClassInRegister = currentMethod.registerToClassMap[ctx.rightRegister().text] ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.leftRegister().text] = newClassInRegister
+        }
     }
 
     override fun visitMethodArguments(ctx: SmaliParser.MethodArgumentsContext): SmaliClass {
@@ -1146,7 +1438,12 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitAgetWideInstruction(ctx: SmaliParser.AgetWideInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+            val arrayType = currentMethod.registerToClassMap[ctx.arrayRegister().text] ?: return@tunableVisitChildren
+            val arrayElementType = arrayType.underlyingArrayType ?: return@tunableVisitChildren
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = arrayElementType
+        }
     }
 
     override fun visitAnnotationType(ctx: SmaliParser.AnnotationTypeContext): SmaliClass {
@@ -1154,7 +1451,14 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitConst4Instruction(ctx: SmaliParser.Const4InstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = SmaliClass.Primitives.INT
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitIputByteInstruction(ctx: SmaliParser.IputByteInstructionContext): SmaliClass {
@@ -1166,11 +1470,27 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitConstString(ctx: SmaliParser.ConstStringContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val clazz = project.getOrCreateClass("Ljava/lang/String;") ?: return@tunableVisitChildren
+            findMethod(ctx)?.registerToClassMap?.set(ctx.registerIdentifier().text, clazz)
+        }
     }
 
     override fun visitSGetCharInstruction(ctx: SmaliParser.SGetCharInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            if (withRanges && fieldClass !== SmaliClass.Primitives.CHAR) {
+                //TODO: highlight error
+            }
+
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitUshrInt2addrInstruction(ctx: SmaliParser.UshrInt2addrInstructionContext): SmaliClass {
@@ -1178,7 +1498,10 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitConstStringJumbo(ctx: SmaliParser.ConstStringJumboContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val clazz = project.getOrCreateClass("Ljava/lang/String;") ?: return@tunableVisitChildren
+            findMethod(ctx)?.registerToClassMap?.set(ctx.registerIdentifier().text, clazz)
+        }
     }
 
     override fun visitField(ctx: SmaliParser.FieldContext): SmaliClass {
@@ -1212,7 +1535,15 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitSGetObjectInstruction(ctx: SmaliParser.SGetObjectInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitFilledNewArrayRangeInstruction(ctx: SmaliParser.FilledNewArrayRangeInstructionContext): SmaliClass {
@@ -1220,7 +1551,20 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitSGetShortInstruction(ctx: SmaliParser.SGetShortInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            if (withRanges && fieldClass !== SmaliClass.Primitives.SHORT) {
+                //TODO: highlight error
+            }
+
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitAndIntLit16Instruction(ctx: SmaliParser.AndIntLit16InstructionContext): SmaliClass {
@@ -1306,11 +1650,31 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitAgetCharInstruction(ctx: SmaliParser.AgetCharInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+            val arrayType = currentMethod.registerToClassMap[ctx.arrayRegister().text] ?: return@tunableVisitChildren
+            val arrayElementType = arrayType.underlyingArrayType ?: return@tunableVisitChildren
+
+            if (withRanges && arrayElementType !== SmaliClass.Primitives.CHAR) {
+                //TODO: highlight error
+            }
+
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = arrayElementType
+        }
     }
 
     override fun visitAgetBooleanInstruction(ctx: SmaliParser.AgetBooleanInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+            val arrayType = currentMethod.registerToClassMap[ctx.arrayRegister().text] ?: return@tunableVisitChildren
+            val arrayElementType = arrayType.underlyingArrayType ?: return@tunableVisitChildren
+
+            if (withRanges && arrayElementType !== SmaliClass.Primitives.BOOLEAN) {
+                //TODO: highlight error
+            }
+
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = arrayElementType
+        }
     }
 
     override fun visitSparseSwitchRegister(ctx: SmaliParser.SparseSwitchRegisterContext): SmaliClass {
@@ -1318,7 +1682,38 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMoveResultWideInstruction(ctx: SmaliParser.MoveResultWideInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            var parent: RuleContext = ctx.parent
+            var currentHolder: RuleContext = ctx
+
+            while (parent.childCount == 1) {
+                currentHolder = parent
+                parent = parent.parent
+            }
+
+            if (parent is ParserRuleContext) {
+                val i = parent.children.indexOf(currentHolder)
+                if (i > 0) {
+                    var previousInstruction = parent.children[i - 1]
+                    while (previousInstruction.childCount == 1) {
+                        previousInstruction = previousInstruction.getChild(0)
+                    }
+                    val invocationTarget = when (previousInstruction) {
+                        is SmaliParser.InvokeVirtualInstructionContext -> previousInstruction.methodInvocationTarget()
+                        is SmaliParser.InvokeSuperInstructionContext -> previousInstruction.methodInvocationTarget()
+                        is SmaliParser.InvokeDirectInstructionContext -> previousInstruction.methodInvocationTarget()
+                        is SmaliParser.InvokeStaticInstructionContext -> previousInstruction.methodInvocationTarget()
+                        is SmaliParser.InvokeInterfaceInstructionContext -> previousInstruction.methodInvocationTarget()
+                        else -> return@tunableVisitChildren
+                    }
+
+                    val targetMethod = smaliMethodFromInvocationContext(invocationTarget) ?: return@tunableVisitChildren
+                    currentMethod.registerToClassMap[ctx.registerIdentifier().text] = targetMethod.returnType
+                }
+            }
+        }
     }
 
     override fun visitRsubIntLit8Instruction(ctx: SmaliParser.RsubIntLit8InstructionContext): SmaliClass {
@@ -1343,7 +1738,20 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitSGetByteInstruction(ctx: SmaliParser.SGetByteInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = project.getOrCreateClass(
+                    ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
+            ) ?: return@tunableVisitChildren
+
+            if (withRanges && fieldClass !== SmaliClass.Primitives.BYTE) {
+                //TODO: highlight error
+            }
+
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitIntToFloatInstruction(ctx: SmaliParser.IntToFloatInstructionContext): SmaliClass {
@@ -1371,7 +1779,14 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitConstWideInstruction(ctx: SmaliParser.ConstWideInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = SmaliClass.Primitives.INT
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitIntType(ctx: SmaliParser.IntTypeContext): SmaliClass {
@@ -1419,7 +1834,13 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMoveObjectInstruction(ctx: SmaliParser.MoveObjectInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val newClassInRegister = currentMethod.registerToClassMap[ctx.rightRegister().text] ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.leftRegister().text] = newClassInRegister
+        }
     }
 
     override fun visitIputWideInstruction(ctx: SmaliParser.IputWideInstructionContext): SmaliClass {
@@ -1455,7 +1876,13 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMoveWideInstruction(ctx: SmaliParser.MoveWideInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val newClassInRegister = currentMethod.registerToClassMap[ctx.rightRegister().text] ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.leftRegister().text] = newClassInRegister
+        }
     }
 
     override fun visitFloatToDoubleInstruction(ctx: SmaliParser.FloatToDoubleInstructionContext): SmaliClass {
@@ -1495,7 +1922,13 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMoveInstruction(ctx: SmaliParser.MoveInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val newClassInRegister = currentMethod.registerToClassMap[ctx.rightRegister().text] ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.leftRegister().text] = newClassInRegister
+        }
     }
 
     override fun visitShlInt2addrInstruction(ctx: SmaliParser.ShlInt2addrInstructionContext): SmaliClass {
@@ -1567,7 +2000,12 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitCheckCastInstruction(ctx: SmaliParser.CheckCastInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val method = findMethod(ctx) ?: return@tunableVisitChildren
+            val clazz = project.getOrCreateClass(ctx.checkCastType().text) ?: return@tunableVisitChildren
+
+            method.registerToClassMap[ctx.targetRegister().text] = clazz
+        }
     }
 
     override fun visitInvokeConstMethodTypeInstruction(ctx: SmaliParser.InvokeConstMethodTypeInstructionContext): SmaliClass {
@@ -1575,7 +2013,11 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitArrayLengthInstruction(ctx: SmaliParser.ArrayLengthInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = SmaliClass.Primitives.INT
+        }
     }
 
     override fun visitArraySizeRegister(ctx: SmaliParser.ArraySizeRegisterContext): SmaliClass {
@@ -1595,7 +2037,14 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitConstWide32Instruction(ctx: SmaliParser.ConstWide32InstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = SmaliClass.Primitives.INT
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitLocalDirectiveType(ctx: SmaliParser.LocalDirectiveTypeContext): SmaliClass {
@@ -1607,11 +2056,21 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitNewInstanceInstruction(ctx: SmaliParser.NewInstanceInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+            val clazz = project.getOrCreateClass(ctx.newInstanceType().text) ?: return@tunableVisitChildren
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = clazz
+        }
     }
 
     override fun visitMoveObject16Instruction(ctx: SmaliParser.MoveObject16InstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val newClassInRegister = currentMethod.registerToClassMap[ctx.rightRegister().text] ?: return@tunableVisitChildren
+
+            currentMethod.registerToClassMap[ctx.leftRegister().text] = newClassInRegister
+        }
     }
 
     override fun visitMulInt2addrInstruction(ctx: SmaliParser.MulInt2addrInstructionContext): SmaliClass {
@@ -1667,7 +2126,17 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitAgetByteInstruction(ctx: SmaliParser.AgetByteInstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+            val arrayType = currentMethod.registerToClassMap[ctx.arrayRegister().text] ?: return@tunableVisitChildren
+            val arrayElementType = arrayType.underlyingArrayType ?: return@tunableVisitChildren
+
+            if (withRanges && arrayElementType !== SmaliClass.Primitives.BYTE) {
+                //TODO: highlight error
+            }
+
+            currentMethod.registerToClassMap[ctx.targetRegister().text] = arrayElementType
+        }
     }
 
     override fun visitShlIntLit8Instruction(ctx: SmaliParser.ShlIntLit8InstructionContext): SmaliClass {
@@ -1803,7 +2272,14 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitConstWide16Instruction(ctx: SmaliParser.ConstWide16InstructionContext): SmaliClass {
-        return visitChildren(ctx)
+        return tunableVisitChildren(ctx) {
+
+            val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
+
+            val fieldClass = SmaliClass.Primitives.INT
+
+            currentMethod.registerToClassMap[ctx.registerIdentifier().text] = fieldClass
+        }
     }
 
     override fun visitSPutObjectInstruction(ctx: SmaliParser.SPutObjectInstructionContext): SmaliClass {

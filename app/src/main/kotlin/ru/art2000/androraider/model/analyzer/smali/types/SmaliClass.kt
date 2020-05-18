@@ -81,6 +81,19 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
 
     var parentClass: SmaliClass? = null
 
+    val underlyingArrayType: SmaliClass?
+        get() {
+            return if (arrayCount > 1)
+                SmaliClass().also {
+                    it.arrayCount = arrayCount - 1
+                    it.parentClass = parentClass
+                    println("$parentClass|${it.fullname}")
+                }
+            else
+                parentClass
+        }
+
+
     var associatedFile: File? = null
 
     val fields = mutableListOf<SmaliField>()
