@@ -1,7 +1,9 @@
 package ru.art2000.androraider.model.analyzer.result
 
 import io.reactivex.Observable
+import org.reactfx.collection.LiveArrayList
 import ru.art2000.androraider.model.analyzer.smali.SmaliIndexer
+import ru.art2000.androraider.model.analyzer.smali.SmaliIndexerSettings
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliPackage
 import ru.art2000.androraider.model.editor.ProjectSettings
@@ -20,10 +22,15 @@ class ProjectAnalyzeResult(val baseFolder: File) {
 
     val smaliFolders = mutableListOf<File>()
 
+    val errorList = LiveArrayList<RangeAnalyzeStatus>()
+
     private val smaliFolderNameRegex = Regex("^((smali)|(smali_classes\\d+))\$")
 
     init {
         addProjectFolder(baseFolder)
+        errorList.addChangeObserver {
+            it.forEach { it.addedSubList.forEach { println(it.declaringFile.toString()) } }
+        }
     }
 
     fun addProjectFolder(file: File) {
@@ -158,11 +165,11 @@ class ProjectAnalyzeResult(val baseFolder: File) {
     }
 
     fun indexProject(): Observable<out FileAnalyzeResult> {
-        return SmaliIndexer.indexProject(this)
+        return SmaliIndexer.indexProject(this, SmaliIndexerSettings())
     }
 
     fun analyzeFile(file: File, withRanges: Boolean = true): FileAnalyzeResult {
-        SmaliIndexer.withRanges = withRanges
-        return SmaliIndexer.analyzeFile(this, file)
+        val settings = SmaliIndexerSettings().also { it.withRanges = withRanges }
+        return SmaliIndexer.analyzeFile(this, file, settings)
     }
 }

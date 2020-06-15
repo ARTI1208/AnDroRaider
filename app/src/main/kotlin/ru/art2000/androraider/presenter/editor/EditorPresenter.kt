@@ -10,7 +10,9 @@ import ru.art2000.androraider.model.editor.removeProject
 import ru.art2000.androraider.model.io.DirectoryObserver
 import ru.art2000.androraider.mvp.IPresenter
 import java.io.File
+import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchEvent
+import kotlin.concurrent.thread
 
 class EditorPresenter(private val window: Window, private val baseFolder: File) : IPresenter, Disposable {
 
@@ -33,6 +35,16 @@ class EditorPresenter(private val window: Window, private val baseFolder: File) 
     var disposed = false
 
     var projectObserver = DirectoryObserver(baseFolder)
+
+    init {
+        projectObserver.addListener { file, kind ->
+            if (kind == StandardWatchEventKinds.ENTRY_MODIFY && project.canAnalyzeFile(file)) {
+                thread {
+                    project.analyzeFile(file, true)
+                }
+            }
+        }
+    }
 
     fun addFileListener(func: (File, WatchEvent.Kind<*>) -> Unit) {
         projectObserver.addListener(func)

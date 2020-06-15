@@ -3,18 +3,18 @@ package ru.art2000.androraider.model.analyzer.result
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliComponent
 import java.io.File
 
-class DynamicRangeStatus(override val range: IntRange, component: SmaliComponent?) : RangeAnalyzeStatus, NavigableRange {
+class DynamicRangeStatus(override val range: IntRange, component: SmaliComponent, override val declaringFile: File) : RangeAnalyzeStatus, NavigableRange {
 
     private var currentStyle = mutableSetOf<String>()
     private var currentDescription = "$component"
 
-    var component: SmaliComponent? = component
+    var component: SmaliComponent = component
         private set
 
     private fun update() {
-        currentDescription = if (component?.exists() == true) {
+        currentDescription = if (component.exists()) {
             currentStyle.clear()
-            "$component in ${component?.file}"
+            "$component in ${component.file}"
         } else {
             currentStyle.add("error")
             "$component not found"
@@ -33,11 +33,11 @@ class DynamicRangeStatus(override val range: IntRange, component: SmaliComponent
             return currentStyle
         }
 
-    override val file: File?
-        get() = component?.file
+    override val fileToNavigate: File?
+        get() = component.file
 
     override val offset: Int
-        get() = component?.textRange?.last ?: 0
+        get() = component.textRange.last
 
     override fun toString(): String {
         return description

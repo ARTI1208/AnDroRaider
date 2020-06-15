@@ -1,5 +1,7 @@
 package ru.art2000.androraider.model.analyzer.result
 
+import java.io.File
+
 interface RangeAnalyzeStatus {
 
     val range: IntRange
@@ -8,4 +10,5 @@ interface RangeAnalyzeStatus {
 
     val style: Collection<String>
 
+    val declaringFile: File
 }

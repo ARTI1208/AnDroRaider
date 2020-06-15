@@ -4,7 +4,7 @@ import java.io.File
 
 interface NavigableRange {
 
-    val file: File?
+    val fileToNavigate: File?
 
     val offset: Int
 }

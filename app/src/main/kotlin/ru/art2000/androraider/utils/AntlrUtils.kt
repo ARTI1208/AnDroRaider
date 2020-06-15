@@ -1,6 +1,7 @@
 package ru.art2000.androraider.utils
 
 import org.antlr.v4.runtime.ParserRuleContext
+import org.antlr.v4.runtime.RuleContext
 import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.TerminalNode
 
@@ -18,6 +19,29 @@ val Token.textRange: IntRange
     get() {
         return startIndex..(stopIndex + 1)
     }
+
+
+fun RuleContext.textWithSeparator(separator: String): String {
+    if (childCount == 0) {
+        return ""
+    }
+
+    println("ChildCount: $childCount")
+
+    val builder = StringBuilder()
+    for (i in 0 until childCount) {
+        val c = getChild(i)
+        if (c is RuleContext) {
+            if (i != 0)
+                builder.append(separator)
+            builder.append(c.textWithSeparator(separator))
+        } else {
+            builder.append(c.text)
+        }
+    }
+
+    return builder.toString()
+}
 
 public fun parseCompound(string: String?): List<String> {
     if (string == null)
