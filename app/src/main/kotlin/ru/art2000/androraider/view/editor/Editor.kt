@@ -116,6 +116,14 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
             }
         }
 
+        presenter.projectObserver.addListener { file, kind ->
+            if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
+                editorTabPane.tabs.removeIf {
+                    (it.userData as? FileEditData)?.file == file
+                }
+            }
+        }
+
         fileManagerView.prefHeightProperty().bind(heightProperty())
     }
 
