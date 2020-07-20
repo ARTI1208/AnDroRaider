@@ -2,6 +2,7 @@ package ru.art2000.androraider.model.editor.file
 
 import org.reactfx.value.Var
 import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
+import ru.art2000.androraider.model.editor.SearchData
 import ru.art2000.androraider.model.editor.StatusBarDataProvider
 import ru.art2000.androraider.model.editor.StatusBarElement
 import ru.art2000.androraider.model.editor.StatusBarElementBase
@@ -13,6 +14,8 @@ import java.nio.charset.StandardCharsets
 import java.util.function.Consumer
 
 class FileEditData(val file: File, val project: ProjectAnalyzeResult? = null): StatusBarDataProvider {
+
+    val searchData = SearchData()
 
     val positionProperty: Var<CaretPosition>
             = Var.newSimpleVar(CaretPosition(0, 0))

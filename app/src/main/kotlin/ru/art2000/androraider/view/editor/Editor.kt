@@ -33,7 +33,6 @@ import ru.art2000.androraider.view.dialogs.projectsettings.ProjectSettingsDialog
 import ru.art2000.androraider.view.dialogs.recompile.RecompileDialog
 import ru.art2000.androraider.view.dialogs.showErrorMessage
 import ru.art2000.androraider.view.editor.codearea.CodeEditorArea
-import ru.art2000.androraider.view.editor.codearea.CodeEditorScrollPane
 import ru.art2000.androraider.view.launcher.Launcher
 import ru.art2000.androraider.view.settings.Settings
 import java.io.File
@@ -99,7 +98,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         editorTabPane.selectionModel.selectedItemProperty().addListener { _, oldValue, newValue ->
 
             val fileEditData = newValue?.userData as? FileEditData
-            println("1")
 
             title = if (fileEditData == null) {
                 statusBar.removeDataProvider(FileEditData::class.java)
@@ -112,11 +110,17 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
             }
 
             if (oldValue != null && newValue != null) {
-                (newValue.content as CodeEditorScrollPane).content.updateHighlighting()
+                getTabCodeEditor(newValue).apply {
+                    updateHighlighting()
+                }
             }
         }
 
         fileManagerView.prefHeightProperty().bind(heightProperty())
+    }
+
+    private fun getTabCodeEditor(tab: Tab): CodeEditorArea {
+        return (tab.content as EditorTabContent).codeEditorArea
     }
 
     private fun showLoadingDialog() {
@@ -221,28 +225,13 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 val newTab = Tab(newFile.name)
                 val data = FileEditData(newFile, presenter.project)
                 newTab.userData = data
-                newTab.content = CodeEditorScrollPane(CodeEditorArea(data).apply {
-                    keyListeners[KeyCodeCombination(KeyCode.B, KeyCombination.SHORTCUT_DOWN)] = {
-                        println("ctrl+b")
-                        if (it is NavigableRange) {
-                            println("navig ${it.navigateDetails.size}")
-                            if (it.navigateDetails.size == 1) {
-                                it.navigateDetails.first().apply {
-                                    openFile(this.file, this.offset)
-                                }
-                            }
-                        }
-                    }
-                    addEventHandler(KeyEvent.KEY_PRESSED, searchEvent)
-                    edit(newFile, Runnable {
-                        moveToAndPlaceLineInCenter(caretPosition)
-                    })
-                })
+                newTab.content = EditorTabContent(data, ::openFile)
                 val pos = editorTabPane.selectionModel.selectedIndex + 1
                 editorTabPane.tabs.add(pos, newTab)
                 pos
             } else {
-                (editorTabPane.tabs[indexedTab.index].content as CodeEditorScrollPane).content.moveToAndPlaceLineInCenter(caretPosition)
+                val selectedTab = editorTabPane.tabs[indexedTab.index]
+                getTabCodeEditor(selectedTab).moveToAndPlaceLineInCenter(caretPosition)
                 indexedTab.index
             }
 
@@ -332,8 +321,8 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
     }
 
     private fun createFileInfoDialog() {
-        val file = ((editorTabPane.selectionModel.selectedItem?.content as Region?)
-                ?.childrenUnmodifiable?.firstOrNull() as CodeEditorArea?)?.currentEditingFile
+        val file = (editorTabPane.selectionModel.selectedItem?.userData as? FileEditData)
+                ?.file
 
         val typeLabelTitle = Label("Type:")
         val typeLabelValue = Label(file?.extension ?: "No file or extension")

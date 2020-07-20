@@ -83,3 +83,21 @@ public fun checkedRunLater(action: () -> Unit) {
         Platform.runLater(action)
     }
 }
+
+public enum class Visibility(val visible: Boolean, val managed: Boolean) {
+    VISIBLE(true, true),
+    INVISIBLE(false, true),
+    UNMANAGED(true, false),
+    GONE(false, false);
+}
+
+public var Node.visibility : Visibility
+    get() {
+        return Visibility.values().first {
+            it.visible == isVisible && it.managed == isManaged
+        }
+    }
+    set(value) {
+        isVisible = value.visible
+        isManaged = value.managed
+    }
