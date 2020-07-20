@@ -1,8 +1,6 @@
 package ru.art2000.androraider.view.editor
 
-import javafx.beans.property.ObjectProperty
 import javafx.beans.property.Property
-
 
 interface Searchable<T> {
 

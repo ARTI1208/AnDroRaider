@@ -3,7 +3,9 @@ package ru.art2000.androraider.view.dialogs.projectsettings
 import javafx.event.EventHandler
 import javafx.scene.control.*
 import javafx.stage.DirectoryChooser
+import ru.art2000.androraider.model.App
 import ru.art2000.androraider.model.settings.PreferenceManager
+import ru.art2000.androraider.view.dialogs.icons
 import java.io.File
 
 class ProjectSettingsDialog(private val settings: PreferenceManager) : Dialog<Unit?>(), IProjectSettingsController by ProjectSettingsController() {
@@ -14,6 +16,7 @@ class ProjectSettingsDialog(private val settings: PreferenceManager) : Dialog<Un
 
     init {
         title = "Project settings"
+        icons.add(App.LOGO)
 
         dialogPane = DialogPane()
         dialogPane.content = root

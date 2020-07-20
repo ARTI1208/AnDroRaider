@@ -22,10 +22,6 @@
 
 parser grammar SmaliParser;
 
-@header {
-package ru.art2000.androraider.model.analyzer.smali;
-}
-
 options {
 	tokenVocab=SmaliLexer;
 }

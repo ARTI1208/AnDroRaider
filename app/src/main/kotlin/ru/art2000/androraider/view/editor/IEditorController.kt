@@ -7,6 +7,7 @@ import javafx.scene.layout.VBox
 import ru.art2000.androraider.mvp.IController
 import ru.art2000.androraider.view.editor.filemanager.FileManagerView
 import ru.art2000.androraider.view.editor.menu.search.SearchMenuItem
+import ru.art2000.androraider.view.editor.statusbar.StatusBar
 
 interface IEditorController : IController {
 
@@ -36,4 +37,7 @@ interface IEditorController : IController {
     val editorTabPane: TabPane
 
     val codeEditorContainer: VBox
+
+    // Bottom area
+    val statusBar: StatusBar
 }

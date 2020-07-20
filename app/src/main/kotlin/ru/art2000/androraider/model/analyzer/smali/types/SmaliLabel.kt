@@ -20,6 +20,10 @@ class SmaliLabel(override val fullname: String, val method: SmaliMethod): SmaliC
         return textRange.first >= 0
     }
 
+    override fun toSmaliString(): String {
+        return ":$fullname"
+    }
+
     override fun toString(): String {
         return "Label $fullname at $textRange"
     }

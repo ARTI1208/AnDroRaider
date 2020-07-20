@@ -21,6 +21,8 @@ dependencies {
     implementation "io.reactivex.rxjava2:rxjava:2.2.16"
     implementation "io.reactivex.rxjava2:rxjavafx:2.2.2"
     implementation "commons-io:commons-io:2.6"
+
+    implementation "no.tornado:tornadofx:1.7.20"
 }
 
 //compileKotlin.destinationDir = compileJava.destinationDir
@@ -32,7 +34,10 @@ compileTestKotlin {
     kotlinOptions.jvmTarget = "12"
 }
 
-tasks.compileKotlin.dependsOn(generateGrammarSource)
+//tasks.compileKotlin.dependsOn(generateGrammarSource)
+//tasks.generateGrammarSource.enabled = false
+project.gradle.startParameter.excludedTaskNames.add('generateGrammarSource')
+
 
 jar {
     manifest {
@@ -48,10 +53,10 @@ jlink {
     addExtraDependencies("javafx")
 }
 
-generateGrammarSource {
-    arguments += ["-visitor"]
-    outputDirectory = new File("${project.buildDir}/generated-src/antlr/main/ru/art2000/androraider/model/analyzer/smali".toString())
-}
+//generateGrammarSource {
+//    arguments += ["-visitor"]
+//    outputDirectory = new File("${project.buildDir}/generated-src/antlr/main/ru/art2000/androraider/model/analyzer/smali".toString())
+//}
 
 javafx {
     version = "14"

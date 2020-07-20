@@ -19,6 +19,7 @@ import ru.art2000.androraider.model.App
 import ru.art2000.androraider.model.analyzer.result.NavigableRange
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.apktool.ApkToolUtils
+import ru.art2000.androraider.model.editor.file.FileEditData
 import ru.art2000.androraider.model.io.StreamOutput
 import ru.art2000.androraider.model.io.println
 import ru.art2000.androraider.model.io.registerStreamOutput
@@ -96,10 +97,18 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         editorTabPane.prefHeightProperty().bind(codeEditorContainer.heightProperty())
         editorTabPane.prefWidthProperty().bind(widthProperty().subtract(fileManagerView.prefWidthProperty()))
         editorTabPane.selectionModel.selectedItemProperty().addListener { _, oldValue, newValue ->
-            title = if (newValue?.userData as? File == null) {
+
+            val fileEditData = newValue?.userData as? FileEditData
+            println("1")
+
+            title = if (fileEditData == null) {
+                statusBar.removeDataProvider(FileEditData::class.java)
+                statusBar.setStatus("Closed")
                 "${projectFolder.name} - Project Editor"
             } else {
-                "${(newValue.userData as File).absolutePath} - Project Editor"
+                statusBar.addDataProvider(fileEditData)
+                statusBar.setStatus("Opened ${fileEditData.file.name}")
+                "${fileEditData.file.absolutePath} - Project Editor"
             }
 
             if (oldValue != null && newValue != null) {
@@ -117,6 +126,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
     }
 
     private fun runIndexing() {
+        statusBar.setStatus("Indexing project...")
         loadingLabel.text = "Indexing project..."
         (presenter.generateProjectIndex() ?: Observable.empty<SmaliClass>())
                 .observeOn(JavaFxScheduler.platform())
@@ -125,6 +135,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 }
                 .doOnComplete {
                     println(this, "ProjectAnalyzer", "Analyze ended at ${Date()}")
+                    statusBar.setStatus("Project indexing finished at ${Date()}")
                     loadingDialog.close()
                     presenter.startFileObserver()
                 }.subscribe({
@@ -203,14 +214,23 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
     private fun openFile(newFile: File, caretPosition: Int = 0) {
         if (TypeDetector.isTextFile(newFile.name)) {
-            val indexedTab = editorTabPane.tabs.withIndex().find { it.value.userData == newFile }
+            val indexedTab = editorTabPane.tabs.withIndex().find {
+                (it.value.userData as? FileEditData)?.file == newFile
+            }
             val position = if (indexedTab == null) {
                 val newTab = Tab(newFile.name)
-                newTab.userData = newFile
-                newTab.content = CodeEditorScrollPane(CodeEditorArea().apply {
+                val data = FileEditData(newFile, presenter.project)
+                newTab.userData = data
+                newTab.content = CodeEditorScrollPane(CodeEditorArea(data).apply {
                     keyListeners[KeyCodeCombination(KeyCode.B, KeyCombination.SHORTCUT_DOWN)] = {
+                        println("ctrl+b")
                         if (it is NavigableRange) {
-                            it.declaringFile.also { fileToOpen -> openFile(fileToOpen, it.offset) }
+                            println("navig ${it.navigateDetails.size}")
+                            if (it.navigateDetails.size == 1) {
+                                it.navigateDetails.first().apply {
+                                    openFile(this.file, this.offset)
+                                }
+                            }
                         }
                     }
                     addEventHandler(KeyEvent.KEY_PRESSED, searchEvent)

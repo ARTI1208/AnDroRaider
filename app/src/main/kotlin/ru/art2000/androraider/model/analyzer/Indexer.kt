@@ -8,7 +8,8 @@ import java.io.File
 interface Indexer<FAR : FileAnalyzeResult, S : IndexerSettings> {
 
     /*
-    Has a return type since we analyze file fully and sequentially
+     * Has a return type since we analyze file fully and sequentially.
+     * Should be aware of fact that code text area always uses \n as line terminator
      */
     fun analyzeFile(project: ProjectAnalyzeResult, file: File, settings: S): FAR
 

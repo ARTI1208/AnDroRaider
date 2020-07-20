@@ -48,7 +48,7 @@ object SmaliIndexer : Indexer<SmaliClass, SmaliIndexerSettings> {
 
         tokenStream.tokens.forEach {
             if (it.channel == 1) { // hidden channel
-                smaliClass.ranges.add(RangeStatusBase(it.textRange, "Comment", listOf("comment"), file))
+                smaliClass.ranges.add(RangeStatusBase(it.textRange, "Comment", "comment", file))
             }
         }
 

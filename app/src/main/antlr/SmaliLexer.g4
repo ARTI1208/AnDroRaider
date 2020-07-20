@@ -22,10 +22,6 @@
 
 lexer grammar SmaliLexer;
 
-@header {
-package ru.art2000.androraider.model.analyzer.smali;
-}
-
 // Types
 QUALIFIED_TYPE_NAME:        ('L' SimpleName (SLASH SimpleName)* ';') | ('L' (SimpleName (SLASH SimpleName)* SLASH)? 'package-info;');
 VOID_TYPE:                  'V';

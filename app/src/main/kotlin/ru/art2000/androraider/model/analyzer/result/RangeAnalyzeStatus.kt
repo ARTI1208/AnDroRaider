@@ -4,11 +4,9 @@ import java.io.File
 
 interface RangeAnalyzeStatus {
 
-    val range: IntRange
-
     val description: String
 
-    val style: Collection<String>
+    val rangeToStyle: List<Pair<IntRange, String>>
 
     val declaringFile: File
 }

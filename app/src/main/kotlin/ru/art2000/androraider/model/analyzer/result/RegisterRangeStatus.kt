@@ -3,7 +3,7 @@ package ru.art2000.androraider.model.analyzer.result
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import java.io.File
 
-class RegisterRangeStatus(override val range: IntRange,
+class RegisterRangeStatus(range: IntRange,
                           register: Register,
                           private val clazz: SmaliClass?,
                           override val declaringFile: File)
@@ -11,13 +11,10 @@ class RegisterRangeStatus(override val range: IntRange,
 
     override val description: String = "Value in register: ${clazz?.fullname}"
 
-    override val style = when (register) {
-        Register.LOCAL -> listOf("local")
-        Register.PARAM -> listOf("param")
-    }
+    override val rangeToStyle = listOf(range to register.style)
 }
 
-enum class Register {
-    LOCAL,
-    PARAM;
+enum class Register(val style: String) {
+    LOCAL("local"),
+    PARAM("param");
 }

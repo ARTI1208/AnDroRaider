@@ -5,11 +5,13 @@ import javafx.scene.Node
 import javafx.scene.control.*
 import javafx.stage.DirectoryChooser
 import javafx.stage.FileChooser
+import ru.art2000.androraider.model.App
 import ru.art2000.androraider.model.apktool.ApktoolCommand
 import ru.art2000.androraider.model.settings.PreferenceManager
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
 import ru.art2000.androraider.utils.FILE_CHOOSER_APK_FILTER
 import ru.art2000.androraider.utils.FILE_CHOOSER_JAR_FILTER
+import ru.art2000.androraider.view.dialogs.icons
 import java.io.File
 
 class DecompileDialog(private val app: File, private val settings: PreferenceManager? = null) : Dialog<Pair<List<ApktoolCommand>, File>?>(),
@@ -28,6 +30,7 @@ class DecompileDialog(private val app: File, private val settings: PreferenceMan
 
     init {
         title = "Decompile options"
+        icons.add(App.LOGO)
 
         dialogPane = DialogPane()
         dialogPane.content = root

@@ -46,3 +46,24 @@
     -fx-text-fill: white;
     -fx-padding: 5;
 }
+
+.tag {
+    -fx-fill: darkblue;
+}
+
+.attr-schema {
+    -fx-fill: purple;
+}
+
+.attr-name {
+    -fx-fill: dodgerblue;
+}
+
+.attr-value {
+    -fx-fill: green;
+}
+
+.debug {
+    -fx-fill: green;
+    -fx-background-color: green;
+}

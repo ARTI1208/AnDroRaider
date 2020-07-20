@@ -8,11 +8,13 @@ import javafx.scene.control.Dialog
 import javafx.scene.control.DialogPane
 import javafx.stage.DirectoryChooser
 import javafx.stage.FileChooser
+import ru.art2000.androraider.model.App
 import ru.art2000.androraider.model.apktool.ApktoolCommand
 import ru.art2000.androraider.model.settings.PreferenceManager
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
 import ru.art2000.androraider.utils.FILE_CHOOSER_APK_FILTER
 import ru.art2000.androraider.utils.FILE_CHOOSER_JAR_FILTER
+import ru.art2000.androraider.view.dialogs.icons
 import java.io.File
 
 class RecompileDialog(private val baseFolder: File, private val settings: PreferenceManager? = null) : Dialog<List<ApktoolCommand>>(),
@@ -33,6 +35,7 @@ class RecompileDialog(private val baseFolder: File, private val settings: Prefer
 
     init {
         title = "Recompile options"
+        icons.add(App.LOGO)
 
         dialogPane = DialogPane()
         dialogPane.content = root

@@ -8,7 +8,6 @@ import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
 import java.io.File
-import java.lang.Exception
 
 class SmaliShallowScanner(val project: ProjectAnalyzeResult, val file: File) :
         AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
@@ -62,6 +61,8 @@ class SmaliShallowScanner(val project: ProjectAnalyzeResult, val file: File) :
         val params = parseCompound(ctx.methodSignature()?.methodArguments()?.text)
         val returnType = ctx.methodSignature()?.methodReturnType()?.text ?: "V"
         return smaliClass.findOrCreateMethod(name, params, returnType, 0)!!
+
+//        return smaliClass.findOrCreateMethod(ctx)!!
     }
 
     override fun visitMethodDirective(ctx: SmaliParser.MethodDirectiveContext): SmaliClass {
@@ -333,9 +334,6 @@ class SmaliShallowScanner(val project: ProjectAnalyzeResult, val file: File) :
     }
 
     override fun visitSuperName(ctx: SmaliParser.SuperNameContext): SmaliClass {
-
-        smaliClass.parentClass = project.getOrCreateClass(ctx.text)
-
         return smaliClass
     }
 

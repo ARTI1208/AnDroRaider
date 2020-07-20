@@ -6,12 +6,14 @@ module app {
     requires reactfx;
     requires java.prefs;
     requires kotlin.stdlib;
-    requires org.antlr.antlr4.runtime;
+
     requires flowless;
     requires io.reactivex.rxjava2;
     requires rxjavafx;
     requires org.apache.commons.io;
     requires undofx;
+    requires org.antlr.antlr4.runtime;
+    requires tornadofx;
 
 
     opens ru.art2000.androraider.view;
@@ -34,6 +36,9 @@ module app {
 
     opens ru.art2000.androraider.view.editor.menu.search;
     exports ru.art2000.androraider.view.editor.menu.search;
+
+    opens ru.art2000.androraider.view.editor.statusbar;
+    exports ru.art2000.androraider.view.editor.statusbar;
 
     opens ru.art2000.androraider.view.dialogs.decompile;
     exports ru.art2000.androraider.view.dialogs.decompile;

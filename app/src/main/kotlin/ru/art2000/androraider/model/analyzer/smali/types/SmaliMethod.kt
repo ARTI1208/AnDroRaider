@@ -54,6 +54,10 @@ class SmaliMethod() : SmaliComponent {
         return textRange.first >= 0
     }
 
+    override fun toSmaliString(): String {
+        return "$name(${parametersInternal.joinToString { it.toSmaliString() }})${returnType.toSmaliString()}"
+    }
+
     override fun toString(): String {
         return "SmaliMethod(name='$name', args='${parametersInternal.joinToString { it.fullname }}', returnType='${returnType.fullname}', parentClass=${parentClass?.fullname}, modifier=$modifier)"
     }

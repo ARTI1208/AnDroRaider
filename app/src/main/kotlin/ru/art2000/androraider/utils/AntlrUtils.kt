@@ -7,7 +7,17 @@ import org.antlr.v4.runtime.tree.TerminalNode
 
 val ParserRuleContext.textRange: IntRange
     get() {
-        return start.textRange.first..stop.textRange.last
+        return firstPos..lastPos
+    }
+
+val ParserRuleContext.firstPos: Int
+    get() {
+        return start.textRange.first
+    }
+
+val ParserRuleContext.lastPos: Int
+    get() {
+        return stop.textRange.last
     }
 
 val TerminalNode.textRange: IntRange
@@ -15,9 +25,29 @@ val TerminalNode.textRange: IntRange
         return symbol.textRange
     }
 
+val TerminalNode.firstPos: Int
+    get() {
+        return textRange.first
+    }
+
+val TerminalNode.lastPos: Int
+    get() {
+        return textRange.last
+    }
+
 val Token.textRange: IntRange
     get() {
         return startIndex..(stopIndex + 1)
+    }
+
+val Token.firstPos: Int
+    get() {
+        return textRange.first
+    }
+
+val Token.lastPos: Int
+    get() {
+        return textRange.last
     }
 
 
@@ -26,7 +56,7 @@ fun RuleContext.textWithSeparator(separator: String): String {
         return ""
     }
 
-    println("ChildCount: $childCount")
+//    println("ChildCount: $childCount")
 
     val builder = StringBuilder()
     for (i in 0 until childCount) {

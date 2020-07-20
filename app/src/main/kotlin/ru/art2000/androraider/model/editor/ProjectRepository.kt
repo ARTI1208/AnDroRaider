@@ -19,13 +19,6 @@ public fun getOrInitProject(window: Window, baseFolder: File): ProjectAnalyzeRes
     return project
 }
 
-public fun getOrInitProject(node: Node, baseFolder: File): ProjectAnalyzeResult? {
-    if (node.scene?.window == null)
-        return null
-
-    return getOrInitProject(node.scene.window, baseFolder)
-}
-
 public fun getProjectForWindow(window: Window): ProjectAnalyzeResult? {
     var currentWindow: Window? = window
     while (currentWindow != null) {

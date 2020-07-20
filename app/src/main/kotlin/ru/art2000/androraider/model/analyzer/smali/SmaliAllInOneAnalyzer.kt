@@ -14,7 +14,7 @@ import java.lang.Exception
 import java.lang.reflect.Modifier
 
 class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: SmaliClass, val settings: SmaliIndexerSettings) :
-        SmaliParserBaseVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
+        SmaliParserBaseVisitor<SmaliClass>() {
 
     val withRanges = settings.withRanges
 
@@ -47,7 +47,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
             return visitChildren(ctx)
         }
 
-        smaliClass.ranges.add(RangeStatusBase(ctx.CLASS_DIRECTIVE().textRange, "Class", listOf("keyword"), file))
+        smaliClass.ranges.add(RangeStatusBase(ctx.CLASS_DIRECTIVE().textRange, "Class", "keyword", file))
         return visitChildren(ctx)
     }
 
@@ -95,7 +95,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitFieldDirective(ctx: SmaliParser.FieldDirectiveContext): SmaliClass {
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.FIELD_DIRECTIVE().textRange, "Field", listOf("keyword"), file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.FIELD_DIRECTIVE().textRange, "Field", "keyword", file))
 
         return visitChildren(FieldDeclarationContextWrapper(ctx))
     }
@@ -119,8 +119,8 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitMethodDirective(ctx: SmaliParser.MethodDirectiveContext): SmaliClass {
         if (withRanges) {
-            smaliClass.ranges.add(RangeStatusBase(ctx.METHOD_DIRECTIVE().textRange, "Method", listOf("keyword"), file))
-            smaliClass.ranges.add(RangeStatusBase(ctx.METHOD_END_DIRECTIVE().textRange, "End method", listOf("keyword"), file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.METHOD_DIRECTIVE().textRange, "Method", "keyword", file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.METHOD_END_DIRECTIVE().textRange, "End method", "keyword", file))
         }
 
         return visitChildren(MethodDirectiveContextWrapper(ctx))
@@ -230,8 +230,8 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitAnnotationDirective(ctx: SmaliParser.AnnotationDirectiveContext): SmaliClass {
         if (withRanges) {
-            smaliClass.ranges.add(RangeStatusBase(ctx.ANNOTATION_DIRECTIVE().textRange, "Annotation", listOf("keyword"), file))
-            smaliClass.ranges.add(RangeStatusBase(ctx.ANNOTATION_END_DIRECTIVE().textRange, "Annotation", listOf("keyword"), file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.ANNOTATION_DIRECTIVE().textRange, "Annotation", "keyword", file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.ANNOTATION_END_DIRECTIVE().textRange, "Annotation", "keyword", file))
         }
         return visitChildren(ctx)
     }
@@ -371,14 +371,14 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         }
 
         if (withRanges) {
-            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, description, listOf("number"), file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, description, "number", file))
         }
         return visitChildren(ctx)
     }
 
     override fun visitSuperDirective(ctx: SmaliParser.SuperDirectiveContext): SmaliClass {
         if (ctx.SUPER_DIRECTIVE() != null && withRanges) {
-            smaliClass.ranges.add(RangeStatusBase(ctx.SUPER_DIRECTIVE().textRange, "Super", listOf("keyword"), file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.SUPER_DIRECTIVE().textRange, "Super", "keyword", file))
         }
         return visitChildren(ctx)
     }
@@ -540,7 +540,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
                         smaliClass.ranges.add(RangeStatusBase(
                                 ctx.textRange,
                                 "Param $num, failed to get max possible value",
-                                listOf("param"), file)
+                                "param", file)
                         )
                     }
                     num >= method.parameters.size -> {
@@ -575,7 +575,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
                         smaliClass.ranges.add(RangeStatusBase(
                                 ctx.textRange,
                                 "Local $num, failed to get max possible value",
-                                listOf("local"), file)
+                                "local", file)
                         )
                     }
                     num >= method.locals -> {
@@ -697,7 +697,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     override fun visitMethodModifier(ctx: SmaliParser.MethodModifierContext): SmaliClass {
 
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.textRange,"MethodModifier", listOf("keyword"), file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.textRange,"MethodModifier", "keyword", file))
 
         val method = findMethod(ctx) ?: return visitChildren(ctx)
 
@@ -865,7 +865,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         }
 
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "FieldModifier", listOf("keyword"), file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "FieldModifier", "keyword", file))
 
         return visitChildren(ctx)
     }
@@ -1024,7 +1024,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitStringLiteral(ctx: SmaliParser.StringLiteralContext): SmaliClass {
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "String", listOf("string"), file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "String", "string", file))
         return visitChildren(ctx)
     }
 
@@ -1059,7 +1059,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitSourceDirective(ctx: SmaliParser.SourceDirectiveContext): SmaliClass {
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.SOURCE_DIRECTIVE().textRange, "Class", listOf("keyword"), file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.SOURCE_DIRECTIVE().textRange, "Class", "keyword", file))
         return visitChildren(ctx)
     }
 
@@ -1080,7 +1080,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         }
 
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "ClassModifier", listOf("keyword"), file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "ClassModifier", "keyword", file))
 
         return visitChildren(ctx)
     }
@@ -1095,7 +1095,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
             project.errorList.add(error)
 
             if (withRanges)
-                smaliClass.ranges.find { it.range.first == node.symbol.startIndex } ?: smaliClass.ranges.add(error)
+                smaliClass.ranges.add(error)
         }
 
         return super.visitErrorNode(node)
@@ -1269,8 +1269,8 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     }
 
     override fun visitMethodBodyStatement(ctx: SmaliParser.MethodBodyStatementContext): SmaliClass {
-        println(ctx.textWithSeparator(" "))
-        println("inv: "+ ctx.invokingState)
+//        println(ctx.textWithSeparator(" "))
+//        println("inv: "+ ctx.invokingState)
         return visitChildren(ctx)
     }
 
@@ -1379,7 +1379,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitImplementsDirective(ctx: SmaliParser.ImplementsDirectiveContext): SmaliClass {
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.IMPLEMENTS_DIRECTIVE().textRange, "Implements interface", listOf("keyword"), file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.IMPLEMENTS_DIRECTIVE().textRange, "Implements interface", "keyword", file))
 
         project.getOrCreateClass(ctx.referenceType().text)?.also {
             smaliClass.interfaces.add(it)
@@ -1390,8 +1390,8 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitSubannotationDirective(ctx: SmaliParser.SubannotationDirectiveContext): SmaliClass {
         if (withRanges) {
-            smaliClass.ranges.add(RangeStatusBase(ctx.SUBANNOTATION_DIRECTIVE().textRange, "Subannotation", listOf("keyword"), file))
-            smaliClass.ranges.add(RangeStatusBase(ctx.SUBANNOTATION_END_DIRECTIVE().textRange, "Subannotation", listOf("keyword"), file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.SUBANNOTATION_DIRECTIVE().textRange, "Subannotation", "keyword", file))
+            smaliClass.ranges.add(RangeStatusBase(ctx.SUBANNOTATION_END_DIRECTIVE().textRange, "Subannotation", "keyword", file))
         }
         return visitChildren(ctx)
     }

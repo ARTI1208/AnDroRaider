@@ -1,13 +1,16 @@
 package ru.art2000.androraider.view.dialogs
 
+import javafx.collections.ObservableList
 import javafx.geometry.Insets
 import javafx.scene.Node
 import javafx.scene.control.ButtonType
 import javafx.scene.control.Dialog
 import javafx.scene.control.DialogPane
 import javafx.scene.control.Label
+import javafx.scene.image.Image
 import javafx.scene.image.ImageView
 import javafx.scene.layout.VBox
+import javafx.stage.Stage
 import javafx.stage.Window
 import ru.art2000.androraider.model.App
 
@@ -37,8 +40,11 @@ public fun getBaseDialogPane(vararg node: Node): DialogPane {
 }
 
 public fun <R> getBaseDialog(vararg node: Node): Dialog<R> {
-    val dialog = Dialog<R>()
-    dialog.graphic = ImageView(App.LOGO)
-    dialog.dialogPane = getBaseDialogPane(*node)
-    return dialog
+    return Dialog<R>().apply {
+        icons.add(App.LOGO)
+        dialogPane = getBaseDialogPane(*node)
+    }
 }
+
+public val Dialog<*>.icons: ObservableList<Image>
+    get() = (dialogPane.scene.window as Stage).icons

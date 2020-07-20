@@ -3,7 +3,7 @@ package ru.art2000.androraider.model.analyzer.result
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliComponent
 import java.io.File
 
-class DynamicRangeStatus(override val range: IntRange, component: SmaliComponent, override val declaringFile: File) : RangeAnalyzeStatus, NavigableRange {
+class DynamicRangeStatus(val range: IntRange, component: SmaliComponent, override val declaringFile: File) : RangeAnalyzeStatus, NavigableRange {
 
     private var currentStyle = mutableSetOf<String>()
     private var currentDescription = "$component"
@@ -27,17 +27,25 @@ class DynamicRangeStatus(override val range: IntRange, component: SmaliComponent
             return currentDescription
         }
 
-    override val style: Collection<String>
+    override val rangeToStyle: List<Pair<IntRange, String>>
         get() {
             update()
-            return currentStyle
+            return currentStyle.let {
+                if (it.isEmpty())
+                    listOf(range to "")
+                else
+                    listOf(range to it.first())
+            }
         }
 
-    override val fileToNavigate: File?
-        get() = component.file
-
-    override val offset: Int
-        get() = component.textRange.last
+    override val navigateDetails: List<FileNavigatePosition>
+        get() {
+            val f = component.file
+            return if (f == null)
+                listOf()
+            else
+                listOf(FileNavigatePosition(f, component.textRange.last, description))
+        }
 
     override fun toString(): String {
         return description

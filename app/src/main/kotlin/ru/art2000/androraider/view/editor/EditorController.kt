@@ -6,6 +6,7 @@ import javafx.scene.layout.VBox
 import ru.art2000.androraider.mvp.BaseController
 import ru.art2000.androraider.view.editor.filemanager.FileManagerView
 import ru.art2000.androraider.view.editor.menu.search.SearchMenuItem
+import ru.art2000.androraider.view.editor.statusbar.StatusBar
 
 class EditorController : BaseController(), IEditorController {
 
@@ -47,6 +48,9 @@ class EditorController : BaseController(), IEditorController {
 
     @FXML
     override lateinit var codeEditorContainer: VBox
+
+    @FXML
+    override lateinit var statusBar: StatusBar
 
     override val layoutFile = "editor.fxml"
 }

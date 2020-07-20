@@ -6,6 +6,9 @@ import ru.art2000.androraider.model.analyzer.smali.SmaliIndexer
 import ru.art2000.androraider.model.analyzer.smali.SmaliIndexerSettings
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliPackage
+import ru.art2000.androraider.model.analyzer.xml.EmptyXMLSettings
+import ru.art2000.androraider.model.analyzer.xml.XMLIndexer
+import ru.art2000.androraider.model.analyzer.xml.XMLSettings
 import ru.art2000.androraider.model.editor.ProjectSettings
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
 import java.io.File
@@ -14,7 +17,7 @@ class ProjectAnalyzeResult(val baseFolder: File) {
 
     private val projectFolders = mutableListOf<File>()
 
-    private val packages = mutableListOf<SmaliPackage>()
+    private val rootPackage = SmaliPackage(this, "", packageDelimiter = "")
 
     val fileToClassMapping = mutableMapOf<File, SmaliClass>()
 
@@ -44,24 +47,26 @@ class ProjectAnalyzeResult(val baseFolder: File) {
     }
 
     private fun getOrCreatePackage(name: String): SmaliPackage {
-        val packageToReturn = findPackage(packages, name)
+        val packageToReturn = findPackage(name)
         if (packageToReturn != null)
             return packageToReturn
 
         val lastDot = name.lastIndexOf('.')
         return if (lastDot == -1) {
-            val rootPackage = SmaliPackage(this, name)
-            packages.add(rootPackage)
-            rootPackage
+            SmaliPackage(this, name, rootPackage)
         } else {
             val parentPackageName = name.substring(0, lastDot)
             val packageName = name.substring(lastDot + 1)
-            SmaliPackage(this, packageName, getOrCreatePackage(parentPackageName))
+            SmaliPackage(this, packageName, getOrCreatePackage(parentPackageName)).also {
+                if (parentPackageName != it.parentPackage?.fullname) {
+                    println("$parentPackageName vs ${it.parentPackage?.fullname}")
+                }
+            }
         }
     }
 
     fun canAnalyzeFile(file: File): Boolean {
-        return fileToClassMapping[file] != null
+        return fileToClassMapping[file] != null || file.extension == "xml"
     }
 
     fun getPackageForClassName(name: String): SmaliPackage? {
@@ -71,13 +76,13 @@ class ProjectAnalyzeResult(val baseFolder: File) {
             if (referenceClassName.endsWith(';'))
                 referenceClassName = referenceClassName.substring(0, referenceClassName.lastIndex)
 
-            val classToReturn = findClass(packages, referenceClassName)
+            val classToReturn = findClass(referenceClassName)
             if (classToReturn != null)
                 return classToReturn.parentPackage
 
             val lastDot = referenceClassName.lastIndexOf('.')
             return if (lastDot == -1) {
-                null
+                rootPackage
             } else {
                 val parentPackageName = referenceClassName.substring(0, lastDot)
                 getOrCreatePackage(parentPackageName)
@@ -108,13 +113,13 @@ class ProjectAnalyzeResult(val baseFolder: File) {
             if (referenceClassName.endsWith(';'))
                 referenceClassName = referenceClassName.substring(0, referenceClassName.lastIndex)
 
-            val classToReturn = findClass(packages, referenceClassName)
+            val classToReturn = findClass(referenceClassName)
             if (classToReturn != null)
                 return classToReturn
 
             val lastDot = referenceClassName.lastIndexOf('.')
             return if (lastDot == -1) {
-                null
+                SmaliClass(referenceClassName, rootPackage)
             } else {
                 val parentPackageName = referenceClassName.substring(0, lastDot)
                 val className = referenceClassName.substring(lastDot + 1)
@@ -137,17 +142,33 @@ class ProjectAnalyzeResult(val baseFolder: File) {
         }
     }
 
+    private fun findPackage(relativeName: String): SmaliPackage? {
+        return if (relativeName == rootPackage.fullname)
+            rootPackage
+        else
+            findPackage(rootPackage.subpackages, relativeName)
+    }
+
     private fun findPackage(packages: List<SmaliPackage>, relativeName: String): SmaliPackage? {
         for (pack in packages) {
             val full = pack.fullname
             if (full == relativeName)
                 return pack
-            else if (relativeName.startsWith("$full.")) {
+            else if (relativeName.startsWith("$full${pack.packageDelimiter}")) {
                 return findPackage(pack.subpackages, relativeName)
             }
         }
 
         return null
+    }
+
+    private fun findClass(relativeName: String): SmaliClass? {
+        for (cl in rootPackage.classes) {
+            if (cl.fullname == relativeName)
+                return cl
+        }
+
+        return findClass(rootPackage.subpackages, relativeName)
     }
 
     private fun findClass(packages: List<SmaliPackage>, relativeName: String): SmaliClass? {
@@ -169,7 +190,12 @@ class ProjectAnalyzeResult(val baseFolder: File) {
     }
 
     fun analyzeFile(file: File, withRanges: Boolean = true): FileAnalyzeResult {
-        val settings = SmaliIndexerSettings().also { it.withRanges = withRanges }
-        return SmaliIndexer.analyzeFile(this, file, settings)
+        return when (file.extension) {
+            "xml" -> XMLIndexer.analyzeFile(this, file, EmptyXMLSettings)
+            else -> {
+                val settings = SmaliIndexerSettings().also { it.withRanges = withRanges }
+                SmaliIndexer.analyzeFile(this, file, settings)
+            }
+        }
     }
 }

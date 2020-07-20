@@ -11,6 +11,8 @@ interface SmaliComponent {
     fun markAsNotExisting()
     fun exists(): Boolean
 
+    fun toSmaliString(): String
+
     companion object {
         internal val EMPTY_RANGE = -1..0
     }

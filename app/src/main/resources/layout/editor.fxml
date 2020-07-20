@@ -6,6 +6,7 @@
 <?import ru.art2000.androraider.view.editor.ConsoleView?>
 <?import ru.art2000.androraider.view.editor.filemanager.FileManagerView?>
 <?import ru.art2000.androraider.view.editor.menu.search.SearchMenuItem?>
+<?import ru.art2000.androraider.view.editor.statusbar.StatusBar?>
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml">
     <MenuBar>
@@ -22,7 +23,7 @@
             <MenuItem fx:id="examineFile" text="Examine file"/>
         </Menu>
     </MenuBar>
-    <HBox fx:id="main">
+    <VBox fx:id="main">
         <SplitPane>
             <FileManagerView fx:id="fileManagerView"/>
             <SplitPane orientation="VERTICAL">
@@ -32,5 +33,6 @@
                 <ConsoleView minWidth="0" minHeight="0" fx:id="console"/>
             </SplitPane>
         </SplitPane>
-    </HBox>
+        <StatusBar fx:id="statusBar" />
+    </VBox>
 </VBox>

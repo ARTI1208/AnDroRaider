@@ -33,6 +33,10 @@ class SmaliField : SmaliComponent {
         return textRange.first >= 0
     }
 
+    override fun toSmaliString(): String {
+        return "$name:${type.toSmaliString()}"
+    }
+
     fun setModifierBit(modifierBit: Int) {
         modifier = modifier or modifierBit
     }

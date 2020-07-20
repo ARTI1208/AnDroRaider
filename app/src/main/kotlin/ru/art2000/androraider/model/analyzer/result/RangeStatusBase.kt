@@ -2,7 +2,10 @@ package ru.art2000.androraider.model.analyzer.result
 
 import java.io.File
 
-class RangeStatusBase(override val range: IntRange,
+class RangeStatusBase(range: IntRange,
                       override val description: String,
-                      override val style: Collection<String>,
-                      override val declaringFile: File) : RangeAnalyzeStatus
+                      rangeStyle: String,
+                      override val declaringFile: File) : RangeAnalyzeStatus {
+
+    override val rangeToStyle = listOf(range to rangeStyle)
+}

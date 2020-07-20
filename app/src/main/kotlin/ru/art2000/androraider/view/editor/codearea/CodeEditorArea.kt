@@ -6,7 +6,7 @@ import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
 import javafx.application.Platform
 import javafx.beans.property.ObjectPropertyBase
-import javafx.scene.control.Control
+import javafx.scene.Node
 import javafx.scene.control.Label
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyCodeCombination
@@ -18,23 +18,27 @@ import org.fxmisc.richtext.CodeArea
 import org.fxmisc.richtext.event.MouseOverTextEvent
 import org.fxmisc.richtext.model.ReadOnlyStyledDocument
 import org.fxmisc.richtext.model.TwoDimensional
+import org.reactfx.Subscription
 import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
 import ru.art2000.androraider.model.analyzer.result.RangeAnalyzeStatus
 import ru.art2000.androraider.model.editor.SearchSpanList
+import ru.art2000.androraider.model.editor.file.CaretPosition
+import ru.art2000.androraider.model.editor.file.FileEditData
+import ru.art2000.androraider.model.editor.file.LineSeparator
 import ru.art2000.androraider.model.editor.getProjectForNode
-import ru.art2000.androraider.utils.TypeDetector
-import ru.art2000.androraider.utils.getStyle
-import ru.art2000.androraider.utils.toKeyCodeCombination
+import ru.art2000.androraider.utils.*
 import ru.art2000.androraider.view.editor.Searchable
 import java.io.File
 import java.nio.file.Files
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.function.Consumer
 import java.util.regex.Pattern
-import kotlin.math.max
 
 @Suppress("RedundantVisibilityModifier", "MemberVisibilityCanBePrivate")
-class CodeEditorArea : CodeArea(), Searchable<String> {
+class CodeEditorArea(
+        val data: FileEditData
+) : CodeArea(), Searchable<String> {
 
     val currentEditingFileProperty = object : ObjectPropertyBase<File?>() {
         override fun getName(): String {
@@ -78,6 +82,8 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
     private val searchSpanList = SearchSpanList()
     private var isSearching = false
 
+    private var fileSpecificSubscriptions = mutableListOf<Subscription>()
+
     init {
         paragraphGraphicFactory = CodeEditorLineNumber(this)
 
@@ -86,7 +92,6 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
         multiPlainChanges()
                 .successionEnds(Duration.ofMillis(200))
                 .subscribe {
-                    currentEditingFile?.also { Files.write(it.toPath(), text.toByteArray()) }
                     updateHighlighting()
                 }
 
@@ -103,12 +108,12 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
 
             val smaliCopy = getProjectForNode(this)?.fileToClassMapping?.get(currentEditingFile)
             if (smaliCopy != null) {
-                val error = smaliCopy.ranges.find {
-                    return@find chIdx in it.range
+                val hoveredAnalyzeStatus = smaliCopy.ranges.find { status ->
+                    return@find status.rangeToStyle.any { chIdx in it.first }
                 }
 
-                if (error != null) {
-                    popupMsg.text = error.description
+                if (hoveredAnalyzeStatus != null) {
+                    popupMsg.text = hoveredAnalyzeStatus.description
                     popup.show(this, pos.x, pos.y + 10)
                     return@addEventHandler
                 }
@@ -119,11 +124,15 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
 
         addEventHandler(KeyEvent.KEY_PRESSED) { event ->
             isSearching = false
+            println(event.toKeyCodeCombination()?.displayText)
             keyListeners[event.toKeyCodeCombination()]?.also { listener ->
+                println("Found listener")
                 val prj = getProjectForNode(this)
                 prj?.fileToClassMapping?.get(currentEditingFile)?.also { clazz ->
+                    println("Found clazz")
                     val pos = caretPosition
-                    clazz.ranges.find { pos in it.range }?.apply {
+                    clazz.ranges.find { status -> status.rangeToStyle.any { pos in it.first } }?.apply {
+                        println("Found range")
                         listener.invoke(this)
                     }
                 }
@@ -131,7 +140,7 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
 
             if (event.code == KeyCode.TAB && !event.isShortcutDown) {
                 // assume tab was already inserted
-                replaceText(caretPosition - 1, caretPosition, " ".repeat(4))
+                replaceText(caretPosition - 1, caretPosition, data.indentConfiguration.toString())
                 return@addEventHandler
             }
 
@@ -156,9 +165,52 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
 
                 replaceText(from, to, newText)
                 moveTo(caretPosition)
+                return@addEventHandler
+            }
+
+            if (event.isShortcutDown && event.code == KeyCode.G) {
+                openGoToLineDialog()
+                return@addEventHandler
             }
         }
         styleClass.add("code-editor-area")
+
+        val moveCaret = Consumer<Node> {
+            openGoToLineDialog()
+        }
+
+        data.position = CaretPosition(1, 1, moveCaret)
+
+        caretColumnProperty().addListener { _, _, newValue ->
+            data.position = CaretPosition(currentParagraph, newValue, moveCaret)
+        }
+
+        currentParagraphProperty().addListener { _, _, newValue ->
+            data.position = CaretPosition(newValue, caretColumn, moveCaret)
+        }
+
+        editableProperty().bind(data.isEditableProperty)
+        showCaretProperty().value = Caret.CaretVisibility.ON
+    }
+
+    private fun registerSaveOnEdit() {
+        val saveOnChange = multiPlainChanges()
+                .successionEnds(Duration.ofMillis(200))
+                .subscribe {
+                    save()
+                }
+
+        val lineSeparatorSubscription = data.lineSeparatorProperty.observeChanges { _, _, _ ->
+            save()
+        }
+
+        fileSpecificSubscriptions.add(saveOnChange)
+        fileSpecificSubscriptions.add(lineSeparatorSubscription)
+    }
+
+    private fun unregisterSaveOnEdit() {
+        fileSpecificSubscriptions.forEach { it.unsubscribe() }
+        fileSpecificSubscriptions.clear()
     }
 
     fun getLineStartIndex(index: Int): Int {
@@ -182,6 +234,17 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
         return text.length
     }
 
+    private fun save() {
+        currentEditingFile?.also {
+            val writable = data.isEditable
+            println("Try save ${it.name}: $writable")
+            if (writable) {
+                Files.write(it.toPath(),
+                        getTextTrueTerminator().toByteArray(data.charset))
+            }
+        }
+    }
+
     public fun edit(file: File?, onTextSet: Runnable = Runnable {}) {
         if (file?.isDirectory == true || file == currentEditingFile)
             return
@@ -190,11 +253,22 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
 
         Single
                 .fromCallable {
-                    if (file == null || !file.exists()) "" else String(Files.readAllBytes(file.toPath()))
+                    if (file == null || !file.exists()) ("" to LineSeparator.LF) else {
+                        val bytes = Files.readAllBytes(file.toPath())
+                        val str = String(bytes)
+                        (str to LineSeparator.fromSeparator(when {
+                            str.contains("\r\n") -> "\r\n"
+                            str.contains('\r') -> "\r"
+                            else -> "\n"
+                        }))
+                    }
                 }.subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .doOnSuccess {
-                    replaceText(it)
+                    unregisterSaveOnEdit()
+                    replaceText(it.first)
+                    data.lineSeparator = it.second
+                    registerSaveOnEdit()
                     moveToAndPlaceLineInCenter(0)
                     undoManager.forgetHistory()
                     Platform.runLater {
@@ -232,25 +306,41 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
         }
     }
 
+    private fun openGoToLineDialog() {
+        val dialog = GoToLineDialog(data.position)
+
+        val res = dialog.showAndWait()
+        if (res.isEmpty) {
+            return
+        }
+
+        moveTo(res.get().first, res.get().second)
+        requestFollowCaret()
+        requestFocus()
+    }
+
     public fun moveToAndPlaceLineInCenter(newPosition: Int, prevLine: Int? = null) {
         if (newPosition !in text.indices) {
             println("Error moving to $newPosition: not in range ${text.indices}")
             return
         }
 
-        val previousLine = prevLine ?: currentParagraph
-        moveTo(newPosition) // move to gather new line index
-        val newLine = offsetToPosition(newPosition, TwoDimensional.Bias.Backward).major
-
-        val lineHeight = (getParagraphGraphic(previousLine) as Control).height
-        val visibleLinesCount = max((height / lineHeight).toInt(), visibleParagraphs.size)
-        // so that our newLine will be in the center of screen (if it position allows)
-        val lineToScroll = (newLine - visibleLinesCount / 2).let { if (it < 0) 0 else it }
-        scrollYToPixel((lineHeight * lineToScroll))
-
-        Platform.runLater {
-            scrollYToPixel((lineHeight * lineToScroll))
-        }
+        moveTo(newPosition)
+        requestFollowCaret()
+//
+//        val previousLine = prevLine ?: currentParagraph
+//        moveTo(newPosition) // move to gather new line index
+//        val newLine = offsetToPosition(newPosition, TwoDimensional.Bias.Backward).major
+//
+//        val lineHeight = (getParagraphGraphic(previousLine) as Control).height
+//        val visibleLinesCount = max((height / lineHeight).toInt(), visibleParagraphs.size)
+//        // so that our newLine will be in the center of screen (if it position allows)
+//        val lineToScroll = (newLine - visibleLinesCount / 2).let { if (it < 0) 0 else it }
+//        scrollYToPixel((lineHeight * lineToScroll))
+//
+//        Platform.runLater {
+//            scrollYToPixel((lineHeight * lineToScroll))
+//        }
     }
 
     public override fun findNext() {
@@ -345,6 +435,7 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
             return
         }
 
+
         val maybe = if (getProjectForNode(this)?.canAnalyzeFile(file) == true) {
             Maybe.fromCallable {
                 getProjectForNode(this)?.analyzeFile(file)
@@ -353,9 +444,6 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
             Maybe.empty<FileAnalyzeResult>()
 
         maybe.observeOn(JavaFxScheduler.platform())
-                .doOnSubscribe {
-                    clearStyle(0, text.length)
-                }
                 .doOnSuccess { result ->
                     if (result == null)
                         return@doOnSuccess
@@ -364,27 +452,36 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
                         var b = createMultiChange()
                         var ch = false
 
-                        result.rangeStatuses.forEach { status ->
-                            if (status.style.isEmpty())
-                                return@forEach
+                        caretColumn
+                        currentParagraph
 
-                            if (status.range.first in text.indices && status.range.last in text.indices) {
+                        val txt = getTextTrueTerminator()
+
+                        result.rangeStatuses.forEach { status ->
+                            status.rangeToStyle.forEach {
+//                                (styleRange, style) ->
+
+                                val styleRange = it.first
+                                val style = it.second
+
                                 val doc = ReadOnlyStyledDocument.fromString(
-                                        getText(status.range.first, status.range.last),
+                                        txt.substring(styleRange.first, styleRange.last),
                                         getParagraphStyleForInsertionAt(0),
-                                        status.style,
+                                        listOf(style),
                                         segOps
                                 )
 
                                 ch = true
-                                b = b.replaceAbsolutely(status.range.first, status.range.last, doc)
-                            } else {
-                                println("Error styling for: $status")
+                                b = if (data.lineSeparator == LineSeparator.CRLF)
+                                    b.replaceAbsolutely(styleRange.first - txt.count('\r', to = styleRange.first), styleRange.last - txt.count('\r', to = styleRange.last), doc)
+                                else
+                                    b.replaceAbsolutely(styleRange.first, styleRange.last, doc)
                             }
                         }
                         ch to b
                     }.observeOn(JavaFxScheduler.platform())
                             .subscribe { (hasChanges, builder) ->
+                                clearStyle(0, length)
                                 if (hasChanges)
                                     builder.commit()
                             }
@@ -393,7 +490,19 @@ class CodeEditorArea : CodeArea(), Searchable<String> {
                     highlightSearch()
                 }
                 .subscribe()
+    }
 
+    public fun getTextTrueTerminator(): String {
+        return if (data.lineSeparator == LineSeparator.LF)
+            text
+        else
+            text.replace("\n", data.lineSeparator.separator)
+    }
 
+    public fun getLengthTrueTerminator(): Int {
+        return if (data.lineSeparator.separator.length == 1)
+            length
+        else
+            length + (data.lineSeparator.separator.length - 1) * text.count('\n')
     }
 }
