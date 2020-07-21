@@ -15,9 +15,9 @@ import javafx.scene.input.ScrollEvent
 import javafx.stage.Popup
 import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
+import org.fxmisc.richtext.MultiChangeBuilder
 import org.fxmisc.richtext.event.MouseOverTextEvent
-import org.fxmisc.richtext.model.ReadOnlyStyledDocument
-import org.fxmisc.richtext.model.TwoDimensional
+import org.fxmisc.richtext.model.*
 import org.reactfx.Subscription
 import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
 import ru.art2000.androraider.model.analyzer.result.RangeAnalyzeStatus
@@ -36,6 +36,8 @@ import java.util.function.Consumer
 import java.util.regex.Pattern
 import tornadofx.getValue
 import tornadofx.setValue
+import java.util.*
+import kotlin.math.min
 
 @Suppress("RedundantVisibilityModifier", "MemberVisibilityCanBePrivate")
 class CodeEditorArea(
@@ -77,7 +79,7 @@ class CodeEditorArea(
                     updateHighlighting()
                 }
 
-        currentSearchValueProperty.addListener { _, _, newValue ->
+        currentSearchValueProperty.addListener { _, _, _ ->
             isSearching = true
             highlightSearch()
             currentSearchCursor = 0
@@ -179,6 +181,20 @@ class CodeEditorArea(
 
         editableProperty().bind(data.isEditableProperty)
         showCaretProperty().value = Caret.CaretVisibility.ON
+
+        selectionProperty().addListener { _, _, _ ->
+            if (!isSearching && searchSpanList.currentPosition >= 0) {
+                searchSpanList.currentPosition = -1
+            }
+        }
+
+        currentSearchValueProperty.addListener { _, oldValue, newValue ->
+            if (searchSpanList.currentPosition >= 0
+                    && (oldValue.startsWith(newValue, true)
+                            || newValue.startsWith(oldValue, true))) {
+                moveTo(caretPosition + (newValue.length - oldValue.length))
+            }
+        }
     }
 
     private fun registerSaveOnEdit() {
@@ -259,9 +275,7 @@ class CodeEditorArea(
                     registerSaveOnEdit()
                     moveToAndPlaceLineInCenter(0)
                     undoManager.forgetHistory()
-                    Platform.runLater {
-                        onTextSet.run()
-                    }
+                    onTextSet.run()
                 }.subscribe()
     }
 
@@ -320,18 +334,24 @@ class CodeEditorArea(
 //        }
     }
 
-    public override fun findNext() {
+    private fun findNext(includeCurrent: Boolean) {
         if (currentSearchValue.isEmpty() || searchSpanList.isEmpty()) {
             return
         }
         isSearching = true
 
-        val newPos = if (searchSpanList.currentPosition < 0) {
-            searchSpanList.withIndex().find { it.value.last >= caretPosition }?.index ?: 0
-        } else
-            (searchSpanList.currentPosition + 1) % searchSpanList.size
+        val newPos = searchSpanList.withIndex().find {
+            if (includeCurrent)
+                caretPosition <= it.value.last
+            else
+                caretPosition < it.value.last
+        }?.index ?: 0
 
         selectSearchRange(searchSpanList.currentPosition, newPos)
+    }
+
+    public override fun findNext() {
+        findNext(false)
     }
 
     public override fun findPrevious() {
@@ -340,10 +360,8 @@ class CodeEditorArea(
         }
         isSearching = true
 
-        val newPos = if (searchSpanList.currentPosition < 0)
-            searchSpanList.withIndex().findLast { it.value.last <= caretPosition }?.index ?: searchSpanList.lastIndex
-        else
-            (searchSpanList.size + searchSpanList.currentPosition - 1) % searchSpanList.size
+        val newPos = searchSpanList.withIndex().findLast { it.value.last < caretPosition }?.index
+                ?: searchSpanList.lastIndex
 
         selectSearchRange(searchSpanList.currentPosition, newPos)
     }
@@ -355,40 +373,31 @@ class CodeEditorArea(
     }
 
     private fun highlightSearch() {
+
+        if (isUpdating.getAndSet(true))
+            return
+
         computationSingle {
             var b = createMultiChange()
-            var ch = false
+            var ch = searchSpanList.isNotEmpty()
 
             searchSpanList.forEach {
-                val doc = ReadOnlyStyledDocument.fromString(
-                        getText(it.first, it.last),
-                        getParagraphStyleForInsertionAt(it.first + 1),
-                        mutableListOf<String>().apply {
-                            addAll(getTextStyleForInsertionAt(it.first + 1))
-                            remove("search")
-                        },
-                        segOps
-                )
-                ch = true
-                b = b.replaceAbsolutely(it.first, it.last, doc)
+                b = removeStyle(b, it.first, it.last, "search")
             }
+
             searchSpanList.searchString = currentSearchValue
             if (currentSearchValue.isNotEmpty()) {
                 val pattern = Pattern.compile(Pattern.quote(currentSearchValue.toLowerCase()))
                 val searchMatcher = pattern.matcher(text.toLowerCase())
                 if (pattern.pattern().isNotEmpty()) {
                     while (searchMatcher.find()) {
-                        searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
+                        val start = searchMatcher.start()
+                        val end = searchMatcher.end()
 
-                        val doc = ReadOnlyStyledDocument.fromString(
-                                getText(searchMatcher.start(), searchMatcher.end()),
-                                getParagraphStyleForInsertionAt(searchMatcher.start() + 1),
-                                mutableListOf("search").apply { addAll(getTextStyleForInsertionAt(searchMatcher.start() + 1)) },
-                                segOps
-                        )
+                        searchSpanList.add(IntRange(start, end))
 
                         ch = true
-                        b = b.replaceAbsolutely(searchMatcher.start(), searchMatcher.end(), doc)
+                        b = addStyle(b, start, end, "search")
                     }
                 }
             }
@@ -399,6 +408,7 @@ class CodeEditorArea(
                         builder.commit()
 
                     isUpdating.set(false)
+                    findNext(true)
                 }
 
     }
@@ -429,30 +439,19 @@ class CodeEditorArea(
                         var b = createMultiChange()
                         var ch = false
 
-                        caretColumn
-                        currentParagraph
-
                         val txt = getTextTrueTerminator()
 
                         result.rangeStatuses.forEach { status ->
-                            status.rangeToStyle.forEach {
-//                                (styleRange, style) ->
-
-                                val styleRange = it.first
-                                val style = it.second
-
-                                val doc = ReadOnlyStyledDocument.fromString(
-                                        txt.substring(styleRange.first, styleRange.last),
-                                        getParagraphStyleForInsertionAt(0),
-                                        listOf(style),
-                                        segOps
-                                )
+                            status.rangeToStyle.forEach { (styleRange, style) ->
+                                val (from, to) = if (data.lineSeparator == LineSeparator.CRLF) {
+                                    styleRange.first - txt.count('\r', to = styleRange.first) to
+                                    styleRange.last - txt.count('\r', to = styleRange.last)
+                                } else {
+                                    styleRange.first to styleRange.last
+                                }
 
                                 ch = true
-                                b = if (data.lineSeparator == LineSeparator.CRLF)
-                                    b.replaceAbsolutely(styleRange.first - txt.count('\r', to = styleRange.first), styleRange.last - txt.count('\r', to = styleRange.last), doc)
-                                else
-                                    b.replaceAbsolutely(styleRange.first, styleRange.last, doc)
+                                b = setStyle(b, from, to, style)
                             }
                         }
                         ch to b
@@ -461,12 +460,68 @@ class CodeEditorArea(
                                 clearStyle(0, length)
                                 if (hasChanges)
                                     builder.commit()
+
+                                isUpdating.set(false)
+                                highlightSearch()
                             }
                 }
-                .doFinally {
-                    highlightSearch()
-                }
                 .subscribe()
+    }
+
+    private fun setStyle(
+            changeBuilder: MultiChangeBuilder<Collection<String>, String, Collection<String>>,
+            from: Int, to: Int,
+            style: String
+    ): MultiChangeBuilder<Collection<String>, String, Collection<String>> {
+        return changeStyle(changeBuilder, from, to) { listOf(style) }
+    }
+
+    private fun setStyle(
+            changeBuilder: MultiChangeBuilder<Collection<String>, String, Collection<String>>,
+            from: Int, to: Int,
+            style: Collection<String>
+    ): MultiChangeBuilder<Collection<String>, String, Collection<String>> {
+        return changeStyle(changeBuilder, from, to) { style }
+    }
+
+    private fun addStyle(
+            changeBuilder: MultiChangeBuilder<Collection<String>, String, Collection<String>>,
+            from: Int, to: Int,
+            style: String
+    ): MultiChangeBuilder<Collection<String>, String, Collection<String>> {
+        return changeStyle(changeBuilder, from, to) {
+            if (it.contains(style))
+                it
+            else
+                ArrayList(it).apply { add(style) }
+        }
+    }
+
+    private fun removeStyle(
+            changeBuilder: MultiChangeBuilder<Collection<String>, String, Collection<String>>,
+            from: Int, to: Int,
+            style: String
+    ): MultiChangeBuilder<Collection<String>, String, Collection<String>> {
+        return changeStyle(changeBuilder, from, to) {
+            ArrayList(it).apply { remove(style) }
+        }
+    }
+
+    private fun changeStyle(
+            changeBuilder: MultiChangeBuilder<Collection<String>, String, Collection<String>>,
+            from: Int, to: Int,
+            mapper: (Collection<String>) -> Collection<String>
+    ): MultiChangeBuilder<Collection<String>, String, Collection<String>> {
+        val d = SimpleEditableStyledDocument(
+                content.subSequence(from, to)
+                        as ReadOnlyStyledDocument<Collection<String>, String, Collection<String>>
+        )
+
+        val n = content.getStyleSpans(from, to).mapStyles(mapper)
+
+        d.setStyleSpans(0, n)
+
+        return changeBuilder.replaceAbsolutely(from, to, d)
     }
 
     public fun getTextTrueTerminator(): String {
