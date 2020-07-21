@@ -11,12 +11,10 @@ import javafx.scene.input.*
 import javafx.scene.layout.Background
 import javafx.scene.layout.BackgroundFill
 import javafx.scene.layout.HBox
-import javafx.scene.layout.Region
 import javafx.scene.paint.Color
 import javafx.stage.Stage
 import javafx.stage.WindowEvent
 import ru.art2000.androraider.model.App
-import ru.art2000.androraider.model.analyzer.result.NavigableRange
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.apktool.ApkToolUtils
 import ru.art2000.androraider.model.editor.file.FileEditData
@@ -57,13 +55,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
     override val presenter: EditorPresenter
 
-    private val searchEvent: (KeyEvent) -> Unit = {
-        if (it.isShortcutDown && it.code == KeyCode.F) {
-            searchMenu.show()
-            search.searchField.requestFocus()
-        }
-    }
-
     init {
         icons.add(App.LOGO)
         title = "Project Editor"
@@ -73,7 +64,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
         addEventHandler(WindowEvent.WINDOW_SHOWN) {
             registerStreamOutput(this, console)
-            console.addEventHandler(KeyEvent.KEY_PRESSED, searchEvent)
             showLoadingDialog()
             loadProject()
         }
@@ -248,11 +238,9 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
     }
 
     private fun setupFileExplorerView() {
-        fileManagerView.onFileSelectedListeners.add { _, newFile ->
+        fileManagerView.onFileSelectedListeners.add { newFile ->
             openFile(newFile)
         }
-
-        fileManagerView.addEventHandler(KeyEvent.KEY_PRESSED, searchEvent)
 
         presenter.addFileListener { file, kind ->
             when (kind) {
@@ -313,12 +301,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                             }
                 }
             }
-        }
-
-        // Menu/Search
-        scene.focusOwnerProperty().addListener { _, _, newValue ->
-            @Suppress("UNCHECKED_CAST")
-            search.currentSearchable = newValue as? Searchable<String>
         }
 
         // Menu/Misc

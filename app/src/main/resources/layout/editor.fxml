@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.*?>
-<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import ru.art2000.androraider.view.editor.ConsoleView?>
 <?import ru.art2000.androraider.view.editor.filemanager.FileManagerView?>
 <?import ru.art2000.androraider.view.editor.menu.search.SearchMenuItem?>
 <?import ru.art2000.androraider.view.editor.statusbar.StatusBar?>
+<?import ru.art2000.androraider.view.editor.SearchableNodeWrapper?>
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml">
     <MenuBar>
@@ -16,16 +16,16 @@
             <MenuItem fx:id="projectSettings" text="Project settings"/>
             <MenuItem fx:id="recompile" text="Recompile"/>
         </Menu>
-        <Menu fx:id="searchMenu" text="_Search">
-            <SearchMenuItem fx:id="search"/>
-        </Menu>
         <Menu fx:id="miscMenu" text="_Misc">
             <MenuItem fx:id="examineFile" text="Examine file"/>
         </Menu>
     </MenuBar>
     <VBox fx:id="main">
         <SplitPane>
-            <FileManagerView fx:id="fileManagerView"/>
+            <fx:define>
+                <FileManagerView fx:id="fileManagerView"/>
+            </fx:define>
+            <SearchableNodeWrapper content="$fileManagerView" searchable="$fileManagerView" />
             <SplitPane orientation="VERTICAL">
                 <VBox fx:id="codeEditorContainer" minWidth="0" minHeight="0">
                     <TabPane fx:id="editorTabPane"/>

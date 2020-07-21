@@ -1,7 +1,7 @@
 package ru.art2000.androraider.view.editor.filemanager
 
-import javafx.beans.property.ObjectPropertyBase
-import javafx.beans.property.Property
+import javafx.beans.property.SimpleStringProperty
+import javafx.beans.property.StringProperty
 import javafx.event.EventHandler
 import javafx.scene.control.*
 import javafx.scene.input.KeyCode
@@ -12,33 +12,23 @@ import ru.art2000.androraider.model.editor.getProjectForNode
 import ru.art2000.androraider.presenter.editor.FileManagerPresenter
 import ru.art2000.androraider.utils.getRawContent
 import ru.art2000.androraider.utils.moveOrCopyDelete
-import ru.art2000.androraider.utils.walk
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.getBaseDialogPane
 import ru.art2000.androraider.view.dialogs.showErrorMessage
-import ru.art2000.androraider.view.editor.Searchable
 import java.io.File
 import ru.art2000.androraider.utils.compareTo
+import ru.art2000.androraider.view.editor.StringSearchable
 
-typealias onFileSelected = (File?, File) -> Unit
+typealias onFileSelected = (File) -> Unit
 
 @Suppress("RedundantVisibilityModifier")
-class FileManagerView : TreeView<File>(), Searchable<String> {
+class FileManagerView : TreeView<File>(), StringSearchable {
 
     val onFileSelectedListeners = mutableListOf<onFileSelected>()
 
     private val presenter = FileManagerPresenter()
 
-    override val currentSearchValueProperty: Property<String> = object : ObjectPropertyBase<String>("") {
-        override fun getName(): String {
-            return "currentSearchValue"
-        }
-
-        override fun getBean(): Any {
-            return this
-        }
-
-    }
+    override val currentSearchValueProperty: StringProperty = SimpleStringProperty("")
 
     init {
         setCellFactory { FileManagerTreeListItem(this) }
@@ -102,7 +92,7 @@ class FileManagerView : TreeView<File>(), Searchable<String> {
 
     private fun onFileItemClick(file: File) {
         onFileSelectedListeners.forEach {
-            it(null, file)
+            it(file)
         }
     }
 

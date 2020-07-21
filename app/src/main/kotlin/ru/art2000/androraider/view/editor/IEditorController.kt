@@ -19,11 +19,6 @@ interface IEditorController : IController {
 
     val recompile: MenuItem
 
-    // Menu/Search
-    val searchMenu: Menu
-
-    val search: SearchMenuItem
-
     // Menu/Misc
     val miscMenu: Menu
 

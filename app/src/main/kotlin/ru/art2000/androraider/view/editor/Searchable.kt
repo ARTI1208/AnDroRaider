@@ -10,11 +10,17 @@ interface Searchable<T> {
 
     val currentSearchValueProperty: Property<T>
 
-    fun find(valueToFind: T)
+    fun find(valueToFind: T) {
+        currentSearchValue = valueToFind
+    }
 
-    fun findAll(valueToFind: T)
+    fun findAll(valueToFind: T) {
+        currentSearchValue = valueToFind
+    }
 
     fun findNext()
 
     fun findPrevious()
+
+    fun clearSearch()
 }

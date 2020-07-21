@@ -1,24 +1,30 @@
 package ru.art2000.androraider.view.editor
 
+import javafx.beans.property.Property
 import javafx.beans.property.SimpleDoubleProperty
+import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.value.ObservableDoubleValue
 import javafx.scene.control.TextField
-import javafx.scene.image.ImageView
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.layout.Background
 import javafx.scene.layout.BackgroundFill
 import javafx.scene.layout.BorderPane
 import javafx.scene.paint.Color
-import ru.art2000.androraider.model.editor.SearchData
 import ru.art2000.androraider.utils.Visibility
 import ru.art2000.androraider.utils.getDrawable
 import ru.art2000.androraider.utils.visibility
 import tornadofx.button
 import tornadofx.hbox
 import tornadofx.imageview
+import tornadofx.getValue
+import tornadofx.setValue
 
-class EditorTabSearchPanel(val searchable: Searchable<String>, val searchData: SearchData) : BorderPane() {
+class SearchPanel(initialSearchable: Searchable<String>? = null) : BorderPane() {
+
+    val searchableProperty: Property<Searchable<String>> = SimpleObjectProperty()
+
+    var searchable: Searchable<String>? by searchableProperty
 
     private val panelHeight = 30.0
 
@@ -27,7 +33,7 @@ class EditorTabSearchPanel(val searchable: Searchable<String>, val searchData: S
     val managedHeightProperty: ObservableDoubleValue
 
     init {
-
+        searchable = initialSearchable
         val managedHeightImpl = SimpleDoubleProperty()
         managedHeightProperty = managedHeightImpl
 
@@ -53,28 +59,26 @@ class EditorTabSearchPanel(val searchable: Searchable<String>, val searchData: S
         searchField.addEventFilter(KeyEvent.KEY_PRESSED) {
             if (it.code == KeyCode.ENTER) {
                 if (it.isShiftDown) {
-                    searchable.findPrevious()
+                    searchable?.findPrevious()
                 } else {
-                    searchable.findNext()
+                    searchable?.findNext()
                 }
             } else if (it.code == KeyCode.F && it.isShortcutDown) {
                 searchField.selectAll()
             }
         }
 
-        searchData.searchStringProperty.bindBidirectional(searchField.textProperty())
-
         searchField.textProperty().addListener { _, _, newValue ->
-            searchable.find(newValue ?: "")
+            searchable?.find(newValue ?: "")
         }
 
         val prevButton = button(text = "Prev") {
-            setOnAction { searchable.findPrevious() }
+            setOnAction { searchable?.findPrevious() }
             prefHeight = panelHeight
         }
 
         val nextButton = button(text = "Next") {
-            setOnAction { searchable.findNext() }
+            setOnAction { searchable?.findNext() }
             prefHeight = panelHeight
         }
 
@@ -96,15 +100,23 @@ class EditorTabSearchPanel(val searchable: Searchable<String>, val searchData: S
             children += listOf(searchField, prevButton, nextButton)
         }
         right = closeButton
+
+        addEventHandler(KeyEvent.KEY_PRESSED) {
+            if (it.code == KeyCode.ESCAPE) {
+                hide()
+            }
+        }
     }
 
     public fun show() {
         visibility = Visibility.VISIBLE
         searchField.requestFocus()
         searchField.selectAll()
+        searchable?.find(searchField.text)
     }
 
     public fun hide() {
         visibility = Visibility.GONE
+        searchable?.clearSearch()
     }
 }

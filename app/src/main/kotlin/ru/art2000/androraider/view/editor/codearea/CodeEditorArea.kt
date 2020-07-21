@@ -5,7 +5,7 @@ import io.reactivex.Single
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
 import javafx.application.Platform
-import javafx.beans.property.ObjectPropertyBase
+import javafx.beans.property.*
 import javafx.scene.Node
 import javafx.scene.control.Label
 import javafx.scene.input.KeyCode
@@ -27,43 +27,25 @@ import ru.art2000.androraider.model.editor.file.FileEditData
 import ru.art2000.androraider.model.editor.file.LineSeparator
 import ru.art2000.androraider.model.editor.getProjectForNode
 import ru.art2000.androraider.utils.*
-import ru.art2000.androraider.view.editor.Searchable
+import ru.art2000.androraider.view.editor.StringSearchable
 import java.io.File
 import java.nio.file.Files
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.Consumer
 import java.util.regex.Pattern
+import tornadofx.getValue
+import tornadofx.setValue
 
 @Suppress("RedundantVisibilityModifier", "MemberVisibilityCanBePrivate")
 class CodeEditorArea(
         val data: FileEditData
-) : CodeArea(), Searchable<String> {
+) : CodeArea(), StringSearchable {
 
-    val currentEditingFileProperty = object : ObjectPropertyBase<File?>() {
-        override fun getName(): String {
-            return "currentEditingFile"
-        }
+    val currentEditingFileProperty = SimpleObjectProperty<File?>()
+    var currentEditingFile by currentEditingFileProperty
 
-        override fun getBean(): Any {
-            return this@CodeEditorArea
-        }
-    }
-
-    var currentEditingFile: File?
-        get() = currentEditingFileProperty.value
-        set(value) = currentEditingFileProperty.setValue(value)
-
-    override val currentSearchValueProperty: ObjectPropertyBase<String> = object : ObjectPropertyBase<String>("") {
-        override fun getName(): String {
-            return "currentSearchValue"
-        }
-
-        override fun getBean(): Any {
-            return this
-        }
-
-    }
+    override val currentSearchValueProperty: StringProperty = SimpleStringProperty("")
 
     val keyListeners = mutableMapOf<KeyCodeCombination, (RangeAnalyzeStatus) -> Unit>()
 
@@ -94,6 +76,12 @@ class CodeEditorArea(
                 .subscribe {
                     updateHighlighting()
                 }
+
+        currentSearchValueProperty.addListener { _, _, newValue ->
+            isSearching = true
+            highlightSearch()
+            currentSearchCursor = 0
+        }
 
         val popup = Popup()
         val popupMsg = Label()
@@ -275,17 +263,6 @@ class CodeEditorArea(
                         onTextSet.run()
                     }
                 }.subscribe()
-    }
-
-    public override fun find(valueToFind: String) {
-        findAll(valueToFind)
-    }
-
-    public override fun findAll(valueToFind: String) {
-        isSearching = true
-        currentSearchValue = valueToFind
-        highlightSearch()
-        currentSearchCursor = 0
     }
 
     private fun selectSearchRange(previous: Int, new: Int) {

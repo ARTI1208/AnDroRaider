@@ -3,7 +3,6 @@ package ru.art2000.androraider.view.editor
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyCodeCombination
 import javafx.scene.input.KeyCombination
-import javafx.scene.input.KeyEvent
 import javafx.scene.layout.Background
 import javafx.scene.layout.BackgroundFill
 import javafx.scene.layout.VBox
@@ -12,19 +11,14 @@ import ru.art2000.androraider.model.analyzer.result.NavigableRange
 import ru.art2000.androraider.model.editor.file.FileEditData
 import ru.art2000.androraider.view.editor.codearea.CodeEditorArea
 import ru.art2000.androraider.view.editor.codearea.CodeEditorScrollPane
-import tornadofx.minus
 import java.io.File
 
 class EditorTabContent(val data: FileEditData, val openFile: (File, Int) -> Unit): VBox() {
 
     val codeEditorArea = CodeEditorArea(data)
 
-    private val searchBox: EditorTabSearchPanel
-
     init {
         background = Background(BackgroundFill(Color.GREEN, null, null))
-
-        searchBox = EditorTabSearchPanel(codeEditorArea, data.searchData)
 
         focusedProperty().addListener { _, _, newValue ->
             if (newValue)
@@ -41,11 +35,6 @@ class EditorTabContent(val data: FileEditData, val openFile: (File, Int) -> Unit
                     }
                 }
             }
-            addEventHandler(KeyEvent.KEY_PRESSED) {
-                if (it.isShortcutDown && it.code == KeyCode.F) {
-                    searchBox.show()
-                }
-            }
             edit(data.file, Runnable {
                 moveToAndPlaceLineInCenter(caretPosition)
             })
@@ -53,12 +42,9 @@ class EditorTabContent(val data: FileEditData, val openFile: (File, Int) -> Unit
 
         val areaScrollPane = CodeEditorScrollPane(codeEditorArea)
 
-        searchBox.hide()
-
-        children += searchBox
-        children += areaScrollPane
-
-        areaScrollPane.prefHeightProperty().bind(heightProperty().minus(searchBox.managedHeightProperty))
+        children += SearchableNodeWrapper(areaScrollPane, codeEditorArea).also { wrapper ->
+            wrapper.prefHeightProperty().bind(heightProperty())
+        }
     }
 
 }

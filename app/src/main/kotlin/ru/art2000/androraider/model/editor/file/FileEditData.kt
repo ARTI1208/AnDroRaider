@@ -8,6 +8,8 @@ import ru.art2000.androraider.model.editor.StatusBarElement
 import ru.art2000.androraider.model.editor.StatusBarElementBase
 import ru.art2000.androraider.utils.bind
 import ru.art2000.androraider.view.editor.statusbar.FileEditActions
+import tornadofx.getValue
+import tornadofx.setValue
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
@@ -28,17 +30,9 @@ class FileEditData(val file: File, val project: ProjectAnalyzeResult? = null): S
     val indentConfigurationProperty: Var<IndentConfiguration> =
             Var.newSimpleVar(IndentConfiguration(IndentConfiguration.IndentType.SPACE, 4))
 
-    var position: CaretPosition
-        get() = positionProperty.value
-        set(value) {
-            positionProperty.value = value
-        }
+    var position: CaretPosition by positionProperty
 
-    var lineSeparator: LineSeparator
-        get() = lineSeparatorProperty.value
-        set(value) {
-            lineSeparatorProperty.value = value
-        }
+    var lineSeparator: LineSeparator by lineSeparatorProperty
 
     var charset: Charset
         get() = charsetProperty.value.element
@@ -46,11 +40,7 @@ class FileEditData(val file: File, val project: ProjectAnalyzeResult? = null): S
             charsetProperty.value = StatusBarElementBase(value)
         }
 
-    var indentConfiguration: IndentConfiguration
-        get() = indentConfigurationProperty.value
-        set(value) {
-            indentConfigurationProperty.value = value
-        }
+    var indentConfiguration: IndentConfiguration by indentConfigurationProperty
 
     private val lineSeparatorElementProperty: Var<LineSeparatorElement>
             = Var.newSimpleVar(null)
@@ -60,8 +50,7 @@ class FileEditData(val file: File, val project: ProjectAnalyzeResult? = null): S
 
     public val isEditableProperty: Var<Boolean> = Var.newSimpleVar(true)
 
-    public val isEditable: Boolean
-        get() = isEditableProperty.value
+    public val isEditable: Boolean by isEditableProperty
 
     override val dataList: List<Var<out StatusBarElement>>
 
