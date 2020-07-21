@@ -1,4 +1,4 @@
-package ru.art2000.androraider.mvp
+package ru.art2000.androraider.arch
 
 import javafx.scene.Parent
 

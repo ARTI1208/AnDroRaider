@@ -1,4 +1,4 @@
-package ru.art2000.androraider.view.editor
+package ru.art2000.androraider.view.editor.search
 
 import javafx.beans.property.Property
 import javafx.beans.property.SimpleDoubleProperty
@@ -14,6 +14,7 @@ import javafx.scene.paint.Color
 import ru.art2000.androraider.utils.Visibility
 import ru.art2000.androraider.utils.getDrawable
 import ru.art2000.androraider.utils.visibility
+import ru.art2000.androraider.model.editor.Searchable
 import tornadofx.button
 import tornadofx.hbox
 import tornadofx.imageview

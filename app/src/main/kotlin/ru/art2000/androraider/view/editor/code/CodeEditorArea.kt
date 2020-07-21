@@ -1,4 +1,4 @@
-package ru.art2000.androraider.view.editor.codearea
+package ru.art2000.androraider.view.editor.code
 
 import io.reactivex.Maybe
 import io.reactivex.Single
@@ -27,7 +27,7 @@ import ru.art2000.androraider.model.editor.file.FileEditData
 import ru.art2000.androraider.model.editor.file.LineSeparator
 import ru.art2000.androraider.model.editor.getProjectForNode
 import ru.art2000.androraider.utils.*
-import ru.art2000.androraider.view.editor.StringSearchable
+import ru.art2000.androraider.model.editor.StringSearchable
 import java.io.File
 import java.nio.file.Files
 import java.time.Duration

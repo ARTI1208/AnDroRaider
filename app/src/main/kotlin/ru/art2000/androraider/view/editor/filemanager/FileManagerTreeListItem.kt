@@ -11,7 +11,7 @@ import org.fxmisc.richtext.StyleClassedTextField
 import ru.art2000.androraider.utils.TypeDetector
 import ru.art2000.androraider.utils.autoWidth
 import ru.art2000.androraider.utils.getDrawable
-import ru.art2000.androraider.view.editor.Searchable
+import ru.art2000.androraider.model.editor.Searchable
 import java.io.File
 import java.net.URL
 import java.util.*

@@ -2,7 +2,7 @@ package ru.art2000.androraider.presenter.editor
 
 import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.editor.FileCreationArguments
-import ru.art2000.androraider.mvp.IPresenter
+import ru.art2000.androraider.arch.IPresenter
 import ru.art2000.androraider.utils.isSubFile
 import java.io.File
 

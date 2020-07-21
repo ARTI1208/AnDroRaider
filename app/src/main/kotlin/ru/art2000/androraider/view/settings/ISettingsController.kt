@@ -2,7 +2,7 @@ package ru.art2000.androraider.view.settings
 
 import javafx.scene.control.Button
 import javafx.scene.control.TextField
-import ru.art2000.androraider.mvp.IController
+import ru.art2000.androraider.arch.IController
 
 interface ISettingsController : IController {
 

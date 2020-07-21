@@ -4,7 +4,7 @@ import javafx.beans.property.StringProperty
 import javafx.beans.property.StringPropertyBase
 import ru.art2000.androraider.model.settings.PreferenceManager
 import ru.art2000.androraider.model.settings.SettingsManager
-import ru.art2000.androraider.mvp.IPresenter
+import ru.art2000.androraider.arch.IPresenter
 import ru.art2000.androraider.presenter.launcher.LauncherPresenter
 import ru.art2000.androraider.view.settings.Settings
 

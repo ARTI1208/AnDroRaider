@@ -4,7 +4,7 @@ import javafx.scene.control.Button
 import javafx.scene.control.CheckBox
 import javafx.scene.control.RadioButton
 import javafx.scene.control.TextField
-import ru.art2000.androraider.mvp.IController
+import ru.art2000.androraider.arch.IController
 
 interface IDecompilationController : IController {
 

@@ -8,7 +8,7 @@ import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
 import ru.art2000.androraider.model.editor.getOrInitProject
 import ru.art2000.androraider.model.editor.removeProject
 import ru.art2000.androraider.model.io.DirectoryObserver
-import ru.art2000.androraider.mvp.IPresenter
+import ru.art2000.androraider.arch.IPresenter
 import java.io.File
 import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchEvent

@@ -1,4 +1,4 @@
-package ru.art2000.androraider.view.editor
+package ru.art2000.androraider.view.editor.console
 
 import io.reactivex.Single
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
@@ -14,6 +14,8 @@ import org.fxmisc.richtext.StyleClassedTextArea
 import org.fxmisc.richtext.model.ReadOnlyStyledDocument
 import ru.art2000.androraider.model.editor.SearchSpanList
 import ru.art2000.androraider.model.io.StreamOutput
+import ru.art2000.androraider.model.editor.StringSearchable
+import ru.art2000.androraider.view.editor.search.SearchableNodeWrapper
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStream

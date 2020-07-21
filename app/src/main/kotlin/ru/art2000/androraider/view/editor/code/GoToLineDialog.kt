@@ -1,4 +1,4 @@
-package ru.art2000.androraider.view.editor.codearea
+package ru.art2000.androraider.view.editor.code
 
 import javafx.event.EventHandler
 import javafx.scene.control.ButtonType

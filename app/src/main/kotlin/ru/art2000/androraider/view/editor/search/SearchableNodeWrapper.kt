@@ -1,4 +1,4 @@
-package ru.art2000.androraider.view.editor
+package ru.art2000.androraider.view.editor.search
 
 import javafx.beans.property.Property
 import javafx.beans.property.SimpleObjectProperty
@@ -8,6 +8,7 @@ import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.layout.Region
 import javafx.scene.layout.VBox
+import ru.art2000.androraider.model.editor.Searchable
 import tornadofx.getValue
 import tornadofx.setValue
 

@@ -17,7 +17,7 @@ import ru.art2000.androraider.view.dialogs.getBaseDialogPane
 import ru.art2000.androraider.view.dialogs.showErrorMessage
 import java.io.File
 import ru.art2000.androraider.utils.compareTo
-import ru.art2000.androraider.view.editor.StringSearchable
+import ru.art2000.androraider.model.editor.StringSearchable
 
 typealias onFileSelected = (File) -> Unit
 

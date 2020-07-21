@@ -5,7 +5,7 @@ import javafx.scene.control.ListView
 import javafx.scene.image.ImageView
 import javafx.scene.text.Text
 import ru.art2000.androraider.model.launcher.RecentProject
-import ru.art2000.androraider.mvp.IController
+import ru.art2000.androraider.arch.IController
 
 interface ILauncherController : IController {
 

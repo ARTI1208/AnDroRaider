@@ -3,9 +3,9 @@ package ru.art2000.androraider.view.editor
 import javafx.fxml.FXML
 import javafx.scene.control.*
 import javafx.scene.layout.VBox
-import ru.art2000.androraider.mvp.BaseController
+import ru.art2000.androraider.arch.BaseController
+import ru.art2000.androraider.view.editor.console.ConsoleView
 import ru.art2000.androraider.view.editor.filemanager.FileManagerView
-import ru.art2000.androraider.view.editor.menu.search.SearchMenuItem
 import ru.art2000.androraider.view.editor.statusbar.StatusBar
 
 class EditorController : BaseController(), IEditorController {

@@ -1,4 +1,4 @@
-package ru.art2000.androraider.view.editor.codearea
+package ru.art2000.androraider.view.editor.code
 
 import org.fxmisc.flowless.VirtualizedScrollPane
 

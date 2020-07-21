@@ -5,9 +5,8 @@ import javafx.collections.ListChangeListener
 import javafx.collections.ObservableList
 import ru.art2000.androraider.model.launcher.RecentProject
 import ru.art2000.androraider.model.settings.PreferenceManager
-import ru.art2000.androraider.mvp.IPresenter
+import ru.art2000.androraider.arch.IPresenter
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
-import java.util.function.Consumer
 
 class LauncherPresenter : IPresenter, PreferenceManager by prefs {
 

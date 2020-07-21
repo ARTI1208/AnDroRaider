@@ -28,14 +28,17 @@ module app {
     opens ru.art2000.androraider.view.editor;
     exports ru.art2000.androraider.view.editor;
 
-    opens ru.art2000.androraider.view.editor.codearea;
-    exports ru.art2000.androraider.view.editor.codearea;
+    opens ru.art2000.androraider.view.editor.code;
+    exports ru.art2000.androraider.view.editor.code;
+
+    opens ru.art2000.androraider.view.editor.console;
+    exports ru.art2000.androraider.view.editor.console;
 
     opens ru.art2000.androraider.view.editor.filemanager;
     exports ru.art2000.androraider.view.editor.filemanager;
 
-    opens ru.art2000.androraider.view.editor.menu.search;
-    exports ru.art2000.androraider.view.editor.menu.search;
+    opens ru.art2000.androraider.view.editor.search;
+    exports ru.art2000.androraider.view.editor.search;
 
     opens ru.art2000.androraider.view.editor.statusbar;
     exports ru.art2000.androraider.view.editor.statusbar;

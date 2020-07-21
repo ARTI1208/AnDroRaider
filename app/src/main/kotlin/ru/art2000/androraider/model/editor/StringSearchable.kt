@@ -1,4 +1,4 @@
-package ru.art2000.androraider.view.editor
+package ru.art2000.androraider.model.editor
 
 import javafx.beans.property.StringProperty
 

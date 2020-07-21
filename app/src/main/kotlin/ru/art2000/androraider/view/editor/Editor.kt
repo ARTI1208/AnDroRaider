@@ -30,7 +30,8 @@ import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.projectsettings.ProjectSettingsDialog
 import ru.art2000.androraider.view.dialogs.recompile.RecompileDialog
 import ru.art2000.androraider.view.dialogs.showErrorMessage
-import ru.art2000.androraider.view.editor.codearea.CodeEditorArea
+import ru.art2000.androraider.view.editor.code.CodeEditorArea
+import ru.art2000.androraider.view.editor.code.EditorTabContent
 import ru.art2000.androraider.view.launcher.Launcher
 import ru.art2000.androraider.view.settings.Settings
 import java.io.File

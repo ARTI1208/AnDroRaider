@@ -1,4 +1,4 @@
-package ru.art2000.androraider.view.editor
+package ru.art2000.androraider.view.editor.code
 
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyCodeCombination
@@ -9,8 +9,7 @@ import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
 import ru.art2000.androraider.model.analyzer.result.NavigableRange
 import ru.art2000.androraider.model.editor.file.FileEditData
-import ru.art2000.androraider.view.editor.codearea.CodeEditorArea
-import ru.art2000.androraider.view.editor.codearea.CodeEditorScrollPane
+import ru.art2000.androraider.view.editor.search.SearchableNodeWrapper
 import java.io.File
 
 class EditorTabContent(val data: FileEditData, val openFile: (File, Int) -> Unit): VBox() {
