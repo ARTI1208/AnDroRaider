@@ -6,5 +6,5 @@ interface FileAnalyzeResult {
 
     val file: File?
 
-    val rangeStatuses: List<RangeAnalyzeStatus>
+    val textSegments: List<TextSegment>
 }

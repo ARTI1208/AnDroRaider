@@ -9,11 +9,10 @@ import ru.art2000.androraider.model.analyzer.smali.types.SmaliField
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
-import ru.art2000.androraider.utils.textWithSeparator
 import java.lang.Exception
 import java.lang.reflect.Modifier
 
-class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: SmaliClass, val settings: SmaliIndexerSettings) :
+class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: SmaliClass, val settings: SmaliIndexerSettings) :
         SmaliParserBaseVisitor<SmaliClass>() {
 
     val withRanges = settings.withRanges
@@ -47,7 +46,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
             return visitChildren(ctx)
         }
 
-        smaliClass.ranges.add(RangeStatusBase(ctx.CLASS_DIRECTIVE().textRange, "Class", "keyword", file))
+        smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.CLASS_DIRECTIVE().textRange, "keyword"))
         return visitChildren(ctx)
     }
 
@@ -88,14 +87,14 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
             smaliField.parentClass = smaliClass
             smaliField.textRange = ctx.fieldNameAndType()?.fieldName()?.textRange ?: -1..0
             if (withRanges)
-                smaliClass.ranges.add(DynamicRangeStatus(smaliField.textRange, smaliField, file))
+                smaliClass.ranges.add(SmaliAnalysisSegment(smaliField.textRange, smaliField, file))
         }
 
     }
 
     override fun visitFieldDirective(ctx: SmaliParser.FieldDirectiveContext): SmaliClass {
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.FIELD_DIRECTIVE().textRange, "Field", "keyword", file))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.FIELD_DIRECTIVE().textRange, "keyword"))
 
         return visitChildren(FieldDeclarationContextWrapper(ctx))
     }
@@ -119,8 +118,8 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitMethodDirective(ctx: SmaliParser.MethodDirectiveContext): SmaliClass {
         if (withRanges) {
-            smaliClass.ranges.add(RangeStatusBase(ctx.METHOD_DIRECTIVE().textRange, "Method", "keyword", file))
-            smaliClass.ranges.add(RangeStatusBase(ctx.METHOD_END_DIRECTIVE().textRange, "End method", "keyword", file))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.METHOD_DIRECTIVE().textRange, "keyword"))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.METHOD_END_DIRECTIVE().textRange, "keyword"))
         }
 
         return visitChildren(MethodDirectiveContextWrapper(ctx))
@@ -218,7 +217,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
             val labelNameContext = ctx.label().labelName()
 
-            smaliClass.ranges.add(DynamicRangeStatus(
+            smaliClass.ranges.add(SmaliAnalysisSegment(
                     labelNameContext.textRange,
                     currentMethod.getOrCreateLabel(labelNameContext.text),
                     file)
@@ -230,8 +229,8 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitAnnotationDirective(ctx: SmaliParser.AnnotationDirectiveContext): SmaliClass {
         if (withRanges) {
-            smaliClass.ranges.add(RangeStatusBase(ctx.ANNOTATION_DIRECTIVE().textRange, "Annotation", "keyword", file))
-            smaliClass.ranges.add(RangeStatusBase(ctx.ANNOTATION_END_DIRECTIVE().textRange, "Annotation", "keyword", file))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.ANNOTATION_DIRECTIVE().textRange, "keyword"))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.ANNOTATION_END_DIRECTIVE().textRange, "keyword"))
         }
         return visitChildren(ctx)
     }
@@ -371,14 +370,14 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         }
 
         if (withRanges) {
-            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, description, "number", file))
+            smaliClass.ranges.add(DescriptiveFileAnalysisSegment(file, ctx.textRange, "number", description))
         }
         return visitChildren(ctx)
     }
 
     override fun visitSuperDirective(ctx: SmaliParser.SuperDirectiveContext): SmaliClass {
         if (ctx.SUPER_DIRECTIVE() != null && withRanges) {
-            smaliClass.ranges.add(RangeStatusBase(ctx.SUPER_DIRECTIVE().textRange, "Super", "keyword", file))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.SUPER_DIRECTIVE().textRange, "keyword"))
         }
         return visitChildren(ctx)
     }
@@ -463,7 +462,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         if (withRanges) {
             parseCompound(ctx.text).forEach { parameterText ->
                 project.getOrCreateClass(parameterText)?.also {
-                    smaliClass.ranges.add(DynamicRangeStatus(
+                    smaliClass.ranges.add(SmaliAnalysisSegment(
                             (ctx.start.startIndex + offset)..(ctx.start.startIndex + offset + parameterText.lastIndex),
                             it, file)
                     )
@@ -477,7 +476,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     override fun visitReferenceType(ctx: SmaliParser.ReferenceTypeContext): SmaliClass {
         val clazz = project.getOrCreateClass(ctx.text) ?: return visitChildren(ctx)
         if (withRanges)
-            smaliClass.ranges.add(DynamicRangeStatus(ctx.textRange, clazz, file))
+            smaliClass.ranges.add(SmaliAnalysisSegment(ctx.textRange, clazz, file))
 
         return visitChildren(ctx)
     }
@@ -537,29 +536,28 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
                 when {
                     method == null -> {
-                        smaliClass.ranges.add(RangeStatusBase(
+                        smaliClass.ranges.add(DescriptiveFileAnalysisSegment(
+                                file,
                                 ctx.textRange,
-                                "Param $num, failed to get max possible value",
-                                "param", file)
+                                "param",
+                                "Param $num, failed to get max possible value"
+                            )
                         )
                     }
                     num >= method.parameters.size -> {
                         smaliClass.ranges.add(Error(
                                 ctx.textRange,
                                 "Invalid param index $num: must be in range 0..${method.parameters.size - 1}",
-                                smaliClass.file!!)
+                                smaliClass.file!!
+                            )
                         )
                     }
                     else -> {
-//                        smaliClass.ranges.add(RangeStatusBase(
-//                                ctx.textRange,
-//                                "Param $num, max ${method.parameters.size - 1}",
-//                                listOf("param"))
-//                        )
-
                         smaliClass.ranges.add(RegisterRangeStatus(
                                 ctx.textRange,
                                 Register.PARAM,
+                                num,
+                                method,
                                 method.registerToClassMap[txt],
                                 file)
                         )
@@ -572,10 +570,12 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
                 when {
                     method == null -> {
-                        smaliClass.ranges.add(RangeStatusBase(
+                        smaliClass.ranges.add(DescriptiveFileAnalysisSegment(
+                                file,
                                 ctx.textRange,
-                                "Local $num, failed to get max possible value",
-                                "local", file)
+                                "local",
+                                "Local $num, failed to get max possible value"
+                            )
                         )
                     }
                     num >= method.locals -> {
@@ -586,15 +586,11 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
                         )
                     }
                     else -> {
-//                        smaliClass.ranges.add(RangeStatusBase(
-//                                ctx.textRange,
-//                                "Local $num, max ${method.locals - 1}",
-//                                listOf("local"))
-//                        )
-
                         smaliClass.ranges.add(RegisterRangeStatus(
                                 ctx.textRange,
                                 Register.LOCAL,
+                                num,
+                                method,
                                 method.registerToClassMap[txt],
                                 file)
                         )
@@ -652,7 +648,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
             val labelNameContext = ctx.filledArrayDataLabel().label().labelName()
 
-            smaliClass.ranges.add(DynamicRangeStatus(
+            smaliClass.ranges.add(SmaliAnalysisSegment(
                     labelNameContext.textRange,
                     currentMethod.getOrCreateLabel(labelNameContext.text), file)
             )
@@ -697,7 +693,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     override fun visitMethodModifier(ctx: SmaliParser.MethodModifierContext): SmaliClass {
 
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.textRange,"MethodModifier", "keyword", file))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.textRange, "keyword"))
 
         val method = findMethod(ctx) ?: return visitChildren(ctx)
 
@@ -769,7 +765,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
     override fun visitMethodInvocationTarget(ctx: SmaliParser.MethodInvocationTargetContext): SmaliClass {
         smaliMethodFromInvocationContext(ctx)?.also {
             if (withRanges)
-                smaliClass.ranges.add(DynamicRangeStatus(ctx.methodSignature().methodIdentifier().textRange, it, file))
+                smaliClass.ranges.add(SmaliAnalysisSegment(ctx.methodSignature().methodIdentifier().textRange, it, file))
         }
 
         return visitChildren(ctx)
@@ -813,7 +809,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
             smaliMethod.textRange = ctx.methodDeclaration()?.methodSignature()?.methodIdentifier()?.textRange ?: -1..0
 
             if (withRanges) {
-                smaliClass.ranges.add(DynamicRangeStatus(smaliMethod.textRange, smaliMethod, file))
+                smaliClass.ranges.add(SmaliAnalysisSegment(smaliMethod.textRange, smaliMethod, file))
             }
         }
 
@@ -865,7 +861,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         }
 
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "FieldModifier", "keyword", file))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.textRange, "keyword"))
 
         return visitChildren(ctx)
     }
@@ -940,7 +936,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
             val labelNameContext = ctx.label().labelName()
 
-            smaliClass.ranges.add(DynamicRangeStatus(
+            smaliClass.ranges.add(SmaliAnalysisSegment(
                     labelNameContext.textRange,
                     currentMethod.getOrCreateLabel(labelNameContext.text), file)
             )
@@ -1024,7 +1020,8 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitStringLiteral(ctx: SmaliParser.StringLiteralContext): SmaliClass {
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "String", "string", file))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.textRange, "string"))
+
         return visitChildren(ctx)
     }
 
@@ -1059,7 +1056,8 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitSourceDirective(ctx: SmaliParser.SourceDirectiveContext): SmaliClass {
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.SOURCE_DIRECTIVE().textRange, "Class", "keyword", file))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.SOURCE_DIRECTIVE().textRange, "keyword"))
+
         return visitChildren(ctx)
     }
 
@@ -1080,7 +1078,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         }
 
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.textRange, "ClassModifier", "keyword", file))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.textRange, "keyword"))
 
         return visitChildren(ctx)
     }
@@ -1229,7 +1227,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
             val labelNameContext = ctx.label().labelName()
 
-            smaliClass.ranges.add(DynamicRangeStatus(
+            smaliClass.ranges.add(SmaliAnalysisSegment(
                     labelNameContext.textRange,
                     currentMethod.getOrCreateLabel(labelNameContext.text), file)
             )
@@ -1327,7 +1325,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
             val labelNameContext = ctx.label().labelName()
 
-            smaliClass.ranges.add(DynamicRangeStatus(
+            smaliClass.ranges.add(SmaliAnalysisSegment(
                     labelNameContext.textRange,
                     currentMethod.getOrCreateLabel(labelNameContext.text), file)
             )
@@ -1357,7 +1355,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
         val targetField = targetClass?.findOrCreateField(ctx.fieldNameAndType().fieldName().text,
                 ctx.fieldNameAndType().fieldType().text) ?: return visitChildren(ctx)
 
-        smaliClass.ranges.add(DynamicRangeStatus(ctx.fieldNameAndType().fieldName().textRange, targetField, file))
+        smaliClass.ranges.add(SmaliAnalysisSegment(ctx.fieldNameAndType().fieldName().textRange, targetField, file))
 
         return visitChildren(ctx)
     }
@@ -1379,7 +1377,7 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitImplementsDirective(ctx: SmaliParser.ImplementsDirectiveContext): SmaliClass {
         if (withRanges)
-            smaliClass.ranges.add(RangeStatusBase(ctx.IMPLEMENTS_DIRECTIVE().textRange, "Implements interface", "keyword", file))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.IMPLEMENTS_DIRECTIVE().textRange, "keyword"))
 
         project.getOrCreateClass(ctx.referenceType().text)?.also {
             smaliClass.interfaces.add(it)
@@ -1390,9 +1388,10 @@ class SmaliAllInOneAnalyzer(val project: ProjectAnalyzeResult, var smaliClass: S
 
     override fun visitSubannotationDirective(ctx: SmaliParser.SubannotationDirectiveContext): SmaliClass {
         if (withRanges) {
-            smaliClass.ranges.add(RangeStatusBase(ctx.SUBANNOTATION_DIRECTIVE().textRange, "Subannotation", "keyword", file))
-            smaliClass.ranges.add(RangeStatusBase(ctx.SUBANNOTATION_END_DIRECTIVE().textRange, "Subannotation", "keyword", file))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.SUBANNOTATION_DIRECTIVE().textRange, "keyword"))
+            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.SUBANNOTATION_END_DIRECTIVE().textRange, "keyword"))
         }
+
         return visitChildren(ctx)
     }
 

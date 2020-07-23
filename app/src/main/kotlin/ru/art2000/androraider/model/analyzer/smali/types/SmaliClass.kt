@@ -1,7 +1,7 @@
 package ru.art2000.androraider.model.analyzer.smali.types
 
 import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
-import ru.art2000.androraider.model.analyzer.result.RangeAnalyzeStatus
+import ru.art2000.androraider.model.analyzer.result.StyledSegment
 import ru.art2000.androraider.model.analyzer.smali.SmaliParser
 import ru.art2000.androraider.utils.parseCompound
 import java.io.File
@@ -102,7 +102,7 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
     val fields = LinkedList<SmaliField>()
     val methods = LinkedList<SmaliMethod>()
 
-    val ranges = LinkedList<RangeAnalyzeStatus>()
+    val ranges = LinkedList<StyledSegment>()
 
     var arrayCount = 0
 
@@ -269,7 +269,7 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
         }
     }
 
-    override val rangeStatuses: List<RangeAnalyzeStatus>
+    override val textSegments: List<StyledSegment>
         get() = ranges
 
     override fun toSmaliString(): String {

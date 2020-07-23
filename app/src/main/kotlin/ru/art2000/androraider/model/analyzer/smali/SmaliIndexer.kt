@@ -6,16 +6,15 @@ import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.PredictionMode
 import org.antlr.v4.runtime.tree.ParseTree
 import ru.art2000.androraider.model.analyzer.Indexer
-import ru.art2000.androraider.model.analyzer.IndexerSettings
-import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
-import ru.art2000.androraider.model.analyzer.result.RangeStatusBase
+import ru.art2000.androraider.model.analyzer.result.AndroidAppProject
+import ru.art2000.androraider.model.analyzer.result.SimpleFileAnalysisSegment
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.utils.textRange
 import java.io.File
 
 object SmaliIndexer : Indexer<SmaliClass, SmaliIndexerSettings> {
 
-    private fun generateFileIndex(project: ProjectAnalyzeResult, file: File): SmaliClass {
+    private fun generateFileIndex(project: AndroidAppProject, file: File): SmaliClass {
         val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
         val tokenStream = CommonTokenStream(lexer as TokenSource)
         val parser = SmaliParser(tokenStream as TokenStream)
@@ -26,7 +25,7 @@ object SmaliIndexer : Indexer<SmaliClass, SmaliIndexerSettings> {
         return SmaliShallowScanner(project, file).visit(tree as ParseTree).also { it.associatedFile = file }
     }
 
-    override fun analyzeFile(project: ProjectAnalyzeResult, file: File, settings: SmaliIndexerSettings): SmaliClass {
+    override fun analyzeFile(project: AndroidAppProject, file: File, settings: SmaliIndexerSettings): SmaliClass {
         val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
         val tokenStream = CommonTokenStream(lexer as TokenSource)
         val parser = SmaliParser(tokenStream as TokenStream)
@@ -48,14 +47,14 @@ object SmaliIndexer : Indexer<SmaliClass, SmaliIndexerSettings> {
 
         tokenStream.tokens.forEach {
             if (it.channel == 1) { // hidden channel
-                smaliClass.ranges.add(RangeStatusBase(it.textRange, "Comment", "comment", file))
+                smaliClass.ranges.add(SimpleFileAnalysisSegment(file, it.textRange, "comment"))
             }
         }
 
         return smaliClass
     }
 
-    override fun analyzeFilesInDir(project: ProjectAnalyzeResult, directory: File, settings: SmaliIndexerSettings): Observable<SmaliClass> {
+    override fun analyzeFilesInDir(project: AndroidAppProject, directory: File, settings: SmaliIndexerSettings): Observable<SmaliClass> {
         return Observable
                 .fromIterable(directory.walk().asIterable())
                 .subscribeOn(Schedulers.io())
@@ -66,7 +65,7 @@ object SmaliIndexer : Indexer<SmaliClass, SmaliIndexerSettings> {
                 }
     }
 
-    override fun indexProject(project: ProjectAnalyzeResult, settings: SmaliIndexerSettings): Observable<SmaliClass> {
+    override fun indexProject(project: AndroidAppProject, settings: SmaliIndexerSettings): Observable<SmaliClass> {
         return project.smaliFolders.fold(Observable.fromIterable(emptyList<SmaliClass>())) { acc, folder ->
             acc.concatWith(analyzeFilesInDir(project, folder, settings))
         }

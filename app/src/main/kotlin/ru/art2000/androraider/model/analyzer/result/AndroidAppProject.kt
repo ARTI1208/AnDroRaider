@@ -8,12 +8,12 @@ import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliPackage
 import ru.art2000.androraider.model.analyzer.xml.EmptyXMLSettings
 import ru.art2000.androraider.model.analyzer.xml.XMLIndexer
-import ru.art2000.androraider.model.analyzer.xml.XMLSettings
+import ru.art2000.androraider.model.analyzer.xml.types.Document
 import ru.art2000.androraider.model.editor.ProjectSettings
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
 import java.io.File
 
-class ProjectAnalyzeResult(val baseFolder: File) {
+class AndroidAppProject(override val projectFolder: File): Project {
 
     private val projectFolders = mutableListOf<File>()
 
@@ -21,16 +21,18 @@ class ProjectAnalyzeResult(val baseFolder: File) {
 
     val fileToClassMapping = mutableMapOf<File, SmaliClass>()
 
-    val projectSettings = ProjectSettings(baseFolder, SettingsPresenter.prefs)
+    val fileToXMLDocMapping = mutableMapOf<File, Document>()
+
+    val projectSettings = ProjectSettings(projectFolder, SettingsPresenter.prefs)
 
     val smaliFolders = mutableListOf<File>()
 
-    val errorList = LiveArrayList<RangeAnalyzeStatus>()
+    val errorList = LiveArrayList<FileSegment>()
 
     private val smaliFolderNameRegex = Regex("^((smali)|(smali_classes\\d+))\$")
 
     init {
-        addProjectFolder(baseFolder)
+        addProjectFolder(projectFolder)
         errorList.addChangeObserver {
             it.forEach { it.addedSubList.forEach { println(it.declaringFile.toString()) } }
         }
@@ -65,7 +67,7 @@ class ProjectAnalyzeResult(val baseFolder: File) {
         }
     }
 
-    fun canAnalyzeFile(file: File): Boolean {
+    override fun canAnalyzeFile(file: File): Boolean {
         return fileToClassMapping[file] != null || file.extension == "xml"
     }
 
@@ -185,17 +187,25 @@ class ProjectAnalyzeResult(val baseFolder: File) {
         return null
     }
 
-    fun indexProject(): Observable<out FileAnalyzeResult> {
+    override fun indexProject(): Observable<out FileAnalyzeResult> {
         return SmaliIndexer.indexProject(this, SmaliIndexerSettings())
     }
 
-    fun analyzeFile(file: File, withRanges: Boolean = true): FileAnalyzeResult {
+    override fun analyzeFile(file: File, withRanges: Boolean): FileAnalyzeResult {
         return when (file.extension) {
             "xml" -> XMLIndexer.analyzeFile(this, file, EmptyXMLSettings)
             else -> {
                 val settings = SmaliIndexerSettings().also { it.withRanges = withRanges }
                 SmaliIndexer.analyzeFile(this, file, settings)
             }
+        }
+    }
+
+    override fun getAnalyzeResult(file: File): FileAnalyzeResult? {
+        return when (file.extension) {
+            "xml" -> fileToXMLDocMapping[file]
+            "smali" -> fileToClassMapping[file]
+            else -> null
         }
     }
 }

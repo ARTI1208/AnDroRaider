@@ -2,14 +2,14 @@ package ru.art2000.androraider.model.analyzer.smali
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
 import org.antlr.v4.runtime.tree.ErrorNode
-import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
+import ru.art2000.androraider.model.analyzer.result.AndroidAppProject
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
 import java.io.File
 
-class SmaliShallowScanner(val project: ProjectAnalyzeResult, val file: File) :
+class SmaliShallowScanner(val project: AndroidAppProject, val file: File) :
         AbstractParseTreeVisitor<SmaliClass>(), SmaliParserVisitor<SmaliClass> {
 
     private lateinit var smaliClass: SmaliClass

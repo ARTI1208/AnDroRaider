@@ -9,15 +9,13 @@ import org.antlr.v4.runtime.TokenStream
 import org.antlr.v4.runtime.atn.PredictionMode
 import org.antlr.v4.runtime.tree.ParseTree
 import ru.art2000.androraider.model.analyzer.Indexer
-import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
-import ru.art2000.androraider.model.analyzer.smali.SmaliIndexer
-import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
+import ru.art2000.androraider.model.analyzer.result.AndroidAppProject
 import ru.art2000.androraider.model.analyzer.xml.types.Document
 import java.io.File
 
 object XMLIndexer: Indexer<Document, XMLSettings> {
 
-    override fun analyzeFile(project: ProjectAnalyzeResult, file: File, settings: XMLSettings): Document {
+    override fun analyzeFile(project: AndroidAppProject, file: File, settings: XMLSettings): Document {
         val lexer = XMLLexer(CharStreams.fromFileName(file.absolutePath))
         val tokenStream = CommonTokenStream(lexer as TokenSource)
         val parser = XMLParser(tokenStream as TokenStream)
@@ -25,10 +23,12 @@ object XMLIndexer: Indexer<Document, XMLSettings> {
         parser.interpreter.predictionMode = PredictionMode.SLL
         val tree = parser.document()
 
-        return XMLScanner(file).visit(tree as ParseTree)
+        return XMLScanner(file).visit(tree as ParseTree).apply {
+            project.fileToXMLDocMapping[file] = this
+        }
     }
 
-    override fun analyzeFilesInDir(project: ProjectAnalyzeResult, directory: File, settings: XMLSettings): Observable<Document> {
+    override fun analyzeFilesInDir(project: AndroidAppProject, directory: File, settings: XMLSettings): Observable<Document> {
         return Observable
                 .fromIterable(directory.walk().asIterable())
                 .subscribeOn(Schedulers.io())
@@ -39,7 +39,7 @@ object XMLIndexer: Indexer<Document, XMLSettings> {
                 }
     }
 
-    override fun indexProject(project: ProjectAnalyzeResult, settings: XMLSettings): Observable<Document> {
+    override fun indexProject(project: AndroidAppProject, settings: XMLSettings): Observable<Document> {
         return Observable.empty()
     }
 

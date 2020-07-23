@@ -1,7 +1,7 @@
 package ru.art2000.androraider.model.editor.file
 
 import org.reactfx.value.Var
-import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
+import ru.art2000.androraider.model.analyzer.result.AndroidAppProject
 import ru.art2000.androraider.model.editor.SearchData
 import ru.art2000.androraider.model.editor.StatusBarDataProvider
 import ru.art2000.androraider.model.editor.StatusBarElement
@@ -15,7 +15,7 @@ import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.util.function.Consumer
 
-class FileEditData(val file: File, val project: ProjectAnalyzeResult? = null): StatusBarDataProvider {
+class FileEditData(val file: File, val project: AndroidAppProject? = null): StatusBarDataProvider {
 
     val searchData = SearchData()
 
@@ -101,7 +101,7 @@ class FileEditData(val file: File, val project: ProjectAnalyzeResult? = null): S
         if (project == null)
             return false
 
-        val relativeFile = file.relativeToOrNull(project.baseFolder)
+        val relativeFile = file.relativeToOrNull(project.projectFolder)
         return relativeFile != null
     }
 

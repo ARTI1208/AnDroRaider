@@ -382,7 +382,7 @@ class FileManagerView : TreeView<File>(), StringSearchable {
 
         val structure = saveStructure()
 
-        root = TreeItem(project.baseFolder)
+        root = TreeItem(project.projectFolder)
         val itemToSelect = if (fileToSelect == null)
             addFileExplorerTreeItemChildren(root, selectionModel.selectedItem?.value)
         else

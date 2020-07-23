@@ -4,14 +4,11 @@ import io.reactivex.Maybe
 import io.reactivex.Single
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
-import javafx.application.Platform
 import javafx.beans.property.*
+import javafx.scene.Cursor
 import javafx.scene.Node
 import javafx.scene.control.Label
-import javafx.scene.input.KeyCode
-import javafx.scene.input.KeyCodeCombination
-import javafx.scene.input.KeyEvent
-import javafx.scene.input.ScrollEvent
+import javafx.scene.input.*
 import javafx.stage.Popup
 import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
@@ -19,8 +16,11 @@ import org.fxmisc.richtext.MultiChangeBuilder
 import org.fxmisc.richtext.event.MouseOverTextEvent
 import org.fxmisc.richtext.model.*
 import org.reactfx.Subscription
+import ru.art2000.androraider.model.analyzer.result.DescriptiveSegment
 import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
-import ru.art2000.androraider.model.analyzer.result.RangeAnalyzeStatus
+import ru.art2000.androraider.model.analyzer.result.HighlightableSegment
+import ru.art2000.androraider.model.analyzer.result.NavigableSegment
+import ru.art2000.androraider.model.analyzer.result.StyledSegment
 import ru.art2000.androraider.model.editor.SearchSpanList
 import ru.art2000.androraider.model.editor.file.CaretPosition
 import ru.art2000.androraider.model.editor.file.FileEditData
@@ -37,7 +37,6 @@ import java.util.regex.Pattern
 import tornadofx.getValue
 import tornadofx.setValue
 import java.util.*
-import kotlin.math.min
 
 @Suppress("RedundantVisibilityModifier", "MemberVisibilityCanBePrivate")
 class CodeEditorArea(
@@ -49,7 +48,11 @@ class CodeEditorArea(
 
     override val currentSearchValueProperty: StringProperty = SimpleStringProperty("")
 
-    val keyListeners = mutableMapOf<KeyCodeCombination, (RangeAnalyzeStatus) -> Unit>()
+    val keyListeners = mutableMapOf<KeyCodeCombination, (NavigableSegment) -> Unit>()
+
+    private var isCtrlDown = false
+
+    private var pointedLink: NavigableSegment? = null
 
     private var currentSearchCursor = -1
         set(value) {
@@ -67,6 +70,8 @@ class CodeEditorArea(
     private var isSearching = false
 
     private var fileSpecificSubscriptions = mutableListOf<Subscription>()
+
+    private var highlightedNavigableRange: MutableList<HighlightableSegment> = mutableListOf()
 
     init {
         paragraphGraphicFactory = CodeEditorLineNumber(this)
@@ -91,39 +96,87 @@ class CodeEditorArea(
         popup.content.add(popupMsg)
 
         mouseOverTextDelay = Duration.ofSeconds(1)
+
+//        addEventHandler(MouseEvent.MOUSE_PRESSED) {
+//            if (it.isPrimaryButtonDown) {
+//                pointedLink?.also {
+//
+//                }
+//            }
+//        }
+
         addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_BEGIN) { e ->
             isSearching = false
-            val chIdx = e.characterIndex
+
+            val file = currentEditingFile ?: return@addEventHandler
+
+            val chIdx = toFilePosition(e.characterIndex)
             val pos = e.screenPosition
 
-            val smaliCopy = getProjectForNode(this)?.fileToClassMapping?.get(currentEditingFile)
-            if (smaliCopy != null) {
-                val hoveredAnalyzeStatus = smaliCopy.ranges.find { status ->
-                    return@find status.rangeToStyle.any { chIdx in it.first }
-                }
+            val fileAnalyzeResult = getProjectForNode(this)?.getAnalyzeResult(file)
+            if (fileAnalyzeResult != null) {
+                if (false) {
+//                if (isCtrlDown) {
+                    val hoveredAnalyzeStatus = fileAnalyzeResult.textSegments.find { status ->
+                        chIdx in status.segmentRange && status is NavigableSegment
+                    } as NavigableSegment?
 
-                if (hoveredAnalyzeStatus != null) {
-                    popupMsg.text = hoveredAnalyzeStatus.description
-                    popup.show(this, pos.x, pos.y + 10)
-                    return@addEventHandler
+                    if (pointedLink != hoveredAnalyzeStatus) {
+                        removePointedLinkHighlight()
+                    }
+
+                    if (hoveredAnalyzeStatus != null) {
+
+                        cursor = Cursor.HAND
+
+                        var b = createMultiChange()
+                        b = addStyle(b, toAreaRange(hoveredAnalyzeStatus.segmentRange), "shortcut-highlight")
+                        b.commit()
+
+                        pointedLink = hoveredAnalyzeStatus
+                        return@addEventHandler
+                    }
+                } else {
+                    val hoveredAnalyzeStatus = fileAnalyzeResult.textSegments.find { status ->
+                        chIdx in status.segmentRange && status is DescriptiveSegment
+                    } as DescriptiveSegment?
+
+                    if (hoveredAnalyzeStatus != null) {
+                        popupMsg.text = hoveredAnalyzeStatus.description
+                        popup.show(this, pos.x, pos.y + 10)
+                        return@addEventHandler
+                    }
                 }
             }
         }
         addEventHandler(MouseOverTextEvent.MOUSE_OVER_TEXT_END) { popup.hide() }
         addEventHandler(ScrollEvent.SCROLL) { popup.hide() }
 
+        addEventHandler(KeyEvent.KEY_RELEASED) {
+            println("Released ${it.isShortcutDown}")
+            isCtrlDown = it.isShortcutDown
+            if (!isCtrlDown) {
+                removePointedLinkHighlight()
+            }
+        }
+
         addEventHandler(KeyEvent.KEY_PRESSED) { event ->
+
+            if (event.code == KeyCode.SHORTCUT || event.isShortcutDown)
+                isCtrlDown = true
+
             isSearching = false
             println(event.toKeyCodeCombination()?.displayText)
             keyListeners[event.toKeyCodeCombination()]?.also { listener ->
                 println("Found listener")
-                val prj = getProjectForNode(this)
-                prj?.fileToClassMapping?.get(currentEditingFile)?.also { clazz ->
-                    println("Found clazz")
-                    val pos = caretPosition
-                    clazz.ranges.find { status -> status.rangeToStyle.any { pos in it.first } }?.apply {
+                val file = currentEditingFile ?: return@also
+                val prj = getProjectForNode(this) ?: return@also
+                prj.getAnalyzeResult(file)?.also { result ->
+                    println("Found file_analyze_result")
+                    val pos = toFilePosition(caretPosition)
+                    result.textSegments.find { status -> pos in status.segmentRange && status is NavigableSegment }?.apply {
                         println("Found range")
-                        listener.invoke(this)
+                        listener.invoke(this as NavigableSegment)
                     }
                 }
             }
@@ -188,6 +241,52 @@ class CodeEditorArea(
             }
         }
 
+        caretPositionProperty().addListener { _, _, newValue ->
+
+            val newValueFile = toFilePosition(newValue)
+
+            var changeBuilder = createMultiChange()
+            var hasChanges = false
+
+            val previousHighlight = highlightedNavigableRange
+            if (previousHighlight.isNotEmpty()) {
+                val invalid = previousHighlight.filter { newValueFile !in it.segmentRange }
+                invalid.forEach {
+                    changeBuilder = removeStyle(changeBuilder, toAreaRange(it.segmentRange), it.highlightStyle)
+                    hasChanges = true
+                }
+                previousHighlight.removeAll(invalid)
+            }
+
+            val file = currentEditingFile ?: return@addListener
+
+            val smaliCopy = getProjectForNode(this)?.getAnalyzeResult(file)
+            if (smaliCopy != null) {
+                val caretPositionStatus = smaliCopy.textSegments.find { status ->
+                    status is HighlightableSegment && newValueFile in status.segmentRange
+                } as HighlightableSegment?
+
+                caretPositionStatus?.apply {
+                    smaliCopy.textSegments.forEach { segment ->
+                        if (segment is HighlightableSegment && highlightOther(segment)) {
+                            changeBuilder = addStyle(changeBuilder, toAreaRange(segment.segmentRange), segment.highlightStyle)
+                            hasChanges = true
+                            previousHighlight.add(segment)
+                        }
+                    }
+
+                    changeBuilder = addStyle(changeBuilder, toAreaRange(segmentRange), highlightStyle)
+                    hasChanges = true
+
+                    previousHighlight.add(this)
+                }
+            }
+
+            if (hasChanges) {
+                changeBuilder.commit()
+            }
+        }
+
         currentSearchValueProperty.addListener { _, oldValue, newValue ->
             if (searchSpanList.currentPosition >= 0
                     && (oldValue.startsWith(newValue, true)
@@ -215,6 +314,17 @@ class CodeEditorArea(
     private fun unregisterSaveOnEdit() {
         fileSpecificSubscriptions.forEach { it.unsubscribe() }
         fileSpecificSubscriptions.clear()
+    }
+
+    private fun removePointedLinkHighlight() {
+        pointedLink?.also {
+            var b = createMultiChange()
+            b = removeStyle(b, toAreaRange(it.segmentRange), "shortcut-highlight")
+            b.commit()
+
+            pointedLink = null
+        }
+        cursor = Cursor.TEXT
     }
 
     fun getLineStartIndex(index: Int): Int {
@@ -372,6 +482,10 @@ class CodeEditorArea(
         }.subscribeOn(Schedulers.computation())
     }
 
+    private fun highlightLinkAtCaret() {
+
+    }
+
     private fun highlightSearch() {
 
         if (isUpdating.getAndSet(true))
@@ -439,19 +553,11 @@ class CodeEditorArea(
                         var b = createMultiChange()
                         var ch = false
 
-                        val txt = getTextTrueTerminator()
-
-                        result.rangeStatuses.forEach { status ->
-                            status.rangeToStyle.forEach { (styleRange, style) ->
-                                val (from, to) = if (data.lineSeparator == LineSeparator.CRLF) {
-                                    styleRange.first - txt.count('\r', to = styleRange.first) to
-                                    styleRange.last - txt.count('\r', to = styleRange.last)
-                                } else {
-                                    styleRange.first to styleRange.last
-                                }
-
+                        result.textSegments.forEach { status ->
+                            if (status is StyledSegment) {
                                 ch = true
-                                b = setStyle(b, from, to, style)
+                                val (from, to) = toAreaRange(status.segmentRange)
+                                b = setStyle(b, from, to, status.style)
                             }
                         }
                         ch to b
@@ -497,6 +603,22 @@ class CodeEditorArea(
         }
     }
 
+    private fun addStyle(
+            changeBuilder: MultiChangeBuilder<Collection<String>, String, Collection<String>>,
+            range: IntRange,
+            style: String
+    ): MultiChangeBuilder<Collection<String>, String, Collection<String>> {
+        return addStyle(changeBuilder, range.first, range.last, style)
+    }
+
+    private fun removeStyle(
+            changeBuilder: MultiChangeBuilder<Collection<String>, String, Collection<String>>,
+            range: IntRange,
+            style: String
+    ): MultiChangeBuilder<Collection<String>, String, Collection<String>> {
+        return removeStyle(changeBuilder, range.first, range.last, style)
+    }
+
     private fun removeStyle(
             changeBuilder: MultiChangeBuilder<Collection<String>, String, Collection<String>>,
             from: Int, to: Int,
@@ -522,6 +644,44 @@ class CodeEditorArea(
         d.setStyleSpans(0, n)
 
         return changeBuilder.replaceAbsolutely(from, to, d)
+    }
+
+    private fun toFilePosition(position: Int): Int {
+        return if (data.lineSeparator == LineSeparator.CRLF) {
+            position + text.count('\n', to = position)
+        } else {
+            position
+        }
+    }
+
+    private fun toAreaPosition(position: Int): Int {
+        return if (data.lineSeparator == LineSeparator.CRLF) {
+            position - getTextTrueTerminator().count('\r', to = position)
+        } else {
+            position
+        }
+    }
+
+    private fun toFileRange(range: IntRange): IntRange {
+        return if (data.lineSeparator == LineSeparator.CRLF) {
+            val txt = text
+            val from = range.first + txt.count('\n', to = range.first)
+            val to = range.last + txt.count('\n', to = range.last)
+            IntRange(from, to)
+        } else {
+            range
+        }
+    }
+
+    private fun toAreaRange(range: IntRange): IntRange {
+        return if (data.lineSeparator == LineSeparator.CRLF) {
+            val txt = getTextTrueTerminator()
+            val from = range.first - txt.count('\r', to = range.first)
+            val to = range.last - txt.count('\r', to = range.last)
+            IntRange(from, to)
+        } else {
+            range
+        }
     }
 
     public fun getTextTrueTerminator(): String {

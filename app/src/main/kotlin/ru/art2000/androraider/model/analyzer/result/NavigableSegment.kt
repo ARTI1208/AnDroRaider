@@ -1,6 +1,6 @@
 package ru.art2000.androraider.model.analyzer.result
 
-interface NavigableRange {
+interface NavigableSegment : TextSegment {
 
     val navigateDetails: List<FileNavigatePosition>
 }

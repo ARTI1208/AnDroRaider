@@ -7,7 +7,7 @@ import javafx.scene.layout.Background
 import javafx.scene.layout.BackgroundFill
 import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
-import ru.art2000.androraider.model.analyzer.result.NavigableRange
+import ru.art2000.androraider.model.analyzer.result.NavigableSegment
 import ru.art2000.androraider.model.editor.file.FileEditData
 import ru.art2000.androraider.view.editor.search.SearchableNodeWrapper
 import java.io.File
@@ -26,11 +26,9 @@ class EditorTabContent(val data: FileEditData, val openFile: (File, Int) -> Unit
 
         codeEditorArea.apply {
             keyListeners[KeyCodeCombination(KeyCode.B, KeyCombination.SHORTCUT_DOWN)] = {
-                if (it is NavigableRange) {
-                    if (it.navigateDetails.size == 1) {
-                        it.navigateDetails.first().apply {
-                            openFile(this.file, this.offset)
-                        }
+                if (it.navigateDetails.size == 1) {
+                    it.navigateDetails.first().apply {
+                        openFile(this.file, this.offset)
                     }
                 }
             }

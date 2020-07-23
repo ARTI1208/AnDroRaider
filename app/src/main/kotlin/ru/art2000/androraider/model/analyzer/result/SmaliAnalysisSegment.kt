@@ -3,20 +3,21 @@ package ru.art2000.androraider.model.analyzer.result
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliComponent
 import java.io.File
 
-class DynamicRangeStatus(val range: IntRange, component: SmaliComponent, override val declaringFile: File) : RangeAnalyzeStatus, NavigableRange {
+class SmaliAnalysisSegment(
+        override val segmentRange: IntRange,
+        val component: SmaliComponent,
+        override val declaringFile: File
+) : StyledSegment, DescriptiveSegment, FileSegment, NavigableSegment, HighlightableSegment {
 
-    private var currentStyle = mutableSetOf<String>()
     private var currentDescription = "$component"
-
-    var component: SmaliComponent = component
-        private set
+    private var currentStyle = ""
 
     private fun update() {
         currentDescription = if (component.exists()) {
-            currentStyle.clear()
+            currentStyle = ""
             "$component in ${component.file}"
         } else {
-            currentStyle.add("error")
+            currentStyle = "error"
             "$component not found"
         }
     }
@@ -27,15 +28,10 @@ class DynamicRangeStatus(val range: IntRange, component: SmaliComponent, overrid
             return currentDescription
         }
 
-    override val rangeToStyle: List<Pair<IntRange, String>>
+    override val style: String
         get() {
             update()
-            return currentStyle.let {
-                if (it.isEmpty())
-                    listOf(range to "")
-                else
-                    listOf(range to it.first())
-            }
+            return currentStyle
         }
 
     override val navigateDetails: List<FileNavigatePosition>
@@ -49,5 +45,13 @@ class DynamicRangeStatus(val range: IntRange, component: SmaliComponent, overrid
 
     override fun toString(): String {
         return description
+    }
+
+    override fun highlightOther(other: HighlightableSegment): Boolean {
+        if (other !is SmaliAnalysisSegment) {
+            return false
+        }
+
+        return component === other.component
     }
 }

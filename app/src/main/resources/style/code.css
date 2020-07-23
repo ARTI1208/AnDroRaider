@@ -65,5 +65,19 @@
 
 .debug {
     -fx-fill: green;
-    -fx-background-color: green;
+    -rtfx-background-color: gray;
+}
+
+.default-highlight {
+    -rtfx-background-color: rgba(0, 0, 255, 0.25);
+}
+
+.attr-schema-highlight {
+    -rtfx-background-color: rgba(106, 0, 255, 0.25);
+}
+
+.shortcut-highlight {
+    -fx-fill: deepskyblue;
+    -rtfx-underline-color: deepskyblue;
+    -rtfx-underline-width: 1px;
 }

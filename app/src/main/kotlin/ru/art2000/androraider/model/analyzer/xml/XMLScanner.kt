@@ -18,14 +18,18 @@ class XMLScanner(val file: File) : XMLParserBaseVisitor<Document>() {
         val name = "xml"
 
         val tagRanges = mutableListOf<IntRange>()
+        val tagNameRanges = mutableListOf<IntRange>()
 
-        tagRanges.add(ctx.XMLDeclOpen().textRange)
+        val start = ctx.XMLDeclOpen().firstPos
+        val end = start + 5 // plus <?xml length
+        tagRanges.add(start..end)
+        tagNameRanges.add((start + 2)..end)
 
         ctx.SPECIAL_CLOSE().also {
             tagRanges.add(it.textRange)
         }
 
-        val tag = document.createTag(name, tagRanges)
+        val tag = document.createTag(name, tagRanges, tagNameRanges)
 
         ctx.attribute().forEach {
             val fullname = it.Name().text
@@ -35,7 +39,7 @@ class XMLScanner(val file: File) : XMLParserBaseVisitor<Document>() {
             val schema = if (delimiterPos >= 0) fullname.substring(0, delimiterPos) else null
             val attrName = if (delimiterPos >= 0) fullname.substring(delimiterPos) else fullname
 
-            tag.createAttribute(attrName, it.STRING().text, schema, it.firstPos)
+            tag.createAttribute(it.firstPos, schema, attrName, it.STRING().text)
         }
 
         return document
@@ -45,6 +49,9 @@ class XMLScanner(val file: File) : XMLParserBaseVisitor<Document>() {
         val name = ctx.Name(0).text
 
         val tagRanges = mutableListOf<IntRange>()
+        val tagNameRanges = mutableListOf<IntRange>()
+
+        tagNameRanges.addAll(ctx.Name().map { it.textRange })
 
         tagRanges.add(ctx.firstPos..ctx.Name(0).lastPos)
 
@@ -62,7 +69,7 @@ class XMLScanner(val file: File) : XMLParserBaseVisitor<Document>() {
             }
         }
 
-        val tag = document.createTag(name, tagRanges)
+        val tag = document.createTag(name, tagRanges, tagNameRanges)
 
         ctx.attribute().forEach {
             val fullname = it.Name().text
@@ -72,7 +79,7 @@ class XMLScanner(val file: File) : XMLParserBaseVisitor<Document>() {
             val schema = if (delimiterPos >= 0) fullname.substring(0, delimiterPos) else null
             val attrName = if (delimiterPos >= 0) fullname.substring(delimiterPos) else fullname
 
-            tag.createAttribute(attrName, it.STRING().text, schema, it.firstPos)
+            tag.createAttribute(it.firstPos, schema, attrName, it.STRING().text)
         }
 
         return if (ctx.content() == null)

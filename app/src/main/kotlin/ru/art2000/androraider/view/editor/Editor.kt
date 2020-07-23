@@ -102,7 +102,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
             if (oldValue != null && newValue != null) {
                 getTabCodeEditor(newValue).apply {
-                    updateHighlighting()
+//                    updateHighlighting()
                 }
             }
         }

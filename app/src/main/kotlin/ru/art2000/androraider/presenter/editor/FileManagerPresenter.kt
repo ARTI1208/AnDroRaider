@@ -1,6 +1,6 @@
 package ru.art2000.androraider.presenter.editor
 
-import ru.art2000.androraider.model.analyzer.result.ProjectAnalyzeResult
+import ru.art2000.androraider.model.analyzer.result.AndroidAppProject
 import ru.art2000.androraider.model.editor.FileCreationArguments
 import ru.art2000.androraider.arch.IPresenter
 import ru.art2000.androraider.utils.isSubFile
@@ -8,7 +8,7 @@ import java.io.File
 
 class FileManagerPresenter : IPresenter {
 
-    fun getFileCreationOptions(project: ProjectAnalyzeResult?, folder: File): List<FileCreationArguments> {
+    fun getFileCreationOptions(project: AndroidAppProject?, folder: File): List<FileCreationArguments> {
         val list = mutableListOf(
                 FileCreationArguments.folder("Folder"),
                 FileCreationArguments.simpleFile("File")
@@ -21,7 +21,7 @@ class FileManagerPresenter : IPresenter {
             list.add(FileCreationArguments(false, "Smali", "smali"))
         }
 
-        val resFolder = project.baseFolder.toPath().resolve("res").toFile()
+        val resFolder = project.projectFolder.toPath().resolve("res").toFile()
         if (folder.isSubFile(resFolder)) {
             list.add(FileCreationArguments(false, "XML", "xml"))
         }
