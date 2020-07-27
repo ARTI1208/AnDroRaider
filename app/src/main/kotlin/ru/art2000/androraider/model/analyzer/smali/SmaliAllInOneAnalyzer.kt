@@ -3,6 +3,7 @@ package ru.art2000.androraider.model.analyzer.smali
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RuleContext
 import org.antlr.v4.runtime.tree.ErrorNode
+import ru.art2000.androraider.model.analyzer.android.*
 import ru.art2000.androraider.model.analyzer.result.*
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliField
@@ -18,6 +19,12 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     val withRanges = settings.withRanges
 
     val file = smaliClass.file!!
+
+    init {
+        project.errorList.removeIf {
+            it.declaringFile == file
+        }
+    }
 
     private fun tunableVisitChildren(ctx: ParserRuleContext, action: () -> Unit): SmaliClass {
         return if (settings.childrenBeforeAction) {
@@ -61,7 +68,9 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
                     else
                         "Unknown return type \"${ctx.text}\""
 
-                    smaliClass.ranges.add(Error(ctx.textRange, message, smaliClass.file!!))
+                    val error = Error(ctx.textRange, message, smaliClass.file!!)
+                    smaliClass.ranges.add(error)
+                    project.errorList.add(error)
                 }
             } else {
                 method.returnType = returnType
@@ -87,7 +96,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             smaliField.parentClass = smaliClass
             smaliField.textRange = ctx.fieldNameAndType()?.fieldName()?.textRange ?: -1..0
             if (withRanges)
-                smaliClass.ranges.add(SmaliAnalysisSegment(smaliField.textRange, smaliField, file))
+                smaliClass.ranges.add(SmaliAnalysisSegment(project, smaliField.textRange, smaliField, file))
         }
 
     }
@@ -218,6 +227,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             val labelNameContext = ctx.label().labelName()
 
             smaliClass.ranges.add(SmaliAnalysisSegment(
+                    project,
                     labelNameContext.textRange,
                     currentMethod.getOrCreateLabel(labelNameContext.text),
                     file)
@@ -363,14 +373,34 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
                 }
             }
 
-            description += "; hex: 0x${hex}; dec: $decimal"
+            var isResource = false
+            if (radix == 16) {
+                val androidResource = project.public[decimal.toInt()]
+
+                androidResource?.also { res ->
+                    isResource = true
+                    description = "Resource: type=${res.type} name=${res.name}"
+
+                    if (withRanges) {
+
+                        val navigateOptions = project.resources[res] ?: listOf<FileLink>()
+
+                        smaliClass.ranges.add(AndroidResourceSegment(res, navigateOptions, ctx.textRange, file))
+                    }
+
+                }
+            }
+
+            if (!isResource) {
+                description += "; hex: 0x${hex}; dec: $decimal"
+            }
+
+            if (withRanges) {
+                smaliClass.ranges.add(DescriptiveFileAnalysisSegment(file, ctx.textRange, "number", description))
+            }
         } catch (e: Exception) {
             println("Error: ${ctx.text} in ${smaliClass.associatedFile}")
             e.printStackTrace()
-        }
-
-        if (withRanges) {
-            smaliClass.ranges.add(DescriptiveFileAnalysisSegment(file, ctx.textRange, "number", description))
         }
         return visitChildren(ctx)
     }
@@ -447,7 +477,9 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
                     else
                         "Unknown field type \"${ctx.text}\""
 
-                    smaliClass.ranges.add(Error(ctx.textRange, message, smaliClass.file!!))
+                    val error = Error(ctx.textRange, message, smaliClass.file!!)
+                    smaliClass.ranges.add(error)
+                    project.errorList.add(error)
                 }
             } else {
                 grandfather.smaliField.type = fieldType
@@ -463,6 +495,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             parseCompound(ctx.text).forEach { parameterText ->
                 project.getOrCreateClass(parameterText)?.also {
                     smaliClass.ranges.add(SmaliAnalysisSegment(
+                            project,
                             (ctx.start.startIndex + offset)..(ctx.start.startIndex + offset + parameterText.lastIndex),
                             it, file)
                     )
@@ -476,7 +509,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     override fun visitReferenceType(ctx: SmaliParser.ReferenceTypeContext): SmaliClass {
         val clazz = project.getOrCreateClass(ctx.text) ?: return visitChildren(ctx)
         if (withRanges)
-            smaliClass.ranges.add(SmaliAnalysisSegment(ctx.textRange, clazz, file))
+            smaliClass.ranges.add(SmaliAnalysisSegment(project, ctx.textRange, clazz, file))
 
         return visitChildren(ctx)
     }
@@ -545,15 +578,17 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
                         )
                     }
                     num >= method.parameters.size -> {
-                        smaliClass.ranges.add(Error(
+
+                        val error = Error(
                                 ctx.textRange,
                                 "Invalid param index $num: must be in range 0..${method.parameters.size - 1}",
                                 smaliClass.file!!
-                            )
                         )
+                        smaliClass.ranges.add(error)
+                        project.errorList.add(error)
                     }
                     else -> {
-                        smaliClass.ranges.add(RegisterRangeStatus(
+                        smaliClass.ranges.add(RegisterSegment(
                                 ctx.textRange,
                                 Register.PARAM,
                                 num,
@@ -579,14 +614,17 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
                         )
                     }
                     num >= method.locals -> {
-                        smaliClass.ranges.add(Error(
+
+                        val error = Error(
                                 ctx.textRange,
                                 "Invalid local index $num: must be in range 0..${method.locals - 1}",
-                                smaliClass.file!!)
+                                smaliClass.file!!
                         )
+                        smaliClass.ranges.add(error)
+                        project.errorList.add(error)
                     }
                     else -> {
-                        smaliClass.ranges.add(RegisterRangeStatus(
+                        smaliClass.ranges.add(RegisterSegment(
                                 ctx.textRange,
                                 Register.LOCAL,
                                 num,
@@ -599,7 +637,10 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             }
 
             else -> {
-                smaliClass.ranges.add(Error(ctx.textRange, "Invalid register identifier", smaliClass.file!!))
+
+                val error = Error(ctx.textRange, "Invalid register identifier", smaliClass.file!!)
+                smaliClass.ranges.add(error)
+                project.errorList.add(error)
             }
         }
 
@@ -649,6 +690,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             val labelNameContext = ctx.filledArrayDataLabel().label().labelName()
 
             smaliClass.ranges.add(SmaliAnalysisSegment(
+                    project,
                     labelNameContext.textRange,
                     currentMethod.getOrCreateLabel(labelNameContext.text), file)
             )
@@ -765,7 +807,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     override fun visitMethodInvocationTarget(ctx: SmaliParser.MethodInvocationTargetContext): SmaliClass {
         smaliMethodFromInvocationContext(ctx)?.also {
             if (withRanges)
-                smaliClass.ranges.add(SmaliAnalysisSegment(ctx.methodSignature().methodIdentifier().textRange, it, file))
+                smaliClass.ranges.add(SmaliAnalysisSegment(project, ctx.methodSignature().methodIdentifier().textRange, it, file))
         }
 
         return visitChildren(ctx)
@@ -809,7 +851,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             smaliMethod.textRange = ctx.methodDeclaration()?.methodSignature()?.methodIdentifier()?.textRange ?: -1..0
 
             if (withRanges) {
-                smaliClass.ranges.add(SmaliAnalysisSegment(smaliMethod.textRange, smaliMethod, file))
+                smaliClass.ranges.add(SmaliAnalysisSegment(project, smaliMethod.textRange, smaliMethod, file))
             }
         }
 
@@ -825,7 +867,10 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
                     .mapNotNull {
                         val parameterType = project.getOrCreateClass(it)
                         if (parameterType == null && withRanges) {
-                            smaliClass.ranges.add(Error(offset until offset + it.length, "Unknown type \"$it\"", smaliClass.file!!))
+
+                            val error = Error(offset until offset + it.length, "Unknown type \"$it\"", smaliClass.file!!)
+                            smaliClass.ranges.add(error)
+                            project.errorList.add(error)
                         }
                         offset += it.length
                         parameterType
@@ -937,6 +982,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             val labelNameContext = ctx.label().labelName()
 
             smaliClass.ranges.add(SmaliAnalysisSegment(
+                    project,
                     labelNameContext.textRange,
                     currentMethod.getOrCreateLabel(labelNameContext.text), file)
             )
@@ -1228,6 +1274,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             val labelNameContext = ctx.label().labelName()
 
             smaliClass.ranges.add(SmaliAnalysisSegment(
+                    project,
                     labelNameContext.textRange,
                     currentMethod.getOrCreateLabel(labelNameContext.text), file)
             )
@@ -1326,6 +1373,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             val labelNameContext = ctx.label().labelName()
 
             smaliClass.ranges.add(SmaliAnalysisSegment(
+                    project,
                     labelNameContext.textRange,
                     currentMethod.getOrCreateLabel(labelNameContext.text), file)
             )
@@ -1355,7 +1403,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         val targetField = targetClass?.findOrCreateField(ctx.fieldNameAndType().fieldName().text,
                 ctx.fieldNameAndType().fieldType().text) ?: return visitChildren(ctx)
 
-        smaliClass.ranges.add(SmaliAnalysisSegment(ctx.fieldNameAndType().fieldName().textRange, targetField, file))
+        smaliClass.ranges.add(SmaliAnalysisSegment(project, ctx.fieldNameAndType().fieldName().textRange, targetField, file))
 
         return visitChildren(ctx)
     }

@@ -1,6 +1,6 @@
 package ru.art2000.androraider.presenter.editor
 
-import ru.art2000.androraider.model.analyzer.result.AndroidAppProject
+import ru.art2000.androraider.model.analyzer.android.AndroidAppProject
 import ru.art2000.androraider.model.editor.FileCreationArguments
 import ru.art2000.androraider.arch.IPresenter
 import ru.art2000.androraider.utils.isSubFile

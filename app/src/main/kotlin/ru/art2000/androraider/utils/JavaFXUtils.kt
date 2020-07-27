@@ -21,6 +21,44 @@ fun <T, E> Property<T>.bind(observable: ObservableValue<E>, converter: (e: E) ->
     value = converter(observable.value)
 }
 
+fun <T> Property<T>.bindOnFXThread(observable: ObservableValue<T>) {
+
+    fun set(v: T) {
+
+        if (Platform.isFxApplicationThread()) {
+            value = v
+        } else {
+            Platform.runLater {
+                value = v
+            }
+        }
+    }
+
+    observable.addListener { _, _, newValue ->
+        set(newValue)
+    }
+    set(observable.value)
+}
+
+fun <T, E> Property<T>.bindOnFXThread(observable: ObservableValue<E>, converter: (e: E) -> T) {
+
+    fun set(v: E) {
+
+        if (Platform.isFxApplicationThread()) {
+            value = converter(v)
+        } else {
+            Platform.runLater {
+                value = converter(v)
+            }
+        }
+    }
+
+    observable.addListener { _, _, newValue ->
+        set(newValue)
+    }
+    set(observable.value)
+}
+
 operator fun IndexRange.contains(int: Int): Boolean {
     return int in start..end
 }

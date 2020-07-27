@@ -1,5 +1,10 @@
 package ru.art2000.androraider.model.editor.file
 
+import javafx.beans.property.SimpleBooleanProperty
+import javafx.beans.property.SimpleObjectProperty
+import javafx.beans.property.SimpleStringProperty
+import javafx.beans.value.ObservableStringValue
+import javafx.beans.value.ObservableValue
 import javafx.scene.Node
 import javafx.scene.image.Image
 import org.reactfx.value.Var
@@ -13,18 +18,24 @@ public class IndentConfiguration(public val indent: IndentType, val count: Int):
         TAB("\t");
     }
 
-    override val icon: Image? = null
+    override val icon: ObservableValue<Image?> = SimpleObjectProperty(null)
 
     override val action: Consumer<Node>? = null
 
-    override val active = Var.newSimpleVar(true)
+    override val active = SimpleBooleanProperty(true)
 
-    override val displayedValue = if (count == 1)
-        "$count ${indent.name.toLowerCase()}"
-    else
-        "$count ${indent.name.toLowerCase()}s"
+    override val displayedValue: ObservableStringValue
 
-    override val description = "Indent: $displayedValue"
+    init {
+        val v = if (count == 1)
+            "$count ${indent.name.toLowerCase()}"
+        else
+            "$count ${indent.name.toLowerCase()}s"
+
+        displayedValue = SimpleStringProperty(v)
+    }
+
+    override val description = "Indent: ${displayedValue.value}"
 
     override fun toString(): String {
         return indent.singleEl.repeat(count)

@@ -9,13 +9,12 @@ import org.antlr.v4.runtime.TokenStream
 import org.antlr.v4.runtime.atn.PredictionMode
 import org.antlr.v4.runtime.tree.ParseTree
 import ru.art2000.androraider.model.analyzer.Indexer
-import ru.art2000.androraider.model.analyzer.result.AndroidAppProject
 import ru.art2000.androraider.model.analyzer.xml.types.Document
 import java.io.File
 
-object XMLIndexer: Indexer<Document, XMLSettings> {
+object XMLIndexer: Indexer<XMLProject, XMLSettings, Document> {
 
-    override fun analyzeFile(project: AndroidAppProject, file: File, settings: XMLSettings): Document {
+    override fun indexFile(project: XMLProject, settings: XMLSettings, file: File): Document {
         val lexer = XMLLexer(CharStreams.fromFileName(file.absolutePath))
         val tokenStream = CommonTokenStream(lexer as TokenSource)
         val parser = XMLParser(tokenStream as TokenStream)
@@ -28,18 +27,18 @@ object XMLIndexer: Indexer<Document, XMLSettings> {
         }
     }
 
-    override fun analyzeFilesInDir(project: AndroidAppProject, directory: File, settings: XMLSettings): Observable<Document> {
+    override fun indexDirectory(project: XMLProject, settings: XMLSettings, directory: File): Observable<Document> {
         return Observable
                 .fromIterable(directory.walk().asIterable())
                 .subscribeOn(Schedulers.io())
                 .filter {
                     !it.isDirectory && it.extension == "xml"
                 }.map { file ->
-                    analyzeFile(project, file, settings)
+                    indexFile(project, settings, file)
                 }
     }
 
-    override fun indexProject(project: AndroidAppProject, settings: XMLSettings): Observable<Document> {
+    override fun indexProject(project: XMLProject, settings: XMLSettings): Observable<Document> {
         return Observable.empty()
     }
 

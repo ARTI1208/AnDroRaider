@@ -13,6 +13,7 @@ import org.reactfx.Subscription
 import ru.art2000.androraider.model.editor.StatusBarDataProvider
 import ru.art2000.androraider.model.editor.StatusBarElement
 import ru.art2000.androraider.utils.bind
+import ru.art2000.androraider.utils.bindOnFXThread
 import ru.art2000.androraider.utils.checkedRunLater
 
 class StatusBar: BorderPane() {
@@ -38,7 +39,7 @@ class StatusBar: BorderPane() {
         val newTexts = mutableListOf<Node>()
 
         val newSubscriptions = dataProvider.dataList.map {
-            val t = Button(it.value.displayedValue).apply {
+            val t = Button().apply {
                 styleClass.add("status-button")
             }
             newTexts.add(t)
@@ -58,9 +59,9 @@ class StatusBar: BorderPane() {
     }
 
     private fun bindElement(element: StatusBarElement, button: Button) {
-        button.text = element.displayedValue
-        element.icon?.apply {
-            button.graphic = ImageView(this)
+        button.textProperty().bindOnFXThread(element.displayedValue)
+        button.graphicProperty().bindOnFXThread(element.icon) {
+            ImageView(it)
         }
         button.tooltip = Tooltip(element.description).apply {
             showDuration = Duration.INDEFINITE
@@ -69,9 +70,7 @@ class StatusBar: BorderPane() {
             element.action?.accept(button)
         }
         button.disableProperty().unbind()
-        button.disableProperty().bind(element.active) {
-            !it
-        }
+        button.disableProperty().bindOnFXThread(element.active.not())
     }
 
     private fun removeDataProviderInternal(dataProviderClass: Class<*>) {

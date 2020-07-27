@@ -3,7 +3,7 @@ package ru.art2000.androraider.model.editor
 import javafx.scene.Node
 import javafx.stage.Stage
 import javafx.stage.Window
-import ru.art2000.androraider.model.analyzer.result.AndroidAppProject
+import ru.art2000.androraider.model.analyzer.android.AndroidAppProject
 import java.io.File
 
 private val projectForWindow = mutableMapOf<Int, AndroidAppProject>()

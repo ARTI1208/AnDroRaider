@@ -1,16 +1,18 @@
-package ru.art2000.androraider.model.analyzer.xml
+package ru.art2000.androraider.model.analyzer.android
 
 import org.antlr.v4.runtime.RuleContext
+import ru.art2000.androraider.model.analyzer.xml.XMLParser
+import ru.art2000.androraider.model.analyzer.xml.XMLParserBaseVisitor
 import ru.art2000.androraider.model.analyzer.xml.types.Document
 import ru.art2000.androraider.model.analyzer.xml.types.Tag
 import ru.art2000.androraider.utils.firstPos
 import ru.art2000.androraider.utils.lastPos
 import ru.art2000.androraider.utils.textRange
-import java.io.File
 
-class XMLScanner(private val document: Document) : XMLParserBaseVisitor<Document>() {
-
-    constructor(file: File) : this(Document(file))
+class AndroidResourceScanner(
+        private val document: Document,
+        private val settings: AndroidResourceAnalyzeSettings
+): XMLParserBaseVisitor<Document>() {
 
     override fun defaultResult() = document
 

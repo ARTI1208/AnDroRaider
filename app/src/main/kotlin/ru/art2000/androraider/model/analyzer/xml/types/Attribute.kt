@@ -42,6 +42,10 @@ class Attribute(
         value = Value(attrValue.substring(1, attrValue.lastIndex), valueRange, declaringFile)
     }
 
+    override fun toString(): String {
+        return "${schema?.text?.plus(":") ?: ""}${name.text}=\"${value.text}\""
+    }
+
     class Schema(
             val text: String,
             override val segmentRange: IntRange,
@@ -81,10 +85,16 @@ class Attribute(
             val text: String,
             override val segmentRange: IntRange,
             override val declaringFile: File
-    ) : TextSegment, FileSegment, HighlightableSegment, NavigableSegment {
+    ) : TextSegment, StyledSegment, FileSegment, HighlightableSegment, LinkSegment, DescriptiveSegment {
 
-        override val navigateDetails: List<FileNavigatePosition>
-            get() = emptyList()
+        var isErrorLink = false
+
+        override var description: String = ""
+
+        override val style: String
+            get() = if (isErrorLink) "error" else ""
+
+        override val fileLinkDetails: MutableList<FileLink> = mutableListOf()
 
         override fun highlightOther(other: HighlightableSegment): Boolean {
             if (other !is Value)

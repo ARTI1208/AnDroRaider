@@ -1,5 +1,9 @@
 package ru.art2000.androraider.model.editor.file
 
+import javafx.beans.property.ReadOnlyStringWrapper
+import javafx.beans.property.SimpleBooleanProperty
+import javafx.beans.property.SimpleObjectProperty
+import javafx.beans.value.ObservableValue
 import javafx.geometry.Bounds
 import javafx.scene.Node
 import javafx.scene.control.ContentDisplay
@@ -40,11 +44,11 @@ public enum class LineSeparator(
 public class LineSeparatorElement(val separator: LineSeparator,
                                   override val action: Consumer<Node>? = null) : StatusBarElement {
 
-    override val icon: Image? = null
+    override val icon: ObservableValue<Image?> = SimpleObjectProperty(null)
 
-    override val displayedValue = separator.name
+    override val displayedValue = ReadOnlyStringWrapper(separator.name)
 
     override val description = "Line separator: ${separator.separatorAsString}"
 
-    override val active = Var.newSimpleVar(true)
+    override val active = SimpleBooleanProperty(true)
 }

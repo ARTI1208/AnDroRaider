@@ -6,13 +6,13 @@ import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.PredictionMode
 import org.antlr.v4.runtime.tree.ParseTree
 import ru.art2000.androraider.model.analyzer.Indexer
-import ru.art2000.androraider.model.analyzer.result.AndroidAppProject
+import ru.art2000.androraider.model.analyzer.android.AndroidAppProject
 import ru.art2000.androraider.model.analyzer.result.SimpleFileAnalysisSegment
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.utils.textRange
 import java.io.File
 
-object SmaliIndexer : Indexer<SmaliClass, SmaliIndexerSettings> {
+object SmaliIndexer : Indexer<AndroidAppProject, SmaliIndexerSettings, SmaliClass> {
 
     private fun generateFileIndex(project: AndroidAppProject, file: File): SmaliClass {
         val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
@@ -25,7 +25,7 @@ object SmaliIndexer : Indexer<SmaliClass, SmaliIndexerSettings> {
         return SmaliShallowScanner(project, file).visit(tree as ParseTree).also { it.associatedFile = file }
     }
 
-    override fun analyzeFile(project: AndroidAppProject, file: File, settings: SmaliIndexerSettings): SmaliClass {
+    override fun indexFile(project: AndroidAppProject, settings: SmaliIndexerSettings, file: File): SmaliClass {
         val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
         val tokenStream = CommonTokenStream(lexer as TokenSource)
         val parser = SmaliParser(tokenStream as TokenStream)
@@ -54,7 +54,7 @@ object SmaliIndexer : Indexer<SmaliClass, SmaliIndexerSettings> {
         return smaliClass
     }
 
-    override fun analyzeFilesInDir(project: AndroidAppProject, directory: File, settings: SmaliIndexerSettings): Observable<SmaliClass> {
+    override fun indexDirectory(project: AndroidAppProject, settings: SmaliIndexerSettings, directory: File): Observable<SmaliClass> {
         return Observable
                 .fromIterable(directory.walk().asIterable())
                 .subscribeOn(Schedulers.io())
@@ -65,9 +65,9 @@ object SmaliIndexer : Indexer<SmaliClass, SmaliIndexerSettings> {
                 }
     }
 
-    override fun indexProject(project: AndroidAppProject, settings: SmaliIndexerSettings): Observable<SmaliClass> {
+    override fun indexProject(project: AndroidAppProject, settings: SmaliIndexerSettings): Observable<out SmaliClass> {
         return project.smaliFolders.fold(Observable.fromIterable(emptyList<SmaliClass>())) { acc, folder ->
-            acc.concatWith(analyzeFilesInDir(project, folder, settings))
+            acc.concatWith(indexDirectory(project, settings, folder))
         }
     }
 }

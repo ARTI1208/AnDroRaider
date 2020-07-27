@@ -1,15 +1,19 @@
-package ru.art2000.androraider.model.analyzer.result
+package ru.art2000.androraider.model.analyzer.smali
 
+import ru.art2000.androraider.model.analyzer.result.DescriptiveSegment
+import ru.art2000.androraider.model.analyzer.result.FileSegment
+import ru.art2000.androraider.model.analyzer.result.HighlightableSegment
+import ru.art2000.androraider.model.analyzer.result.StyledSegment
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import java.io.File
 
-class RegisterRangeStatus(override val segmentRange: IntRange,
-                          private val register: Register,
-                          private val num: Int,
-                          private val smaliMethod: SmaliMethod,
-                          private val clazz: SmaliClass?,
-                          override val declaringFile: File
+class RegisterSegment(override val segmentRange: IntRange,
+                      private val register: Register,
+                      private val num: Int,
+                      private val smaliMethod: SmaliMethod,
+                      private val clazz: SmaliClass?,
+                      override val declaringFile: File
 ) : StyledSegment, DescriptiveSegment, FileSegment, HighlightableSegment {
 
     override val style: String = register.style
@@ -17,7 +21,7 @@ class RegisterRangeStatus(override val segmentRange: IntRange,
     override val description: String = "Value in register: ${clazz?.fullname}"
 
     override fun highlightOther(other: HighlightableSegment): Boolean {
-        if (other !is RegisterRangeStatus) {
+        if (other !is RegisterSegment) {
             return false
         }
 

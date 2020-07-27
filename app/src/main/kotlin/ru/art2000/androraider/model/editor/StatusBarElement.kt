@@ -1,16 +1,19 @@
 package ru.art2000.androraider.model.editor
 
+import javafx.beans.property.BooleanProperty
+import javafx.beans.value.ObservableBooleanValue
+import javafx.beans.value.ObservableStringValue
+import javafx.beans.value.ObservableValue
 import javafx.scene.Node
 import javafx.scene.image.Image
-import org.reactfx.value.Var
 import java.util.function.Consumer
 
 interface StatusBarElement {
 
-    val icon: Image?
+    val icon: ObservableValue<Image?>
 
     // Shown directly in status bar
-    val displayedValue: String
+    val displayedValue: ObservableStringValue
 
     // Shown on hover
     val description: String
@@ -18,5 +21,5 @@ interface StatusBarElement {
     // on click
     val action: Consumer<Node>?
 
-    val active: Var<Boolean>
+    val active: BooleanProperty
 }

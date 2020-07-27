@@ -84,6 +84,8 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
         codeEditorContainer.background = Background(BackgroundFill(Color.GRAY, null, null))
 
+        statusBar.addDataProvider(presenter.project.analysisData)
+
         editorTabPane.prefHeightProperty().bind(codeEditorContainer.heightProperty())
         editorTabPane.prefWidthProperty().bind(widthProperty().subtract(fileManagerView.prefWidthProperty()))
         editorTabPane.selectionModel.selectedItemProperty().addListener { _, oldValue, newValue ->
@@ -215,7 +217,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         editorTabPane.tabClosingPolicy = TabPane.TabClosingPolicy.ALL_TABS
     }
 
-    private fun openFile(newFile: File, caretPosition: Int = 0) {
+    private fun openFile(newFile: File, caretPosition: Int = 0): Boolean {
         if (TypeDetector.isTextFile(newFile.name)) {
             val indexedTab = editorTabPane.tabs.withIndex().find {
                 (it.value.userData as? FileEditData)?.file == newFile
@@ -224,18 +226,23 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 val newTab = Tab(newFile.name)
                 val data = FileEditData(newFile, presenter.project)
                 newTab.userData = data
-                newTab.content = EditorTabContent(data, ::openFile)
+                newTab.content = EditorTabContent(data, ::openFile, caretPosition)
                 val pos = editorTabPane.selectionModel.selectedIndex + 1
                 editorTabPane.tabs.add(pos, newTab)
                 pos
             } else {
                 val selectedTab = editorTabPane.tabs[indexedTab.index]
-                getTabCodeEditor(selectedTab).moveToAndPlaceLineInCenter(caretPosition)
+                getTabCodeEditor(selectedTab).apply {
+                    moveToAndPlaceLineInCenter(toAreaPosition(caretPosition))
+                }
                 indexedTab.index
             }
 
             editorTabPane.selectionModel.select(position)
+            return true
         }
+
+        return false
     }
 
     private fun setupFileExplorerView() {
@@ -258,7 +265,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 .filter { it.isDirectory && it.exists() }
 
         frameworkFolder.forEach {
-            presenter.project.addProjectFolder(it)
+            presenter.project.addDependencyFolder(it)
         }
 
         if (frameworkFolder.isNotEmpty()) {

@@ -1,6 +1,6 @@
 package ru.art2000.androraider.model.analyzer.smali.types
 
-import ru.art2000.androraider.model.analyzer.result.AndroidAppProject
+import ru.art2000.androraider.model.analyzer.android.AndroidAppProject
 import java.io.File
 import java.util.*
 

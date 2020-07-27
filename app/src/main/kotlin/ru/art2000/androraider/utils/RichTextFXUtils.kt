@@ -1,10 +1,9 @@
 package ru.art2000.androraider.utils
 
+import org.fxmisc.richtext.MultiChangeBuilder
 import org.fxmisc.richtext.StyledTextField
 import org.fxmisc.richtext.TextExt
-import org.fxmisc.richtext.model.Paragraph
-import org.fxmisc.richtext.model.ReadOnlyStyledDocument
-import org.fxmisc.richtext.model.TextOps
+import org.fxmisc.richtext.model.*
 import java.util.*
 import java.util.regex.Pattern
 import kotlin.math.ceil
@@ -25,3 +24,38 @@ public fun StyledTextField<*, *>.autoWidth() {
         prefWidth = computeContentWidth()
     }
 }
+
+//public fun <PS, SEG, S> MultiChangeBuilder<PS, SEG, S>.changeStyle(
+//        document: EditableStyledDocument<PS, SEG, S>,
+//        from: Int, to: Int,
+//        mapper: (S) -> S
+//): MultiChangeBuilder<PS, SEG, S> {
+//
+//    val d = SimpleEditableStyledDocument(
+//            document.subSequence(from, to)
+//                    as ReadOnlyStyledDocument<Collection<String>, String, Collection<String>>
+//    )
+//
+//    val n = document.getStyleSpans(from, to).mapStyles(mapper)
+//
+//    d.setStyleSpans(0, n)
+//
+//    return replaceAbsolutely(from, to, d)
+//}
+
+//private fun changeStyle(
+//        changeBuilder: MultiChangeBuilder<Collection<String>, String, Collection<String>>,
+//        from: Int, to: Int,
+//        mapper: (Collection<String>) -> Collection<String>
+//): MultiChangeBuilder<Collection<String>, String, Collection<String>> {
+//    val d = SimpleEditableStyledDocument(
+//            content.subSequence(from, to)
+//                    as ReadOnlyStyledDocument<Collection<String>, String, Collection<String>>
+//    )
+//
+//    val n = content.getStyleSpans(from, to).mapStyles(mapper)
+//
+//    d.setStyleSpans(0, n)
+//
+//    return changeBuilder.replaceAbsolutely(from, to, d)
+//}

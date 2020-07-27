@@ -1,51 +1,88 @@
-package ru.art2000.androraider.model.analyzer.result
+package ru.art2000.androraider.model.analyzer.android
 
 import io.reactivex.Observable
 import org.reactfx.collection.LiveArrayList
+import org.reactfx.collection.LiveList
+import ru.art2000.androraider.model.analyzer.AnalyzeMode
+import ru.art2000.androraider.model.analyzer.result.FileIndexingResult
+import ru.art2000.androraider.model.analyzer.result.FileSegment
+import ru.art2000.androraider.model.analyzer.result.Project
 import ru.art2000.androraider.model.analyzer.smali.SmaliIndexer
 import ru.art2000.androraider.model.analyzer.smali.SmaliIndexerSettings
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliPackage
-import ru.art2000.androraider.model.analyzer.xml.EmptyXMLSettings
-import ru.art2000.androraider.model.analyzer.xml.XMLIndexer
+import ru.art2000.androraider.model.analyzer.xml.XMLProject
 import ru.art2000.androraider.model.analyzer.xml.types.Document
+import ru.art2000.androraider.model.editor.AnalysisData
 import ru.art2000.androraider.model.editor.ProjectSettings
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
 import java.io.File
 
-class AndroidAppProject(override val projectFolder: File): Project {
+class AndroidAppProject(override val projectFolder: File): Project, XMLProject {
 
-    private val projectFolders = mutableListOf<File>()
+    companion object {
+
+        val resourceTypes = listOf(
+                "drawable",
+                "plurals",
+                "array",
+                "string-array",
+                "integer-array",
+                "mipmap",
+                "string",
+                "style",
+                "dimen",
+                "bool",
+                "attr",
+                "color",
+                "id",
+                "integer",
+                "xml",
+                "fraction"
+        )
+    }
+
+    public val dependencies: List<File>
+        get() = deps
+
+    private val deps = mutableListOf<File>()
 
     private val rootPackage = SmaliPackage(this, "", packageDelimiter = "")
 
     val fileToClassMapping = mutableMapOf<File, SmaliClass>()
 
-    val fileToXMLDocMapping = mutableMapOf<File, Document>()
+    override val fileToXMLDocMapping = mutableMapOf<File, Document>()
 
     val projectSettings = ProjectSettings(projectFolder, SettingsPresenter.prefs)
 
     val smaliFolders = mutableListOf<File>()
 
-    val errorList = LiveArrayList<FileSegment>()
+    override val errorList: LiveList<FileSegment> = LiveArrayList<FileSegment>()
 
     private val smaliFolderNameRegex = Regex("^((smali)|(smali_classes\\d+))\$")
 
+    val analysisData = AnalysisData(this)
+
+    val resources: MutableMap<AndroidResource, MutableList<AndroidResourceLink>> = hashMapOf()
+
+    val public : MutableMap<Int, AndroidResource> = hashMapOf()
+
     init {
-        addProjectFolder(projectFolder)
-        errorList.addChangeObserver {
-            it.forEach { it.addedSubList.forEach { println(it.declaringFile.toString()) } }
-        }
+        collectSmaliFolders(projectFolder)
     }
 
-    fun addProjectFolder(file: File) {
+    fun addDependencyFolder(file: File) {
         require(file.isDirectory) { "ProjectAnalyzeResult requires a folder as constructor argument" }
 
+        collectSmaliFolders(file)
+
+        deps.add(file)
+    }
+
+    private fun collectSmaliFolders(file: File) {
         smaliFolders.addAll(file.listFiles { _, name ->
             name.matches(smaliFolderNameRegex)
         }?.toList() ?: emptyList())
-
-        projectFolders.add(file)
     }
 
     private fun getOrCreatePackage(name: String): SmaliPackage {
@@ -187,21 +224,29 @@ class AndroidAppProject(override val projectFolder: File): Project {
         return null
     }
 
-    override fun indexProject(): Observable<out FileAnalyzeResult> {
-        return SmaliIndexer.indexProject(this, SmaliIndexerSettings())
+    override fun indexProject(): Observable<out FileIndexingResult> {
+        val list = listOf(
+                AndroidResourceIndexer.indexProject(this, AndroidIndexerSettings()),
+//                AndroidResourceAnalyzer.analyzeProject(this, AndroidResourceAnalyzeSettings(AnalyzeMode.FULL)),
+                SmaliIndexer.indexProject(this, SmaliIndexerSettings())
+        )
+
+        return list.fold(Observable.fromIterable(emptyList<FileIndexingResult>())) { acc, obs ->
+            acc.concatWith(obs)
+        }
     }
 
-    override fun analyzeFile(file: File, withRanges: Boolean): FileAnalyzeResult {
+    override fun analyzeFile(file: File, withRanges: Boolean): FileIndexingResult {
         return when (file.extension) {
-            "xml" -> XMLIndexer.analyzeFile(this, file, EmptyXMLSettings)
+            "xml" -> AndroidResourceAnalyzer.analyzeFile(this, AndroidResourceAnalyzeSettings(AnalyzeMode.FULL), file)
             else -> {
                 val settings = SmaliIndexerSettings().also { it.withRanges = withRanges }
-                SmaliIndexer.analyzeFile(this, file, settings)
+                SmaliIndexer.indexFile(this, settings, file)
             }
         }
     }
 
-    override fun getAnalyzeResult(file: File): FileAnalyzeResult? {
+    override fun getAnalyzeResult(file: File): FileIndexingResult? {
         return when (file.extension) {
             "xml" -> fileToXMLDocMapping[file]
             "smali" -> fileToClassMapping[file]

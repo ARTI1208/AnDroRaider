@@ -1,14 +1,14 @@
 package ru.art2000.androraider.model.analyzer.smali.types
 
-import ru.art2000.androraider.model.analyzer.result.FileAnalyzeResult
-import ru.art2000.androraider.model.analyzer.result.StyledSegment
+import ru.art2000.androraider.model.analyzer.result.FileIndexingResult
+import ru.art2000.androraider.model.analyzer.result.TextSegment
 import ru.art2000.androraider.model.analyzer.smali.SmaliParser
 import ru.art2000.androraider.utils.parseCompound
 import java.io.File
 import java.util.*
 
 @Suppress("RedundantVisibilityModifier")
-class SmaliClass() : FileAnalyzeResult, SmaliComponent {
+class SmaliClass() : FileIndexingResult, SmaliComponent {
 
     object Primitives {
 
@@ -102,7 +102,7 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
     val fields = LinkedList<SmaliField>()
     val methods = LinkedList<SmaliMethod>()
 
-    val ranges = LinkedList<StyledSegment>()
+    val ranges = LinkedList<TextSegment>()
 
     var arrayCount = 0
 
@@ -269,7 +269,7 @@ class SmaliClass() : FileAnalyzeResult, SmaliComponent {
         }
     }
 
-    override val textSegments: List<StyledSegment>
+    override val textSegments: List<TextSegment>
         get() = ranges
 
     override fun toSmaliString(): String {

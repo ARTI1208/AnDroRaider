@@ -1,7 +1,8 @@
 package ru.art2000.androraider.model.editor.file
 
+import org.reactfx.value.Val
 import org.reactfx.value.Var
-import ru.art2000.androraider.model.analyzer.result.AndroidAppProject
+import ru.art2000.androraider.model.analyzer.android.AndroidAppProject
 import ru.art2000.androraider.model.editor.SearchData
 import ru.art2000.androraider.model.editor.StatusBarDataProvider
 import ru.art2000.androraider.model.editor.StatusBarElement
@@ -52,7 +53,7 @@ class FileEditData(val file: File, val project: AndroidAppProject? = null): Stat
 
     public val isEditable: Boolean by isEditableProperty
 
-    override val dataList: List<Var<out StatusBarElement>>
+    override val dataList: List<Val<out StatusBarElement>>
 
     init {
         lineSeparatorElementProperty.bind(lineSeparatorProperty) {
