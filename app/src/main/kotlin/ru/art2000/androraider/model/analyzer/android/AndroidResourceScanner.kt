@@ -11,7 +11,7 @@ import ru.art2000.androraider.utils.textRange
 
 class AndroidResourceScanner(
         private val document: Document,
-        private val settings: AndroidResourceAnalyzeSettings
+        private val settings: AndroidResourceAnalyzerSettings
 ): XMLParserBaseVisitor<Document>() {
 
     override fun defaultResult() = document

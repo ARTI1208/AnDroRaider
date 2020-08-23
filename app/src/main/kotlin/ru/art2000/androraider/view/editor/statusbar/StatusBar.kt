@@ -60,8 +60,8 @@ class StatusBar: BorderPane() {
 
     private fun bindElement(element: StatusBarElement, button: Button) {
         button.textProperty().bindOnFXThread(element.displayedValue)
-        button.graphicProperty().bindOnFXThread(element.icon) {
-            ImageView(it)
+        button.graphicProperty().bindOnFXThread(element.icon) { image ->
+            if (image == null) null else ImageView(image)
         }
         button.tooltip = Tooltip(element.description).apply {
             showDuration = Duration.INDEFINITE

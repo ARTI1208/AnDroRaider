@@ -1,9 +1,15 @@
 package ru.art2000.androraider.model.analyzer.xml.types
 
 import ru.art2000.androraider.model.analyzer.result.*
-import java.io.File
 
-class Tag(val document: Document, val name: String, styleRanges: List<IntRange>, tagNameRanges: List<IntRange>, val value: String = "", val parentTag: Tag? = null) {
+class Tag(
+        val document: Document,
+        val name: String,
+        styleRanges: List<IntRange>,
+        tagNameRanges: List<IntRange>,
+        val value: String = "",
+        val parentTag: Tag? = null
+) {
 
     val level: Int
 
@@ -14,9 +20,7 @@ class Tag(val document: Document, val name: String, styleRanges: List<IntRange>,
     init {
         level = (parentTag?.level?.plus(1)) ?: 0
 
-        styleSegments = styleRanges.map {
-            SimpleFileAnalysisSegment(document.file, it, "tag")
-        }
+        styleSegments = styleRanges.map { SimpleStyledSegment(it, "tag") }
 
         nameSegments = tagNameRanges.map { TagNameSegment(this, it) }
     }
@@ -46,12 +50,10 @@ class Tag(val document: Document, val name: String, styleRanges: List<IntRange>,
         return "Tag(name=$name, attrs=${attributes.joinToString(",", prefix = "[", postfix = "]")})"
     }
 
-    private class TagNameSegment(val tag: Tag, override val segmentRange: IntRange) : HighlightableSegment, LinkSegment, FileSegment {
+    private class TagNameSegment(val tag: Tag, override val segmentRange: IntRange) : HighlightableSegment, LinkSegment {
 
         override val fileLinkDetails: List<FileLink>
             get() = listOf()
-
-        override val declaringFile: File = tag.document.file
 
         override fun highlightOther(other: HighlightableSegment): Boolean {
             return other is TagNameSegment && tag === other.tag

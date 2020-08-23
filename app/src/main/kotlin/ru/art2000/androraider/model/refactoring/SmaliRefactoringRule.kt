@@ -1,6 +1,6 @@
 package ru.art2000.androraider.model.refactoring
 
-object SmaliRefactoringRule : FileRefactoringRule {
+object SmaliRefactoringRule : RefactoringRule {
 
     private const val commentSign = "#"
 

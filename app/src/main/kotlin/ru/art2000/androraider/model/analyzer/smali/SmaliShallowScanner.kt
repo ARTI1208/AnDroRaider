@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
 import org.antlr.v4.runtime.tree.ErrorNode
 import ru.art2000.androraider.model.analyzer.android.AndroidAppProject
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
+import ru.art2000.androraider.model.analyzer.smali.types.SmaliComponent
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
@@ -15,7 +16,7 @@ class SmaliShallowScanner(val project: AndroidAppProject, val file: File) :
     private lateinit var smaliClass: SmaliClass
 
     override fun visitClassDirective(ctx: SmaliParser.ClassDirectiveContext): SmaliClass {
-        project.getOrCreateClass(ctx.className().text)?.also {
+        SmaliComponent.classFromName(ctx.className().text)?.also {
             smaliClass = it
         }
 
@@ -146,7 +147,7 @@ class SmaliShallowScanner(val project: AndroidAppProject, val file: File) :
     override fun visitSuperDirective(ctx: SmaliParser.SuperDirectiveContext): SmaliClass {
         val superName = ctx.superName()?.text ?: return smaliClass
 
-        project.getOrCreateClass(superName)?.also {
+        SmaliComponent.classFromName(superName)?.also {
             smaliClass.parentClass = it
         }
 
@@ -1439,7 +1440,7 @@ class SmaliShallowScanner(val project: AndroidAppProject, val file: File) :
     }
 
     override fun visitImplementsDirective(ctx: SmaliParser.ImplementsDirectiveContext): SmaliClass {
-        project.getOrCreateClass(ctx.referenceType().text)?.also {
+        SmaliComponent.classFromName(ctx.referenceType().text)?.also {
             smaliClass.interfaces.add(it)
         }
         return smaliClass

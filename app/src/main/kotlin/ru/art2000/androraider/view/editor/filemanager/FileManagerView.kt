@@ -31,7 +31,17 @@ class FileManagerView : TreeView<File>(), StringSearchable {
     override val currentSearchValueProperty: StringProperty = SimpleStringProperty("")
 
     init {
-        setCellFactory { FileManagerTreeListItem(this) }
+        setCellFactory { FileManagerTreeListItem(this, getProjectForNode(this).also {
+            println("project null ${it == null}")
+        }?.errorMap) }
+
+        sceneProperty().addListener { _, _, _ ->
+
+            setCellFactory { FileManagerTreeListItem(this, getProjectForNode(this).also {
+                println("project2 null ${it == null}")
+            }?.errorMap) }
+        }
+
         onMouseClicked = EventHandler {
             if (it.button === MouseButton.PRIMARY
                     && it.clickCount == 2) {

@@ -4,6 +4,8 @@ import io.reactivex.Observable
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
 import javafx.application.Platform
+import javafx.beans.property.Property
+import javafx.beans.property.SimpleObjectProperty
 import javafx.collections.ListChangeListener
 import javafx.event.EventHandler
 import javafx.scene.control.*
@@ -14,9 +16,16 @@ import javafx.scene.layout.HBox
 import javafx.scene.paint.Color
 import javafx.stage.Stage
 import javafx.stage.WindowEvent
+import org.reactfx.Subscription
+import org.reactfx.value.Var
 import ru.art2000.androraider.model.App
-import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
+import ru.art2000.androraider.model.analyzer.result.FileLink
+import ru.art2000.androraider.model.analyzer.result.Link
+import ru.art2000.androraider.model.analyzer.result.SimpleFileLink
 import ru.art2000.androraider.model.apktool.ApkToolUtils
+import ru.art2000.androraider.model.editor.CodeDataProvider
+import ru.art2000.androraider.model.editor.CodeEditorStatusBarDataProvider
+import ru.art2000.androraider.model.editor.FileDataProvider
 import ru.art2000.androraider.model.editor.file.FileEditData
 import ru.art2000.androraider.model.io.StreamOutput
 import ru.art2000.androraider.model.io.println
@@ -25,6 +34,7 @@ import ru.art2000.androraider.model.io.unregisterStreamOutput
 import ru.art2000.androraider.model.settings.PreferenceManager
 import ru.art2000.androraider.presenter.editor.EditorPresenter
 import ru.art2000.androraider.utils.TypeDetector
+import ru.art2000.androraider.utils.connect
 import ru.art2000.androraider.view.BaseScene
 import ru.art2000.androraider.view.dialogs.getBaseDialog
 import ru.art2000.androraider.view.dialogs.projectsettings.ProjectSettingsDialog
@@ -40,6 +50,7 @@ import java.nio.file.StandardWatchEventKinds
 import java.util.*
 import java.util.function.Consumer
 import kotlin.concurrent.thread
+import kotlin.system.measureTimeMillis
 
 @Suppress("ReactiveStreamsUnusedPublisher")
 class Editor @Throws(IOException::class)
@@ -74,6 +85,14 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
             presenter.dispose()
         }
 
+        editorTabPane.tabs.addListener { change: ListChangeListener.Change<out Tab> ->
+            while (change.next()) {
+                change.removed.forEach {
+                    (it.content as? EditorTabContent)?.dispose()
+                }
+            }
+        }
+
         loadingDialog.title = "Loading..."
         loadingDialog.width = 400.0
         loadingDialog.dialogPane.prefWidth = 400.0
@@ -83,8 +102,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         (loadingDialog.dialogPane.lookupButton(ButtonType.CLOSE) as Button).isDisable = true
 
         codeEditorContainer.background = Background(BackgroundFill(Color.GRAY, null, null))
-
-        statusBar.addDataProvider(presenter.project.analysisData)
 
         editorTabPane.prefHeightProperty().bind(codeEditorContainer.heightProperty())
         editorTabPane.prefWidthProperty().bind(widthProperty().subtract(fileManagerView.prefWidthProperty()))
@@ -118,6 +135,14 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         }
 
         fileManagerView.prefHeightProperty().bind(heightProperty())
+
+        try {
+            val t = File("addsdssf").readText()
+            println("NotExistingFileText: $t")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
     }
 
     private fun getTabCodeEditor(tab: Tab): CodeEditorArea {
@@ -125,15 +150,15 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
     }
 
     private fun showLoadingDialog() {
-        if (!loadingDialog.isShowing) {
-            loadingDialog.show()
-        }
+//        if (!loadingDialog.isShowing) {
+//            loadingDialog.show()
+//        }
     }
 
     private fun runIndexing() {
         statusBar.setStatus("Indexing project...")
-        loadingLabel.text = "Indexing project..."
-        (presenter.generateProjectIndex() ?: Observable.empty<SmaliClass>())
+//        loadingLabel.text = "Indexing project..."
+        presenter.setupProject()
                 .observeOn(JavaFxScheduler.platform())
                 .doOnSubscribe {
                     println(this, "ProjectAnalyzer", "Analyze started at ${Date()}")
@@ -141,13 +166,13 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                 .doOnComplete {
                     println(this, "ProjectAnalyzer", "Analyze ended at ${Date()}")
                     statusBar.setStatus("Project indexing finished at ${Date()}")
-                    loadingDialog.close()
+//                    loadingDialog.close()
                     presenter.startFileObserver()
                 }.subscribe({
-                    loadingLabel.text = "Indexing $it..."
+//                    loadingLabel.text = "Indexing $it..."
                 }, {
                     println("Error1: ")
-                    it.printStackTrace()
+//                    it.printStackTrace()
                 })
     }
 
@@ -217,37 +242,58 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
         editorTabPane.tabClosingPolicy = TabPane.TabClosingPolicy.ALL_TABS
     }
 
-    private fun openFile(newFile: File, caretPosition: Int = 0): Boolean {
-        if (TypeDetector.isTextFile(newFile.name)) {
-            val indexedTab = editorTabPane.tabs.withIndex().find {
-                (it.value.userData as? FileEditData)?.file == newFile
-            }
-            val position = if (indexedTab == null) {
-                val newTab = Tab(newFile.name)
-                val data = FileEditData(newFile, presenter.project)
-                newTab.userData = data
-                newTab.content = EditorTabContent(data, ::openFile, caretPosition)
-                val pos = editorTabPane.selectionModel.selectedIndex + 1
-                editorTabPane.tabs.add(pos, newTab)
-                pos
-            } else {
-                val selectedTab = editorTabPane.tabs[indexedTab.index]
-                getTabCodeEditor(selectedTab).apply {
-                    moveToAndPlaceLineInCenter(toAreaPosition(caretPosition))
+    private fun openLink(link: Link) {
+        println("OpeningLink: ${Date()}")
+        val time = measureTimeMillis {
+            if (TypeDetector.isTextFile(link.tabName)) {
+                val indexedTab = editorTabPane.tabs.withIndex().find {
+                    it.value.userData == link.data
                 }
-                indexedTab.index
-            }
+                val position = if (indexedTab == null) {
+                    val newTab = Tab(link.tabName)
 
-            editorTabPane.selectionModel.select(position)
-            return true
+                    newTab.userData = link.data
+                    newTab.content = EditorTabContent(link.data, ::openLink).apply {
+
+                        val sub: Property<Subscription?> = SimpleObjectProperty(null)
+
+                        sub.value = codeEditorArea.textProperty().connect { _, oldValue, newValue ->
+                            println("AreaMove: 1; ${newValue.length}")
+                            if (newValue.isNotEmpty() && oldValue != newValue) {
+                                println("AreaMove: 2")
+                                codeEditorArea.moveToAndPlaceLineInCenter(link.offset)
+                                sub.value?.unsubscribe()
+                            }
+                        }
+
+                        val file = (link as? FileLink)?.file
+
+                        val statusBarDataProvider =
+                                CodeEditorStatusBarDataProvider(codeEditorArea, file, presenter.project)
+
+                        statusBar.addDataProvider(statusBarDataProvider)
+                    }
+                    val pos = editorTabPane.selectionModel.selectedIndex + 1
+                    editorTabPane.tabs.add(pos, newTab)
+                    pos
+                } else {
+                    val selectedTab = editorTabPane.tabs[indexedTab.index]
+                    getTabCodeEditor(selectedTab).apply {
+                        moveToAndPlaceLineInCenter(caretPosition)
+                    }
+                    indexedTab.index
+                }
+
+                editorTabPane.selectionModel.select(position)
+            }
         }
 
-        return false
+        println("TabOpeningTime=$time")
     }
 
     private fun setupFileExplorerView() {
         fileManagerView.onFileSelectedListeners.add { newFile ->
-            openFile(newFile)
+            openLink(SimpleFileLink(newFile))
         }
 
         presenter.addFileListener { file, kind ->

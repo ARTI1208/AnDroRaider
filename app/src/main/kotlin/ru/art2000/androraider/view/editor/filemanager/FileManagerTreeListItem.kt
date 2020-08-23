@@ -1,5 +1,7 @@
 package ru.art2000.androraider.view.editor.filemanager
 
+import javafx.collections.MapChangeListener
+import javafx.collections.ObservableMap
 import javafx.event.EventHandler
 import javafx.fxml.Initializable
 import javafx.geometry.Pos
@@ -8,19 +10,22 @@ import javafx.scene.image.ImageView
 import javafx.scene.layout.HBox
 import javafx.scene.text.TextAlignment
 import org.fxmisc.richtext.StyleClassedTextField
-import ru.art2000.androraider.utils.TypeDetector
-import ru.art2000.androraider.utils.autoWidth
-import ru.art2000.androraider.utils.getDrawable
-import ru.art2000.androraider.model.editor.Searchable
+import ru.art2000.androraider.model.analyzer.result.TextSegment
+import ru.art2000.androraider.utils.*
 import java.io.File
 import java.net.URL
 import java.util.*
+import kotlin.collections.HashMap
 
-class FileManagerTreeListItem(private val searchable: Searchable<String>) : TreeCell<File>(), Initializable {
+class FileManagerTreeListItem(
+        private val fileManagerView: FileManagerView,
+//        private val errorTree: ErrorTree
+        private val errorMap: ObservableMap<File, List<TextSegment>>? = null
+) : TreeCell<File>(), Initializable {
 
     private val fileContextMenu = ContextMenu()
 
-    private val textField = StyleClassedTextField().apply {
+    internal val textField = StyleClassedTextField().apply {
         isEditable = false
         isMouseTransparent = true
         background = null
@@ -59,26 +64,17 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
 
         val menuItemCreate = MenuItem("Create")
         menuItemCreate.onAction = EventHandler {
-            val parentTreeView = treeView
-            if (parentTreeView is FileManagerView) {
-                parentTreeView.onTreeItemCreate(treeItem)
-            }
+            fileManagerView.onTreeItemCreate(treeItem)
         }
 
         val menuItemRename = MenuItem("Rename")
         menuItemRename.onAction = EventHandler {
-            val parentTreeView = treeView
-            if (parentTreeView is FileManagerView) {
-                parentTreeView.onTreeItemRename(treeItem)
-            }
+            fileManagerView.onTreeItemRename(treeItem)
         }
 
         val menuItemDelete = MenuItem("Delete")
         menuItemDelete.onAction = EventHandler {
-            val parentTreeView = treeView
-            if (parentTreeView is FileManagerView) {
-                parentTreeView.onTreeItemDelete(treeItem)
-            }
+            fileManagerView.onTreeItemDelete(treeItem)
         }
 
         fileContextMenu.items.addAll(
@@ -89,13 +85,33 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
 
         styleClass.add("file-manager-item")
 
-        searchable.currentSearchValueProperty.addListener { _, _, newValue ->
+        fileManagerView.currentSearchValueProperty.addListener { _, _, newValue ->
             updateHighlighting(newValue, textField.text)
         }
         textField.minWidthProperty().bind(textField.prefWidthProperty())
         textField.textProperty().addListener { _, _, newValue ->
-            updateHighlighting(searchable.currentSearchValue, newValue)
+            updateHighlighting(fileManagerView.currentSearchValue, newValue)
+//            item?.also {
+//                if (it == null) {
+//                    updateStyle(false)
+//                } else {
+//                    updateStyle(errorTree.containsFile(it))
+//                }
+//            }
+            checkError()
         }
+
+        errorMap?.addListener { _: MapChangeListener.Change<out File, out List<TextSegment>> ->
+            checkError()
+        }
+
+//        errorTree.observeNow(object : ObservableTree.TreeChangeListener<File> {
+//            override fun <I : Tree.Item<File, I>> changed(change: ObservableTree.TreeChange<File, I>) {
+//                if (change.item.value == item) {
+//                    updateStyle(change.isAdded)
+//                }
+//            }
+//        })
 
         textField.autoWidth()
 
@@ -103,6 +119,43 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
         prefHeight = DEFAULT_SIZE
         minHeight = prefHeight
         maxHeight = prefHeight
+    }
+
+    private fun checkError() {
+        val hasError = treeItem?.walk {
+            errorMap?.get(it.value)?.isNotEmpty() == true
+        } ?: false
+
+        checkedRunLater {
+            if (hasError)
+                textField.addStyleClass(style = "file-error")
+            else
+                textField.removeStyleClass(style = "file-error")
+        }
+    }
+
+    private fun updateStyle(hasError: Boolean) {
+        checkedRunLater {
+            if (hasError)
+                textField.addStyleClass(style = "file-error")
+            else
+                textField.removeStyleClass(style = "file-error")
+        }
+    }
+
+    private fun updateErrorHighlighting(map: Map<File, List<TextSegment>>?, cellFile: File?) {
+        // TODO fix ConcurrentModificationException / implement more efficient algorithm
+        val hasError = if (map != null && cellFile != null) {
+            HashMap(map).any { it.key.startsWith(cellFile) && it.value.isNotEmpty() }
+        } else
+            false
+
+        checkedRunLater {
+            if (hasError)
+                textField.addStyleClass(style = "file-error")
+            else
+                textField.removeStyleClass(style = "file-error")
+        }
     }
 
     private fun updateHighlighting(toFind: String?, text: String?) {
@@ -114,7 +167,7 @@ class FileManagerTreeListItem(private val searchable: Searchable<String>) : Tree
         if (toFind.isNullOrEmpty())
             return
 
-        Regex(toFind.toLowerCase()).findAll(text.toLowerCase()).forEach {
+        Regex(toFind, RegexOption.IGNORE_CASE).findAll(text).forEach {
             textField.setStyle(it.range.first, it.range.last + 1, listOf("search"))
         }
     }

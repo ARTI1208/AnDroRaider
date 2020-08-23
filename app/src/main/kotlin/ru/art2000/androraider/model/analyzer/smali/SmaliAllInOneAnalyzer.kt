@@ -1,30 +1,32 @@
 package ru.art2000.androraider.model.analyzer.smali
 
+import javafx.beans.Observable
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RuleContext
 import org.antlr.v4.runtime.tree.ErrorNode
+import ru.art2000.androraider.model.analyzer.AnalyzeMode
 import ru.art2000.androraider.model.analyzer.android.*
 import ru.art2000.androraider.model.analyzer.result.*
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
+import ru.art2000.androraider.model.analyzer.smali.types.SmaliComponent
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliField
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
 import java.lang.Exception
 import java.lang.reflect.Modifier
+import kotlin.properties.Delegates
 
-class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: SmaliClass, val settings: SmaliIndexerSettings) :
+class SmaliAllInOneAnalyzer(val project: SmaliProject, val settings: SmaliAnalyzerSettings) :
         SmaliParserBaseVisitor<SmaliClass>() {
 
-    val withRanges = settings.withRanges
+    var smaliClass = SmaliClass()
 
-    val file = smaliClass.file!!
+    val dependencies = mutableListOf<Observable>()
+    
+    val ranges = mutableListOf<TextSegment>()
 
-    init {
-        project.errorList.removeIf {
-            it.declaringFile == file
-        }
-    }
+    val errors = mutableListOf<TextSegment>()
 
     private fun tunableVisitChildren(ctx: ParserRuleContext, action: () -> Unit): SmaliClass {
         return if (settings.childrenBeforeAction) {
@@ -38,39 +40,41 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     }
 
     override fun visitClassDirective(ctx: SmaliParser.ClassDirectiveContext): SmaliClass {
+        val className = ctx.className()
 
-        val clazz = project.getOrCreateClass(ctx.className().text)
-        if (clazz !== smaliClass) {
-            smaliClass.markAsNotExisting()
-            if (clazz != null) {
-                smaliClass = clazz
-            }
-        }
-
-        smaliClass.textRange = ctx.className().textRange
-
-        if (ctx.CLASS_DIRECTIVE() == null || !withRanges) {
+        if (className == null) {
+            println("classnmae null, txt='${ctx.text}'")
             return visitChildren(ctx)
         }
 
-        smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.CLASS_DIRECTIVE().textRange, "keyword"))
+        SmaliComponent.classFromName(className.text)?.also { 
+            smaliClass = it
+        }
+
+        smaliClass.textRange = className.textRange
+
+        if (ctx.CLASS_DIRECTIVE() == null || settings.mode != AnalyzeMode.FULL) {
+            return visitChildren(ctx)
+        }
+
+        ranges.add(SimpleStyledSegment(ctx.CLASS_DIRECTIVE().textRange, "keyword"))
         return visitChildren(ctx)
     }
 
     override fun visitMethodReturnType(ctx: SmaliParser.MethodReturnTypeContext): SmaliClass {
         val method = findMethod(ctx)
         if (method != null) {
-            val returnType = project.getOrCreateClass(ctx.text)
+            val returnType = SmaliComponent.classFromName(ctx.text)
             if (returnType == null) {
-                if (withRanges) {
+                if (settings.mode == AnalyzeMode.FULL) {
                     val message = if (ctx.text.isNullOrEmpty())
                         "No return type provided"
                     else
                         "Unknown return type \"${ctx.text}\""
 
-                    val error = Error(ctx.textRange, message, smaliClass.file!!)
-                    smaliClass.ranges.add(error)
-                    project.errorList.add(error)
+                    val error = Error(ctx.textRange, message)
+                    ranges.add(error)
+                    errors.add(error)
                 }
             } else {
                 method.returnType = returnType
@@ -95,15 +99,13 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             }
             smaliField.parentClass = smaliClass
             smaliField.textRange = ctx.fieldNameAndType()?.fieldName()?.textRange ?: -1..0
-            if (withRanges)
-                smaliClass.ranges.add(SmaliAnalysisSegment(project, smaliField.textRange, smaliField, file))
         }
 
     }
 
     override fun visitFieldDirective(ctx: SmaliParser.FieldDirectiveContext): SmaliClass {
-        if (withRanges)
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.FIELD_DIRECTIVE().textRange, "keyword"))
+        if (settings.mode == AnalyzeMode.FULL)
+            ranges.add(SimpleStyledSegment(ctx.FIELD_DIRECTIVE().textRange, "keyword"))
 
         return visitChildren(FieldDeclarationContextWrapper(ctx))
     }
@@ -111,7 +113,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     override fun visitNewArrayInstruction(ctx: SmaliParser.NewArrayInstructionContext): SmaliClass {
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
-            val clazz = project.getOrCreateClass(ctx.arrayElementType().text) ?: return@tunableVisitChildren
+            val clazz = SmaliComponent.classFromName(ctx.arrayElementType().text) ?: return@tunableVisitChildren
             currentMethod.registerToClassMap[ctx.targetRegister().text] = clazz
         }
     }
@@ -126,9 +128,9 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     }
 
     override fun visitMethodDirective(ctx: SmaliParser.MethodDirectiveContext): SmaliClass {
-        if (withRanges) {
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.METHOD_DIRECTIVE().textRange, "keyword"))
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.METHOD_END_DIRECTIVE().textRange, "keyword"))
+        if (settings.mode == AnalyzeMode.FULL) {
+            ranges.add(SimpleStyledSegment(ctx.METHOD_DIRECTIVE().textRange, "keyword"))
+            ranges.add(SimpleStyledSegment(ctx.METHOD_END_DIRECTIVE().textRange, "keyword"))
         }
 
         return visitChildren(MethodDirectiveContextWrapper(ctx))
@@ -180,7 +182,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
                         else -> return@tunableVisitChildren
                     }
 
-                    val clazz = project.getOrCreateClass(classNameContext.text) ?: return@tunableVisitChildren
+                    val clazz = SmaliComponent.classFromName(classNameContext.text) ?: return@tunableVisitChildren
                     currentMethod.registerToClassMap[ctx.registerIdentifier().text] = clazz
                 }
             }
@@ -191,11 +193,11 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
-            if (withRanges && fieldClass !== SmaliClass.Primitives.BOOLEAN) {
+            if (settings.mode == AnalyzeMode.FULL && fieldClass !== SmaliClass.Primitives.BOOLEAN) {
                 //TODO: highlight error
             }
 
@@ -207,11 +209,11 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
-            if (withRanges && fieldClass !== SmaliClass.Primitives.CHAR) {
+            if (settings.mode == AnalyzeMode.FULL && fieldClass !== SmaliClass.Primitives.CHAR) {
                 //TODO: highlight error
             }
 
@@ -221,26 +223,30 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
     override fun visitGotoInstruction(ctx: SmaliParser.GotoInstructionContext): SmaliClass {
 
-        if (withRanges) {
+        if (settings.mode == AnalyzeMode.FULL) {
             val currentMethod = findMethod(ctx) ?: return visitChildren(ctx)
 
             val labelNameContext = ctx.label().labelName()
 
-            smaliClass.ranges.add(SmaliAnalysisSegment(
-                    project,
+            val label = currentMethod.getOrCreateLabel(labelNameContext.text)
+
+            ranges.add(SmaliAnalysisSegment(
                     labelNameContext.textRange,
-                    currentMethod.getOrCreateLabel(labelNameContext.text),
-                    file)
-            )
+                    label,
+                    project.getLinksFor(label).firstOrNull()
+            ))
         }
+//        else if (!smaliField.exists()) {
+//            errors.add(Error(IntRange.EMPTY, "", file))
+//        }
 
         return visitChildren(ctx)
     }
 
     override fun visitAnnotationDirective(ctx: SmaliParser.AnnotationDirectiveContext): SmaliClass {
-        if (withRanges) {
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.ANNOTATION_DIRECTIVE().textRange, "keyword"))
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.ANNOTATION_END_DIRECTIVE().textRange, "keyword"))
+        if (settings.mode == AnalyzeMode.FULL) {
+            ranges.add(SimpleStyledSegment(ctx.ANNOTATION_DIRECTIVE().textRange, "keyword"))
+            ranges.add(SimpleStyledSegment(ctx.ANNOTATION_END_DIRECTIVE().textRange, "keyword"))
         }
         return visitChildren(ctx)
     }
@@ -374,18 +380,16 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             }
 
             var isResource = false
-            if (radix == 16) {
+            if (project is AndroidAppProject && radix == 16) {
                 val androidResource = project.public[decimal.toInt()]
 
                 androidResource?.also { res ->
                     isResource = true
                     description = "Resource: type=${res.type} name=${res.name}"
 
-                    if (withRanges) {
-
-                        val navigateOptions = project.resources[res] ?: listOf<FileLink>()
-
-                        smaliClass.ranges.add(AndroidResourceSegment(res, navigateOptions, ctx.textRange, file))
+                    if (settings.mode == AnalyzeMode.FULL) {
+                        val navigateOptions = project.getLinksFor(res).toList()
+                        ranges.add(AndroidResourceSegment(res, navigateOptions, ctx.textRange))
                     }
 
                 }
@@ -395,8 +399,8 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
                 description += "; hex: 0x${hex}; dec: $decimal"
             }
 
-            if (withRanges) {
-                smaliClass.ranges.add(DescriptiveFileAnalysisSegment(file, ctx.textRange, "number", description))
+            if (settings.mode == AnalyzeMode.FULL) {
+                ranges.add(DescriptiveAnalysisSegment(ctx.textRange, "number", description))
             }
         } catch (e: Exception) {
             println("Error: ${ctx.text} in ${smaliClass.associatedFile}")
@@ -406,9 +410,12 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     }
 
     override fun visitSuperDirective(ctx: SmaliParser.SuperDirectiveContext): SmaliClass {
-        if (ctx.SUPER_DIRECTIVE() != null && withRanges) {
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.SUPER_DIRECTIVE().textRange, "keyword"))
+        if (ctx.SUPER_DIRECTIVE() != null && settings.mode == AnalyzeMode.FULL) {
+            ranges.add(SimpleStyledSegment(ctx.SUPER_DIRECTIVE().textRange, "keyword"))
         }
+
+        smaliClass.parentClass = SmaliComponent.classFromName(ctx.superName().text)
+
         return visitChildren(ctx)
     }
 
@@ -458,7 +465,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
                         else -> return@tunableVisitChildren
                     }
 
-                    val clazz = project.getOrCreateClass(classNameContext.text) ?: return@tunableVisitChildren
+                    val clazz = SmaliComponent.classFromName(classNameContext.text) ?: return@tunableVisitChildren
                     currentMethod.registerToClassMap[ctx.registerIdentifier().text] = clazz
                 }
             }
@@ -468,18 +475,18 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     override fun visitFieldType(ctx: SmaliParser.FieldTypeContext): SmaliClass {
         val grandfather = ctx.parent.parent
         if (grandfather is FieldDeclarationContextWrapper) {
-            val fieldType = project.getOrCreateClass(ctx.text)
+            val fieldType = SmaliComponent.classFromName(ctx.text)
 
             if (fieldType == null) {
-                if (withRanges) {
+                if (settings.mode == AnalyzeMode.FULL) {
                     val message = if (ctx.text.isNullOrEmpty())
                         "No field type provided"
                     else
                         "Unknown field type \"${ctx.text}\""
 
-                    val error = Error(ctx.textRange, message, smaliClass.file!!)
-                    smaliClass.ranges.add(error)
-                    project.errorList.add(error)
+                    val error = Error(ctx.textRange, message)
+                    ranges.add(error)
+                    errors.add(error)
                 }
             } else {
                 grandfather.smaliField.type = fieldType
@@ -490,16 +497,21 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     }
 
     override fun visitMethodParameterType(ctx: SmaliParser.MethodParameterTypeContext): SmaliClass {
-        var offset = 0
-        if (withRanges) {
+            var offset = 0
             parseCompound(ctx.text).forEach { parameterText ->
-                project.getOrCreateClass(parameterText)?.also {
-                    smaliClass.ranges.add(SmaliAnalysisSegment(
-                            project,
-                            (ctx.start.startIndex + offset)..(ctx.start.startIndex + offset + parameterText.lastIndex),
-                            it, file)
-                    )
-                }
+                SmaliComponent.classFromName(parameterText)?.also {
+                    if (settings.mode == AnalyzeMode.FULL) {
+                        val links = project.getLinksFor(it)
+                        dependencies.add(links)
+
+                        ranges.add(SmaliAnalysisSegment(
+                                (ctx.start.startIndex + offset)..(ctx.start.startIndex + offset + parameterText.lastIndex),
+                                it,
+                                links.firstOrNull())
+                        )
+                    } else if (!it.exists()) {
+                        errors.add(Error(IntRange.EMPTY, ""))
+                    }
                 offset += parameterText.length
             }
         }
@@ -507,9 +519,18 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     }
 
     override fun visitReferenceType(ctx: SmaliParser.ReferenceTypeContext): SmaliClass {
-        val clazz = project.getOrCreateClass(ctx.text) ?: return visitChildren(ctx)
-        if (withRanges)
-            smaliClass.ranges.add(SmaliAnalysisSegment(project, ctx.textRange, clazz, file))
+        val clazz = SmaliComponent.classFromName(ctx.text) ?: return visitChildren(ctx)
+        if (settings.mode == AnalyzeMode.FULL) {
+            val links = project.getLinksFor(clazz)
+            dependencies.add(links)
+
+//            println("link count for $clazz / ${clazz.hashCode()} is ${links.size}")
+
+            ranges.add(SmaliAnalysisSegment(ctx.textRange, clazz, links.firstOrNull()))
+        }
+//        else if (!clazz.exists()) {
+//            errors.add(Error(IntRange.EMPTY, ""))
+//        }
 
         return visitChildren(ctx)
     }
@@ -526,7 +547,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
@@ -539,7 +560,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
@@ -559,8 +580,9 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     }
 
     override fun visitRegisterIdentifier(ctx: SmaliParser.RegisterIdentifierContext): SmaliClass {
+        if (settings.mode != AnalyzeMode.FULL) return visitChildren(ctx)
+
         val txt = ctx.text
-        if (!withRanges) return visitChildren(ctx)
         val method = findMethod(ctx)
 
         when {
@@ -569,8 +591,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
                 when {
                     method == null -> {
-                        smaliClass.ranges.add(DescriptiveFileAnalysisSegment(
-                                file,
+                        ranges.add(DescriptiveAnalysisSegment(
                                 ctx.textRange,
                                 "param",
                                 "Param $num, failed to get max possible value"
@@ -581,20 +602,18 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
                         val error = Error(
                                 ctx.textRange,
-                                "Invalid param index $num: must be in range 0..${method.parameters.size - 1}",
-                                smaliClass.file!!
+                                "Invalid param index $num: must be in range 0..${method.parameters.size - 1}"
                         )
-                        smaliClass.ranges.add(error)
-                        project.errorList.add(error)
+                        ranges.add(error)
+                        errors.add(error)
                     }
                     else -> {
-                        smaliClass.ranges.add(RegisterSegment(
+                        ranges.add(RegisterSegment(
                                 ctx.textRange,
                                 Register.PARAM,
                                 num,
                                 method,
-                                method.registerToClassMap[txt],
-                                file)
+                                method.registerToClassMap[txt])
                         )
                     }
                 }
@@ -605,8 +624,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
                 when {
                     method == null -> {
-                        smaliClass.ranges.add(DescriptiveFileAnalysisSegment(
-                                file,
+                        ranges.add(DescriptiveAnalysisSegment(
                                 ctx.textRange,
                                 "local",
                                 "Local $num, failed to get max possible value"
@@ -617,20 +635,18 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
                         val error = Error(
                                 ctx.textRange,
-                                "Invalid local index $num: must be in range 0..${method.locals - 1}",
-                                smaliClass.file!!
+                                "Invalid local index $num: must be in range 0..${method.locals - 1}"
                         )
-                        smaliClass.ranges.add(error)
-                        project.errorList.add(error)
+                        ranges.add(error)
+                        errors.add(error)
                     }
                     else -> {
-                        smaliClass.ranges.add(RegisterSegment(
+                        ranges.add(RegisterSegment(
                                 ctx.textRange,
                                 Register.LOCAL,
                                 num,
                                 method,
-                                method.registerToClassMap[txt],
-                                file)
+                                method.registerToClassMap[txt])
                         )
                     }
                 }
@@ -638,9 +654,9 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
             else -> {
 
-                val error = Error(ctx.textRange, "Invalid register identifier", smaliClass.file!!)
-                smaliClass.ranges.add(error)
-                project.errorList.add(error)
+                val error = Error(ctx.textRange, "Invalid register identifier")
+                ranges.add(error)
+                errors.add(error)
             }
         }
 
@@ -678,21 +694,23 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     }
 
     override fun visitSuperName(ctx: SmaliParser.SuperNameContext): SmaliClass {
-        smaliClass.parentClass = project.getOrCreateClass(ctx.text)
+        smaliClass.parentClass = SmaliComponent.classFromName(ctx.text)
         return visitChildren(ctx)
     }
 
     override fun visitFillArrayDataInstruction(ctx: SmaliParser.FillArrayDataInstructionContext): SmaliClass {
 
-        if (withRanges) {
+        if (settings.mode == AnalyzeMode.FULL) {
             val currentMethod = findMethod(ctx) ?: return visitChildren(ctx)
 
             val labelNameContext = ctx.filledArrayDataLabel().label().labelName()
 
-            smaliClass.ranges.add(SmaliAnalysisSegment(
-                    project,
+            val label = currentMethod.getOrCreateLabel(labelNameContext.text)
+
+            ranges.add(SmaliAnalysisSegment(
                     labelNameContext.textRange,
-                    currentMethod.getOrCreateLabel(labelNameContext.text), file)
+                    label,
+                    project.getLinksFor(label).firstOrNull())
             )
         }
 
@@ -719,11 +737,11 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
-            if (withRanges && fieldClass !== SmaliClass.Primitives.SHORT) {
+            if (settings.mode == AnalyzeMode.FULL && fieldClass !== SmaliClass.Primitives.SHORT) {
                 //TODO: highlight error
             }
 
@@ -734,8 +752,8 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     // TODO implement synthetic, bridge, synchronized, strictfp, varargs
     override fun visitMethodModifier(ctx: SmaliParser.MethodModifierContext): SmaliClass {
 
-        if (withRanges)
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.textRange, "keyword"))
+        if (settings.mode == AnalyzeMode.FULL)
+            ranges.add(SimpleStyledSegment(ctx.textRange, "keyword"))
 
         val method = findMethod(ctx) ?: return visitChildren(ctx)
 
@@ -771,11 +789,11 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
-            if (withRanges && fieldClass !== SmaliClass.Primitives.BYTE) {
+            if (settings.mode == AnalyzeMode.FULL && fieldClass !== SmaliClass.Primitives.BYTE) {
                 //TODO: highlight error
             }
 
@@ -806,22 +824,38 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
     override fun visitMethodInvocationTarget(ctx: SmaliParser.MethodInvocationTargetContext): SmaliClass {
         smaliMethodFromInvocationContext(ctx)?.also {
-            if (withRanges)
-                smaliClass.ranges.add(SmaliAnalysisSegment(project, ctx.methodSignature().methodIdentifier().textRange, it, file))
+            if (settings.mode == AnalyzeMode.FULL) {
+                val links = project.getLinksFor(it)
+//                dependencies.add(links)
+
+                println("link count for $it / ${it.hashCode()} is ${links.size}")
+                if (links.size > 1) {
+                    links.forEach {
+                        println("---${it.file}/${it.offset}/${it.description}")
+                    }
+                }
+
+                ranges.add(SmaliAnalysisSegment(
+                        ctx.methodSignature().methodIdentifier().textRange,
+                        it,
+                        links.firstOrNull()))
+            } else if (!it.exists()) {
+                errors.add(Error(IntRange.EMPTY, ""))
+            }
         }
 
         return visitChildren(ctx)
     }
 
     private fun smaliFieldFromInvocationContext(ctx: SmaliParser.FieldInvocationTargetContext): SmaliField? {
-        val targetClass = project.getOrCreateClass(ctx.referenceOrArrayType().text)
+        val targetClass = SmaliComponent.classFromName(ctx.referenceOrArrayType().text)
         val fieldName = ctx.fieldNameAndType().fieldName().text
         val fieldType = ctx.fieldNameAndType().fieldType().text
         return targetClass?.findOrCreateField(fieldName, fieldType)
     }
 
     private fun smaliMethodFromInvocationContext(ctx: SmaliParser.MethodInvocationTargetContext): SmaliMethod? {
-        val targetClass = project.getOrCreateClass(ctx.referenceOrArrayType().text)
+        val targetClass = SmaliComponent.classFromName(ctx.referenceOrArrayType().text)
         val methodName = ctx.methodSignature().methodIdentifier().text
         // TODO optimize double invocation (here and in visitMethodArguments)
         val methodParameters = parseCompound(ctx.methodSignature().methodArguments()?.text)
@@ -849,10 +883,6 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
             smaliMethod.registerToClassMap.clear()
             smaliMethod.textRange = ctx.methodDeclaration()?.methodSignature()?.methodIdentifier()?.textRange ?: -1..0
-
-            if (withRanges) {
-                smaliClass.ranges.add(SmaliAnalysisSegment(project, smaliMethod.textRange, smaliMethod, file))
-            }
         }
 
     }
@@ -865,12 +895,12 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
             parseCompound(arguments.text)
                     .mapNotNull {
-                        val parameterType = project.getOrCreateClass(it)
-                        if (parameterType == null && withRanges) {
+                        val parameterType = SmaliComponent.classFromName(it)
+                        if (parameterType == null && settings.mode == AnalyzeMode.FULL) {
 
-                            val error = Error(offset until offset + it.length, "Unknown type \"$it\"", smaliClass.file!!)
-                            smaliClass.ranges.add(error)
-                            project.errorList.add(error)
+                            val error = Error(offset until offset + it.length, "Unknown type \"$it\"")
+                            ranges.add(error)
+                            errors.add(error)
                         }
                         offset += it.length
                         parameterType
@@ -884,7 +914,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.instanceField().fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
@@ -905,8 +935,8 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             }
         }
 
-        if (withRanges)
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.textRange, "keyword"))
+        if (settings.mode == AnalyzeMode.FULL)
+            ranges.add(SimpleStyledSegment(ctx.textRange, "keyword"))
 
         return visitChildren(ctx)
     }
@@ -927,7 +957,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             val arrayType = currentMethod.registerToClassMap[ctx.arrayRegister().text] ?: return@tunableVisitChildren
             val arrayElementType = arrayType.underlyingArrayType ?: return@tunableVisitChildren
 
-            if (withRanges && arrayElementType !== SmaliClass.Primitives.SHORT) {
+            if (settings.mode == AnalyzeMode.FULL && arrayElementType !== SmaliClass.Primitives.SHORT) {
                 //TODO: highlight error
             }
 
@@ -949,11 +979,11 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
-            if (withRanges && fieldClass !== SmaliClass.Primitives.BOOLEAN) {
+            if (settings.mode == AnalyzeMode.FULL && fieldClass !== SmaliClass.Primitives.BOOLEAN) {
                 //TODO: highlight error
             }
 
@@ -966,7 +996,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
@@ -976,15 +1006,16 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
     override fun visitIfLabel(ctx: SmaliParser.IfLabelContext): SmaliClass {
 
-        if (withRanges) {
+        if (settings.mode == AnalyzeMode.FULL) {
             val currentMethod = findMethod(ctx) ?: return visitChildren(ctx)
 
             val labelNameContext = ctx.label().labelName()
+            val label = currentMethod.getOrCreateLabel(labelNameContext.text)
 
-            smaliClass.ranges.add(SmaliAnalysisSegment(
-                    project,
+            ranges.add(SmaliAnalysisSegment(
                     labelNameContext.textRange,
-                    currentMethod.getOrCreateLabel(labelNameContext.text), file)
+                    label,
+                    project.getLinksFor(label).firstOrNull())
             )
         }
 
@@ -995,7 +1026,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
@@ -1035,7 +1066,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
     override fun visitConstString(ctx: SmaliParser.ConstStringContext): SmaliClass {
         return tunableVisitChildren(ctx) {
-            val clazz = project.getOrCreateClass("Ljava/lang/String;") ?: return@tunableVisitChildren
+            val clazz = SmaliComponent.classFromName("Ljava/lang/String;") ?: return@tunableVisitChildren
             findMethod(ctx)?.registerToClassMap?.set(ctx.registerIdentifier().text, clazz)
         }
     }
@@ -1044,11 +1075,11 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
-            if (withRanges && fieldClass !== SmaliClass.Primitives.CHAR) {
+            if (settings.mode == AnalyzeMode.FULL && fieldClass !== SmaliClass.Primitives.CHAR) {
                 //TODO: highlight error
             }
 
@@ -1059,14 +1090,14 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
     override fun visitConstStringJumbo(ctx: SmaliParser.ConstStringJumboContext): SmaliClass {
         return tunableVisitChildren(ctx) {
-            val clazz = project.getOrCreateClass("Ljava/lang/String;") ?: return@tunableVisitChildren
+            val clazz = SmaliComponent.classFromName("Ljava/lang/String;") ?: return@tunableVisitChildren
             findMethod(ctx)?.registerToClassMap?.set(ctx.registerIdentifier().text, clazz)
         }
     }
 
     override fun visitStringLiteral(ctx: SmaliParser.StringLiteralContext): SmaliClass {
-        if (withRanges)
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.textRange, "string"))
+        if (settings.mode == AnalyzeMode.FULL)
+            ranges.add(SimpleStyledSegment(ctx.textRange, "string"))
 
         return visitChildren(ctx)
     }
@@ -1075,7 +1106,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
@@ -1087,11 +1118,11 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
-            if (withRanges && fieldClass !== SmaliClass.Primitives.SHORT) {
+            if (settings.mode == AnalyzeMode.FULL && fieldClass !== SmaliClass.Primitives.SHORT) {
                 //TODO: highlight error
             }
 
@@ -1101,8 +1132,8 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     }
 
     override fun visitSourceDirective(ctx: SmaliParser.SourceDirectiveContext): SmaliClass {
-        if (withRanges)
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.SOURCE_DIRECTIVE().textRange, "keyword"))
+        if (settings.mode == AnalyzeMode.FULL)
+            ranges.add(SimpleStyledSegment(ctx.SOURCE_DIRECTIVE().textRange, "keyword"))
 
         return visitChildren(ctx)
     }
@@ -1123,8 +1154,8 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             "interface" -> smaliClass.setModifierBit(Modifier.INTERFACE)
         }
 
-        if (withRanges)
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.textRange, "keyword"))
+        if (settings.mode == AnalyzeMode.FULL)
+            ranges.add(SimpleStyledSegment(ctx.textRange, "keyword"))
 
         return visitChildren(ctx)
     }
@@ -1134,21 +1165,20 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         val f = smaliClass.file
 
         if (f != null) {
-            val error = Error.from(node, f)
+            val error = Error.from(node)
+            errors.add(error)
 
-            project.errorList.add(error)
-
-            if (withRanges)
-                smaliClass.ranges.add(error)
+            if (settings.mode == AnalyzeMode.FULL)
+                ranges.add(error)
         }
 
         return super.visitErrorNode(node)
     }
 
     override fun visitClassName(ctx: SmaliParser.ClassNameContext): SmaliClass {
-        smaliClass.parentPackage = project.getPackageForClassName(ctx.text) ?: kotlin.run {
-            return smaliClass
-        }
+//        smaliClass.parentPackage = project.getSmaliPackageForClassName(ctx.text) ?: kotlin.run {
+//            return smaliClass
+//        }
 
         return smaliClass
     }
@@ -1159,7 +1189,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             val arrayType = currentMethod.registerToClassMap[ctx.arrayRegister().text] ?: return@tunableVisitChildren
             val arrayElementType = arrayType.underlyingArrayType ?: return@tunableVisitChildren
 
-            if (withRanges && arrayElementType !== SmaliClass.Primitives.CHAR) {
+            if (settings.mode == AnalyzeMode.FULL && arrayElementType !== SmaliClass.Primitives.CHAR) {
                 //TODO: highlight error
             }
 
@@ -1173,7 +1203,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             val arrayType = currentMethod.registerToClassMap[ctx.arrayRegister().text] ?: return@tunableVisitChildren
             val arrayElementType = arrayType.underlyingArrayType ?: return@tunableVisitChildren
 
-            if (withRanges && arrayElementType !== SmaliClass.Primitives.BOOLEAN) {
+            if (settings.mode == AnalyzeMode.FULL && arrayElementType !== SmaliClass.Primitives.BOOLEAN) {
                 //TODO: highlight error
             }
 
@@ -1226,7 +1256,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
                         else -> return@tunableVisitChildren
                     }
 
-                    val clazz = project.getOrCreateClass(classNameContext.text) ?: return@tunableVisitChildren
+                    val clazz = SmaliComponent.classFromName(classNameContext.text) ?: return@tunableVisitChildren
                     currentMethod.registerToClassMap[ctx.registerIdentifier().text] = clazz
                 }
             }
@@ -1242,11 +1272,11 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
 
-            val fieldClass = project.getOrCreateClass(
+            val fieldClass = SmaliComponent.classFromName(
                     ctx.fieldInvocationTarget().fieldNameAndType().fieldType().text
             ) ?: return@tunableVisitChildren
 
-            if (withRanges && fieldClass !== SmaliClass.Primitives.BYTE) {
+            if (settings.mode == AnalyzeMode.FULL && fieldClass !== SmaliClass.Primitives.BYTE) {
                 //TODO: highlight error
             }
 
@@ -1268,15 +1298,16 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
     override fun visitGoto32Instruction(ctx: SmaliParser.Goto32InstructionContext): SmaliClass {
 
-        if (withRanges) {
+        if (settings.mode == AnalyzeMode.FULL) {
             val currentMethod = findMethod(ctx) ?: return visitChildren(ctx)
 
             val labelNameContext = ctx.label().labelName()
+            val label = currentMethod.getOrCreateLabel(labelNameContext.text)
 
-            smaliClass.ranges.add(SmaliAnalysisSegment(
-                    project,
+            ranges.add(SmaliAnalysisSegment(
                     labelNameContext.textRange,
-                    currentMethod.getOrCreateLabel(labelNameContext.text), file)
+                    label,
+                    project.getLinksFor(label).firstOrNull())
             )
         }
 
@@ -1322,7 +1353,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     override fun visitCheckCastInstruction(ctx: SmaliParser.CheckCastInstructionContext): SmaliClass {
         return tunableVisitChildren(ctx) {
             val method = findMethod(ctx) ?: return@tunableVisitChildren
-            val clazz = project.getOrCreateClass(ctx.checkCastType().text) ?: return@tunableVisitChildren
+            val clazz = SmaliComponent.classFromName(ctx.checkCastType().text) ?: return@tunableVisitChildren
 
             method.registerToClassMap[ctx.targetRegister().text] = clazz
         }
@@ -1350,7 +1381,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     override fun visitNewInstanceInstruction(ctx: SmaliParser.NewInstanceInstructionContext): SmaliClass {
         return tunableVisitChildren(ctx) {
             val currentMethod = findMethod(ctx) ?: return@tunableVisitChildren
-            val clazz = project.getOrCreateClass(ctx.newInstanceType().text) ?: return@tunableVisitChildren
+            val clazz = SmaliComponent.classFromName(ctx.newInstanceType().text) ?: return@tunableVisitChildren
             currentMethod.registerToClassMap[ctx.targetRegister().text] = clazz
         }
     }
@@ -1367,15 +1398,16 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
 
     override fun visitGoto16Instruction(ctx: SmaliParser.Goto16InstructionContext): SmaliClass {
 
-        if (withRanges) {
+        if (settings.mode == AnalyzeMode.FULL) {
             val currentMethod = findMethod(ctx) ?: return visitChildren(ctx)
 
             val labelNameContext = ctx.label().labelName()
+            val label = currentMethod.getOrCreateLabel(labelNameContext.text)
 
-            smaliClass.ranges.add(SmaliAnalysisSegment(
-                    project,
+            ranges.add(SmaliAnalysisSegment(
                     labelNameContext.textRange,
-                    currentMethod.getOrCreateLabel(labelNameContext.text), file)
+                    label,
+                    project.getLinksFor(label).firstOrNull())
             )
         }
 
@@ -1388,7 +1420,7 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
             val arrayType = currentMethod.registerToClassMap[ctx.arrayRegister().text] ?: return@tunableVisitChildren
             val arrayElementType = arrayType.underlyingArrayType ?: return@tunableVisitChildren
 
-            if (withRanges && arrayElementType !== SmaliClass.Primitives.BYTE) {
+            if (settings.mode == AnalyzeMode.FULL && arrayElementType !== SmaliClass.Primitives.BYTE) {
                 //TODO: highlight error
             }
 
@@ -1397,13 +1429,23 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     }
 
     override fun visitFieldInvocationTarget(ctx: SmaliParser.FieldInvocationTargetContext): SmaliClass {
-        if (!withRanges) return visitChildren(ctx)
 
-        val targetClass = project.getOrCreateClass(ctx.referenceOrArrayType().text)
+        val targetClass = SmaliComponent.classFromName(ctx.referenceOrArrayType().text)
         val targetField = targetClass?.findOrCreateField(ctx.fieldNameAndType().fieldName().text,
                 ctx.fieldNameAndType().fieldType().text) ?: return visitChildren(ctx)
 
-        smaliClass.ranges.add(SmaliAnalysisSegment(project, ctx.fieldNameAndType().fieldName().textRange, targetField, file))
+        if (settings.mode == AnalyzeMode.FULL) {
+
+            val links = project.getLinksFor(targetField)
+//            dependencies.add(links)
+
+            ranges.add(SmaliAnalysisSegment(
+                    ctx.fieldNameAndType().fieldName().textRange,
+                    targetField,
+                    links.firstOrNull()))
+        } else if (!targetField.exists()) {
+            errors.add(Error(IntRange.EMPTY, ""))
+        }
 
         return visitChildren(ctx)
     }
@@ -1424,10 +1466,10 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     }
 
     override fun visitImplementsDirective(ctx: SmaliParser.ImplementsDirectiveContext): SmaliClass {
-        if (withRanges)
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.IMPLEMENTS_DIRECTIVE().textRange, "keyword"))
+        if (settings.mode == AnalyzeMode.FULL)
+            ranges.add(SimpleStyledSegment(ctx.IMPLEMENTS_DIRECTIVE().textRange, "keyword"))
 
-        project.getOrCreateClass(ctx.referenceType().text)?.also {
+        SmaliComponent.classFromName(ctx.referenceType().text)?.also {
             smaliClass.interfaces.add(it)
         }
 
@@ -1435,9 +1477,9 @@ class SmaliAllInOneAnalyzer(val project: AndroidAppProject, var smaliClass: Smal
     }
 
     override fun visitSubannotationDirective(ctx: SmaliParser.SubannotationDirectiveContext): SmaliClass {
-        if (withRanges) {
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.SUBANNOTATION_DIRECTIVE().textRange, "keyword"))
-            smaliClass.ranges.add(SimpleFileAnalysisSegment(file, ctx.SUBANNOTATION_END_DIRECTIVE().textRange, "keyword"))
+        if (settings.mode == AnalyzeMode.FULL) {
+            ranges.add(SimpleStyledSegment(ctx.SUBANNOTATION_DIRECTIVE().textRange, "keyword"))
+            ranges.add(SimpleStyledSegment(ctx.SUBANNOTATION_END_DIRECTIVE().textRange, "keyword"))
         }
 
         return visitChildren(ctx)

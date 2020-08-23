@@ -1,7 +1,6 @@
 package ru.art2000.androraider.model.analyzer.xml.types
 
 import ru.art2000.androraider.model.analyzer.result.*
-import java.io.File
 
 class Attribute(
         val tag: Tag,
@@ -20,26 +19,25 @@ class Attribute(
     val valueWithQuotes: StyledSegment
 
     init {
-        val declaringFile = tag.document.file
 
         var i = startIndex
         schema = if (attrSchema != null) {
             val schemaRange = i..(i + attrSchema.length)
             i += attrSchema.length
-            Schema(attrSchema, schemaRange, declaringFile)
+            Schema(attrSchema, schemaRange)
         } else {
             null
         }
 
         val nameRange = i..(i + attrName.length)
-        name = Name(attrName, nameRange, declaringFile)
+        name = Name(attrName, nameRange)
         i += attrName.length + 1
 
         val valueWithQuotesRange = i..(i + attrValue.length)
-        valueWithQuotes = ValueWrapper(valueWithQuotesRange, declaringFile)
+        valueWithQuotes = ValueWrapper(valueWithQuotesRange)
 
         val valueRange = (valueWithQuotesRange.first + 1) until valueWithQuotesRange.last
-        value = Value(attrValue.substring(1, attrValue.lastIndex), valueRange, declaringFile)
+        value = Value(attrValue.substring(1, attrValue.lastIndex), valueRange)
     }
 
     override fun toString(): String {
@@ -48,9 +46,8 @@ class Attribute(
 
     class Schema(
             val text: String,
-            override val segmentRange: IntRange,
-            override val declaringFile: File
-    ) : StyledSegment, FileSegment, HighlightableSegment {
+            override val segmentRange: IntRange
+    ) : StyledSegment, HighlightableSegment {
 
         override val style: String = "attr-schema"
 
@@ -66,26 +63,23 @@ class Attribute(
 
     class Name(
             val text: String,
-            override val segmentRange: IntRange,
-            override val declaringFile: File
-    ) : StyledSegment, FileSegment {
+            override val segmentRange: IntRange
+    ) : StyledSegment {
 
         override val style: String = "attr-name"
     }
 
     class ValueWrapper(
-            override val segmentRange: IntRange,
-            override val declaringFile: File
-    ) : StyledSegment, FileSegment {
+            override val segmentRange: IntRange
+    ) : StyledSegment {
 
         override val style: String = "attr-value"
     }
 
     class Value(
             val text: String,
-            override val segmentRange: IntRange,
-            override val declaringFile: File
-    ) : TextSegment, StyledSegment, FileSegment, HighlightableSegment, LinkSegment, DescriptiveSegment {
+            override val segmentRange: IntRange
+    ) : TextSegment, StyledSegment, HighlightableSegment, LinkSegment, DescriptiveSegment {
 
         var isErrorLink = false
 

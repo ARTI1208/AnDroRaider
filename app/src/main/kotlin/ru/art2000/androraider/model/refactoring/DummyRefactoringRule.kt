@@ -1,6 +1,6 @@
 package ru.art2000.androraider.model.refactoring
 
-object DummyRefactoringRule : FileRefactoringRule {
+object DummyRefactoringRule : RefactoringRule {
 
     override fun isFragmentCommented(string: String) = false
 

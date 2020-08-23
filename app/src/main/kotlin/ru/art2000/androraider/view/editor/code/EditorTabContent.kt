@@ -1,5 +1,7 @@
 package ru.art2000.androraider.view.editor.code
 
+import javafx.beans.property.SimpleObjectProperty
+import javafx.beans.value.ObservableValue
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyCodeCombination
 import javafx.scene.input.KeyCombination
@@ -7,14 +9,25 @@ import javafx.scene.layout.Background
 import javafx.scene.layout.BackgroundFill
 import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
-import ru.art2000.androraider.model.editor.file.FileEditData
+import ru.art2000.androraider.model.analyzer.result.Link
+import ru.art2000.androraider.model.editor.CodeDataProvider
+import ru.art2000.androraider.model.editor.CodeEditingSettings
+import ru.art2000.androraider.model.editor.file.IndentConfiguration
 import ru.art2000.androraider.view.editor.search.SearchableNodeWrapper
-import java.io.File
+import tornadofx.getValue
 
-@Suppress("NON_EXHAUSTIVE_WHEN")
-class EditorTabContent(val data: FileEditData, val openFile: (File, Int) -> Boolean, caretPosition: Int = 0): VBox() {
+class EditorTabContent(dataProvider: CodeDataProvider, openLink: (Link) -> Unit): VBox() {
 
-    val codeEditorArea = CodeEditorArea(data)
+    companion object {
+        private val settings = object : CodeEditingSettings {
+            override val indentConfigurationProperty: ObservableValue<IndentConfiguration>
+                = SimpleObjectProperty(IndentConfiguration(IndentConfiguration.IndentType.SPACE, 4))
+
+            override val indentConfiguration: IndentConfiguration by indentConfigurationProperty
+        }
+    }
+
+    val codeEditorArea = CodeEditorArea(dataProvider, settings)
 
     init {
 
@@ -34,13 +47,12 @@ class EditorTabContent(val data: FileEditData, val openFile: (File, Int) -> Bool
 
                     if (it.fileLinkDetails.size == 1) {
                         val link = it.fileLinkDetails.first()
-                        openFile(link.file, link.offset)
-                    } else {
-                        val linkSelectPopup = LinkSelectionPopup(it.fileLinkDetails) { link ->
-                            openFile(link.file, link.offset)
-                        }
 
-                        val areaSegmentStart = toAreaPosition(it.segmentRange.first)
+                        openLink(link)
+                    } else {
+                        val linkSelectPopup = LinkSelectionPopup(it.fileLinkDetails, openLink)
+
+                        val areaSegmentStart = it.segmentRange.first
                         val optBounds = getCharacterBoundsOnScreen(areaSegmentStart, areaSegmentStart + 1)
                         if (optBounds.isPresent) {
                             val bounds = optBounds.get()
@@ -52,11 +64,6 @@ class EditorTabContent(val data: FileEditData, val openFile: (File, Int) -> Bool
                     }
                 }
             }
-            edit(data.file, Runnable {
-                val adjustedCaretPosition = toAreaPosition(caretPosition)
-                println("Caret pos: $caretPosition, adjusted: $adjustedCaretPosition")
-                moveToAndPlaceLineInCenter(adjustedCaretPosition)
-            })
         }
 
         val areaScrollPane = CodeEditorScrollPane(codeEditorArea)
@@ -66,4 +73,7 @@ class EditorTabContent(val data: FileEditData, val openFile: (File, Int) -> Bool
         }
     }
 
+    public fun dispose() {
+        codeEditorArea.dispose()
+    }
 }

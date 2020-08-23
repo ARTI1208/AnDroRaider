@@ -1,12 +1,13 @@
-package ru.art2000.androraider.model.editor.file
+package ru.art2000.androraider.model.editor
 
+import javafx.scene.Node
 import org.reactfx.value.Val
 import org.reactfx.value.Var
-import ru.art2000.androraider.model.analyzer.android.AndroidAppProject
-import ru.art2000.androraider.model.editor.StatusBarDataProvider
-import ru.art2000.androraider.model.editor.StatusBarElement
-import ru.art2000.androraider.model.editor.StatusBarElementBase
+import ru.art2000.androraider.model.analyzer.result.Project
+import ru.art2000.androraider.model.editor.file.*
 import ru.art2000.androraider.utils.bind
+import ru.art2000.androraider.utils.connect
+import ru.art2000.androraider.view.editor.code.CodeEditorArea
 import ru.art2000.androraider.view.editor.statusbar.FileEditActions
 import tornadofx.getValue
 import tornadofx.setValue
@@ -15,10 +16,13 @@ import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.util.function.Consumer
 
-class FileEditData(val file: File, val project: AndroidAppProject? = null): StatusBarDataProvider {
+class CodeEditorStatusBarDataProvider(
+        codeEditorArea: CodeEditorArea,
+        val file: File?,
+        val project: Project? = null
+) : CodeEditorObserver(codeEditorArea), StatusBarDataProvider {
 
-    val positionProperty: Var<CaretPosition>
-            = Var.newSimpleVar(CaretPosition(0, 0))
+    val positionProperty: Var<CaretPosition> = Var.newSimpleVar(CaretPosition(0, 0))
 
     val lineSeparatorProperty: Var<LineSeparator> = Var.newSimpleVar(LineSeparator.LF)
 
@@ -40,8 +44,7 @@ class FileEditData(val file: File, val project: AndroidAppProject? = null): Stat
 
     var indentConfiguration: IndentConfiguration by indentConfigurationProperty
 
-    private val lineSeparatorElementProperty: Var<LineSeparatorElement>
-            = Var.newSimpleVar(null)
+    private val lineSeparatorElementProperty: Var<LineSeparatorElement> = Var.newSimpleVar(null)
 
     private val fileLockProperty: Var<FileLockElement> =
             Var.newSimpleVar(null)
@@ -57,8 +60,11 @@ class FileEditData(val file: File, val project: AndroidAppProject? = null): Stat
             createLineSeparatorElement(it)
         }
 
+
         fileLockProperty.value = FileLockElement(!isReadOnly(), isProjectPart(), Consumer {
-            FileEditActions.toggleReadOnly(file, fileLockProperty)
+            file?.apply {
+                FileEditActions.toggleReadOnly(this, fileLockProperty)
+            }
         })
 
         isEditableProperty.bind(fileLockProperty) {
@@ -86,6 +92,27 @@ class FileEditData(val file: File, val project: AndroidAppProject? = null): Stat
                 indentConfigurationProperty,
                 fileLockProperty
         )
+
+        position = caretPosition(codeEditorArea.currentParagraph, codeEditorArea.caretColumn)
+
+        codeEditorArea.caretColumnProperty().addListener {  _, _, newValue ->
+            position = caretPosition(codeEditorArea.currentParagraph, newValue)
+        }
+
+        codeEditorArea.currentParagraphProperty().addListener { _, _, newValue ->
+            position = caretPosition(newValue, codeEditorArea.caretColumn)
+        }
+
+        lineSeparatorProperty.bindBidirectional(codeEditorArea.lineSeparatorProperty)
+        codeEditorArea.editableProperty().bind(isEditableProperty)
+    }
+
+    private val caretAction = Consumer<Node> {
+        codeEditorArea.openGoToLineDialog()
+    }
+
+    private fun caretPosition(line: Int, column: Int): CaretPosition {
+        return CaretPosition(line, column, caretAction)
     }
 
     private fun registerDependant(dependence: StatusBarElement) {
@@ -99,12 +126,12 @@ class FileEditData(val file: File, val project: AndroidAppProject? = null): Stat
         if (project == null)
             return false
 
-        val relativeFile = file.relativeToOrNull(project.projectFolder)
+        val relativeFile = file?.relativeToOrNull(project.projectFolder)
         return relativeFile != null
     }
 
     private fun isReadOnly(): Boolean {
-        return !isProjectPart() || !file.canWrite()
+        return !isProjectPart() || file?.canWrite() == false
     }
 
     private fun createLineSeparatorElement(lineSeparator: LineSeparator): LineSeparatorElement {

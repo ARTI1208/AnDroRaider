@@ -163,6 +163,7 @@
 .lineno {
     -fx-text-fill: gray;
     -fx-background-color: lightgray;
+    -fx-fill: lightgray;
     -fx-font-size: 14px;
     -fx-spacing: 0px;
 }
@@ -280,6 +281,11 @@
     -fx-text-fill: red;
     -fx-fill: red;
     -fx-font-weight: bold;
+}
+
+.file-error {
+    -rtfx-underline-color: red;
+    -rtfx-underline-width: 1px;
 }
 
 .editor-popup {

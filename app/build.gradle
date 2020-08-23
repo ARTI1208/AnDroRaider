@@ -27,8 +27,12 @@ dependencies {
 
 //compileKotlin.destinationDir = compileJava.destinationDir
 compileKotlin {
-    kotlinOptions.jvmTarget = "12"
-    kotlinOptions.freeCompilerArgs = ['-Xjvm-default=compatibility']
+    kotlinOptions {
+        jvmTarget = "12"
+        freeCompilerArgs = ['-Xjvm-default=compatibility']
+        languageVersion = "1.4"
+//        useIR = true
+    }
 }
 compileTestKotlin {
     kotlinOptions.jvmTarget = "12"

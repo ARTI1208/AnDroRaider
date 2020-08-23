@@ -27,7 +27,9 @@ fun String.count(substring: String, from: Int = 0, to: Int = length): Int {
 
 fun String.count(c: Char, from: Int = 0, to: Int = length): Int {
     var k = 0
-    for (i in from until to) {
+    val realFrom = maxOf(from, 0)
+    val realTo = minOf(to, length)
+    for (i in realFrom until realTo) {
         if (this[i] == c)
             ++k
     }

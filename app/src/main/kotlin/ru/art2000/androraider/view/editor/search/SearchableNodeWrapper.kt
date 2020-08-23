@@ -22,12 +22,12 @@ class SearchableNodeWrapper(initialContent: Region? = null, initialSearchable: S
 
     private val searchBox = SearchPanel().apply { hide() }
 
+    private val modifiableChildren: ObservableList<Node>
+        get() = super.getChildren()
+
     override fun getChildren(): ObservableList<Node> {
         return super.getChildrenUnmodifiable()
     }
-
-    private val modifiableChildren: ObservableList<Node>
-        get() = super.getChildren()
 
     private val searchEventHandler = { keyEvent: KeyEvent ->
         if (keyEvent.code == KeyCode.F && keyEvent.isShortcutDown) {

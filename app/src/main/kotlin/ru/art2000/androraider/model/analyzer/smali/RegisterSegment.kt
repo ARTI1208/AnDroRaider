@@ -1,20 +1,17 @@
 package ru.art2000.androraider.model.analyzer.smali
 
 import ru.art2000.androraider.model.analyzer.result.DescriptiveSegment
-import ru.art2000.androraider.model.analyzer.result.FileSegment
 import ru.art2000.androraider.model.analyzer.result.HighlightableSegment
 import ru.art2000.androraider.model.analyzer.result.StyledSegment
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
-import java.io.File
 
 class RegisterSegment(override val segmentRange: IntRange,
                       private val register: Register,
                       private val num: Int,
                       private val smaliMethod: SmaliMethod,
-                      private val clazz: SmaliClass?,
-                      override val declaringFile: File
-) : StyledSegment, DescriptiveSegment, FileSegment, HighlightableSegment {
+                      private val clazz: SmaliClass?
+) : StyledSegment, DescriptiveSegment, HighlightableSegment {
 
     override val style: String = register.style
 

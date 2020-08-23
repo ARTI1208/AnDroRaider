@@ -1,3 +1,6 @@
 package ru.art2000.androraider.model.analyzer
 
-interface AnalyzerSettings
+interface AnalyzerSettings {
+
+    val mode: AnalyzeMode
+}

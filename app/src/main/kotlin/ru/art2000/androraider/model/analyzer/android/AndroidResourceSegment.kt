@@ -6,9 +6,8 @@ import java.io.File
 class AndroidResourceSegment(
         private val resource: AndroidResource,
         override val fileLinkDetails: List<FileLink>,
-        override val segmentRange: IntRange,
-        override val declaringFile: File
-) : LinkSegment, FileSegment, HighlightableSegment, DescriptiveSegment {
+        override val segmentRange: IntRange
+) : LinkSegment, HighlightableSegment, DescriptiveSegment {
 
     override fun highlightOther(other: HighlightableSegment): Boolean {
         return other is AndroidResourceSegment && resource === other.resource

@@ -1,7 +1,10 @@
 package ru.art2000.androraider.utils
 
 import javafx.application.Platform
+import javafx.beans.InvalidationListener
+import javafx.beans.Observable
 import javafx.beans.property.Property
+import javafx.beans.value.ChangeListener
 import javafx.beans.value.ObservableValue
 import javafx.geometry.Bounds
 import javafx.scene.Node
@@ -9,10 +12,12 @@ import javafx.scene.Parent
 import javafx.scene.control.IndexRange
 import javafx.scene.control.ListCell
 import javafx.scene.control.ListView
+import javafx.scene.control.TreeItem
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyCodeCombination
 import javafx.scene.input.KeyCombination
 import javafx.scene.input.KeyEvent
+import org.reactfx.Subscription
 
 fun <T, E> Property<T>.bind(observable: ObservableValue<E>, converter: (e: E) -> T) {
     observable.addListener { _, _, newValue ->
@@ -120,6 +125,58 @@ public fun checkedRunLater(action: () -> Unit) {
     } else {
         Platform.runLater(action)
     }
+}
+
+public fun Observable.observe(listener: InvalidationListener) : Subscription {
+    addListener(listener)
+    return Subscription { removeListener(listener) }
+}
+
+public fun Observable.observe(listener: (Observable) -> Unit) : Subscription {
+    return observe(InvalidationListener { listener(it) })
+}
+
+public fun <T> ObservableValue<T>.observe(listener: ChangeListener<in T>) : Subscription {
+    addListener(listener)
+    return Subscription { removeListener(listener) }
+}
+
+public fun <T> ObservableValue<T>.observe(listener: (ObservableValue<out T>, T?, T) -> Unit) : Subscription {
+    addListener(listener)
+    return Subscription { removeListener(listener) }
+}
+
+public fun <T> ObservableValue<T>.connect(listener: ChangeListener<in T>) : Subscription {
+    addListener(listener)
+
+    val v = value
+    listener.changed(this, v, v)
+
+    return Subscription { removeListener(listener) }
+}
+
+public fun <T> ObservableValue<T>.connect(listener: (observable: ObservableValue<out T>, oldValue: T?, newValue: T) -> Unit) : Subscription {
+    addListener(listener)
+
+    val v = value
+    listener(this, v, v)
+
+    return Subscription { removeListener(listener) }
+}
+
+public operator fun Subscription.plus(other: Subscription): Subscription = this.and(other)
+
+public fun <T> TreeItem<T>.walk(foo: (TreeItem<T>) -> Boolean): Boolean {
+    if (foo(this))
+        return true
+
+    for (item in children) {
+        if (item.walk(foo)) {
+            return true
+        }
+    }
+
+    return false
 }
 
 public enum class Visibility(val visible: Boolean, val managed: Boolean) {

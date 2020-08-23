@@ -1,6 +1,6 @@
 package ru.art2000.androraider.model.analyzer.result
 
-interface DescriptiveSegment {
+interface DescriptiveSegment : TextSegment {
 
     val description: String
 }

@@ -2,7 +2,7 @@ package ru.art2000.androraider.utils
 
 import ru.art2000.androraider.model.apktool.addAll
 import ru.art2000.androraider.model.refactoring.DummyRefactoringRule
-import ru.art2000.androraider.model.refactoring.FileRefactoringRule
+import ru.art2000.androraider.model.refactoring.RefactoringRule
 import ru.art2000.androraider.model.refactoring.SmaliRefactoringRule
 import java.io.File
 
@@ -60,8 +60,8 @@ class TypeDetector {
             return Text.listContains(fileName.substring(fileName.lastIndexOf('.') + 1))
         }
 
-        fun getRefactoringRule(extension: String?): FileRefactoringRule {
-            return when (extension) {
+        fun getRefactoringRule(lang: String): RefactoringRule {
+            return when (lang) {
                 "smali" -> SmaliRefactoringRule
                 else -> DummyRefactoringRule
             }

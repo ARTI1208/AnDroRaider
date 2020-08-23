@@ -2,19 +2,23 @@ package ru.art2000.androraider.model.analyzer.smali
 
 import io.reactivex.Observable
 import io.reactivex.schedulers.Schedulers
-import org.antlr.v4.runtime.*
+import org.antlr.v4.runtime.CharStreams
+import org.antlr.v4.runtime.CommonTokenStream
+import org.antlr.v4.runtime.TokenSource
+import org.antlr.v4.runtime.TokenStream
 import org.antlr.v4.runtime.atn.PredictionMode
 import org.antlr.v4.runtime.tree.ParseTree
 import ru.art2000.androraider.model.analyzer.Indexer
 import ru.art2000.androraider.model.analyzer.android.AndroidAppProject
-import ru.art2000.androraider.model.analyzer.result.SimpleFileAnalysisSegment
-import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
-import ru.art2000.androraider.utils.textRange
+import ru.art2000.androraider.model.analyzer.result.FileIndexingResult
+import ru.art2000.androraider.model.analyzer.result.FileLink
+import ru.art2000.androraider.model.analyzer.result.SimpleFileIndexingResult
+import ru.art2000.androraider.model.analyzer.result.SimpleFileLink
 import java.io.File
 
-object SmaliIndexer : Indexer<AndroidAppProject, SmaliIndexerSettings, SmaliClass> {
+object SmaliIndexer : Indexer<AndroidAppProject> {
 
-    private fun generateFileIndex(project: AndroidAppProject, file: File): SmaliClass {
+    override fun indexFile(project: AndroidAppProject, file: File): FileIndexingResult {
         val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
         val tokenStream = CommonTokenStream(lexer as TokenSource)
         val parser = SmaliParser(tokenStream as TokenStream)
@@ -22,52 +26,41 @@ object SmaliIndexer : Indexer<AndroidAppProject, SmaliIndexerSettings, SmaliClas
         parser.interpreter.predictionMode = PredictionMode.SLL
         val tree = parser.parse()
 
-        return SmaliShallowScanner(project, file).visit(tree as ParseTree).also { it.associatedFile = file }
-    }
+        val clazz = SmaliShallowScanner(project, file).visit(tree as ParseTree)
 
-    override fun indexFile(project: AndroidAppProject, settings: SmaliIndexerSettings, file: File): SmaliClass {
-        val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
-        val tokenStream = CommonTokenStream(lexer as TokenSource)
-        val parser = SmaliParser(tokenStream as TokenStream)
+        val links = mutableListOf<Pair<Any, FileLink>>()
 
-        parser.removeErrorListeners()
-//        parser.errorHandler = SmaliErrorStrategy()
+        links += clazz to SimpleFileLink(file, clazz.textRange.last, clazz.fullname)
 
-        val tree = parser.parse()
-
-        var smaliClass = project.fileToClassMapping[file] ?: throw IllegalStateException("ClassNotFound")
-
-        smaliClass.ranges.clear()
-        smaliClass.fields.forEach { it.markAsNotExisting() }
-        smaliClass.methods.forEach { it.markAsNotExisting() }
-        smaliClass.interfaces.clear()
-
-        smaliClass = SmaliAllInOneAnalyzer(project, smaliClass, settings).visit(tree as ParseTree)
-        project.fileToClassMapping[file] = smaliClass.apply { associatedFile = file }
-
-        tokenStream.tokens.forEach {
-            if (it.channel == 1) { // hidden channel
-                smaliClass.ranges.add(SimpleFileAnalysisSegment(file, it.textRange, "comment"))
-            }
+        clazz.fields.forEach {
+            val description = (it.parentClass?.fullname?.plus("/") ?: "") + it.name
+            links += it to SimpleFileLink(file, it.textRange.last, description)
         }
 
-        return smaliClass
+        clazz.methods.forEach {
+            val description = (it.parentClass?.fullname?.plus("/") ?: "") + it.name
+            links += it to SimpleFileLink(file, it.textRange.last, description)
+        }
+
+        clazz.associatedFile = file
+
+        return SimpleFileIndexingResult(file, links)
     }
 
-    override fun indexDirectory(project: AndroidAppProject, settings: SmaliIndexerSettings, directory: File): Observable<SmaliClass> {
+    override fun indexDirectory(project: AndroidAppProject, directory: File): Observable<FileIndexingResult> {
         return Observable
                 .fromIterable(directory.walk().asIterable())
                 .subscribeOn(Schedulers.io())
                 .filter {
                     !it.isDirectory && it.extension == "smali"
                 }.map { file ->
-                    generateFileIndex(project, file).also { project.fileToClassMapping[file] = it  }
+                    indexFile(project, file)
                 }
     }
 
-    override fun indexProject(project: AndroidAppProject, settings: SmaliIndexerSettings): Observable<out SmaliClass> {
-        return project.smaliFolders.fold(Observable.fromIterable(emptyList<SmaliClass>())) { acc, folder ->
-            acc.concatWith(indexDirectory(project, settings, folder))
-        }
+    override fun indexProject(project: AndroidAppProject,): Observable<out FileIndexingResult> {
+        return Observable.concat(project.smaliFolders.map {
+            indexDirectory(project, it)
+        })
     }
 }

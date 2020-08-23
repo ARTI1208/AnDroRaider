@@ -84,6 +84,28 @@ class SmaliMethod() : SmaliComponent {
         return SmaliLabel(name, this).also { labels.add(it) }
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as SmaliMethod
+
+        if (name != other.name) return false
+        if (returnType != other.returnType) return false
+        if (parentClass != other.parentClass) return false
+        if (parametersInternal != other.parametersInternal) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + returnType.hashCode()
+        result = 31 * result + (parentClass?.hashCode() ?: 0)
+        result = 31 * result + parametersInternal.hashCode()
+        return result
+    }
+
 
     val registerToClassMap = mutableMapOf<String, SmaliClass>()
 
@@ -110,4 +132,6 @@ class SmaliMethod() : SmaliComponent {
             field = value
             locals = value - (parametersInternal.size + if (java.lang.reflect.Modifier.isStatic(modifier)) 0 else 1)
         }
+
+
 }

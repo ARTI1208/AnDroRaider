@@ -1,14 +1,10 @@
 package ru.art2000.androraider.model.analyzer.smali.types
 
-import ru.art2000.androraider.model.analyzer.result.FileIndexingResult
-import ru.art2000.androraider.model.analyzer.result.TextSegment
-import ru.art2000.androraider.model.analyzer.smali.SmaliParser
-import ru.art2000.androraider.utils.parseCompound
 import java.io.File
 import java.util.*
 
 @Suppress("RedundantVisibilityModifier")
-class SmaliClass() : FileIndexingResult, SmaliComponent {
+class SmaliClass() : SmaliComponent {
 
     object Primitives {
 
@@ -102,8 +98,6 @@ class SmaliClass() : FileIndexingResult, SmaliComponent {
     val fields = LinkedList<SmaliField>()
     val methods = LinkedList<SmaliMethod>()
 
-    val ranges = LinkedList<TextSegment>()
-
     var arrayCount = 0
 
     public val isArray: Boolean
@@ -148,9 +142,7 @@ class SmaliClass() : FileIndexingResult, SmaliComponent {
     }
 
     public fun findOrCreateField(name: String, type: String): SmaliField? {
-        val prj = parentPackage?.project ?: return null
-
-        val typeClass = prj.getOrCreateClass(type)!!
+        val typeClass = SmaliComponent.classFromName(type)!!
 
         return findField(name, typeClass) ?: SmaliField().apply {
             this.name = name
@@ -230,32 +222,9 @@ class SmaliClass() : FileIndexingResult, SmaliComponent {
         return res ?: findMethodInInterfaces(name, parameters, returnType)
     }
 
-    public fun findOrCreateMethod(ctx: SmaliParser.MethodDeclarationContext): SmaliMethod? {
-        val smaliMethodDeclaration = ctx.text
-        val method = methods.firstOrNull {
-            it.toSmaliString() == smaliMethodDeclaration
-        }
-
-        return if (method == null) {
-            val name = ctx.methodSignature()?.methodIdentifier()?.text ?: "DummyMethod"
-            val params = parseCompound(ctx.methodSignature()?.methodArguments()?.text)
-            val returnType = ctx.methodSignature()?.methodReturnType()?.text ?: "V"
-
-            val prj = parentPackage?.project ?: return null
-            val requiredParameters = params.mapNotNull {
-                prj.getOrCreateClass(it)
-            }
-
-            createMethod(name, requiredParameters, returnType)
-        } else {
-            method
-        }
-    }
-
     public fun findOrCreateMethod(name: String, parameters: List<String>, returnType: String, scanLevel: Int = -1): SmaliMethod? {
-        val prj = parentPackage?.project ?: return null
         val requiredParameters = parameters.mapNotNull {
-            prj.getOrCreateClass(it)
+            SmaliComponent.classFromName(it)
         }
 
         return findMethod(name, requiredParameters, returnType, scanLevel)
@@ -263,14 +232,10 @@ class SmaliClass() : FileIndexingResult, SmaliComponent {
     }
 
     private fun createMethod(name: String, parameters: List<SmaliClass>, returnType: String): SmaliMethod? {
-        val prj = parentPackage?.project ?: return null
-        return SmaliMethod(name, prj.getOrCreateClass(returnType)!!, this).also {
+        return SmaliMethod(name, SmaliComponent.classFromName(returnType)!!, this).also {
             it.parametersInternal.addAll(parameters)
         }
     }
-
-    override val textSegments: List<TextSegment>
-        get() = ranges
 
     override fun toSmaliString(): String {
 
@@ -316,14 +281,13 @@ class SmaliClass() : FileIndexingResult, SmaliComponent {
         other as SmaliClass
 
         if (fullname != other.fullname) return false
-        if (associatedFile != other.associatedFile) return false
+//        if (associatedFile != other.associatedFile) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = fullname.hashCode()
-        result = 31 * result + (associatedFile?.hashCode() ?: 0)
-        return result
+        //        result = 31 * result + (associatedFile?.hashCode() ?: 0)
+        return fullname.hashCode()
     }
 }

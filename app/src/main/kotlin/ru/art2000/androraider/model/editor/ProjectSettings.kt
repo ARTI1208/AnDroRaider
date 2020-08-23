@@ -26,7 +26,7 @@ class ProjectSettings(projectFolder: File, private val globalSettings: Preferenc
                 properties.load(it)
             }
         } else {
-            settingsFile.parentFile.mkdirs()
+//            settingsFile.parentFile.mkdirs()
         }
     }
 

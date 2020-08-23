@@ -1,10 +1,13 @@
 package ru.art2000.androraider.model.analyzer.smali.types
 
-import ru.art2000.androraider.model.analyzer.android.AndroidAppProject
 import java.io.File
 import java.util.*
 
-class SmaliPackage(val project: AndroidAppProject, val name: String, var parentPackage: SmaliPackage? = null, val packageDelimiter: String = "."):SmaliComponent {
+class SmaliPackage(
+        val name: String,
+        var parentPackage: SmaliPackage? = null,
+        val packageDelimiter: String = ".",
+) : SmaliComponent {
 
     init {
         parentPackage?.addSubPackage(this)

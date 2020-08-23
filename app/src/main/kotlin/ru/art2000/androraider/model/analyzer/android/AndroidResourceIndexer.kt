@@ -9,15 +9,18 @@ import org.antlr.v4.runtime.TokenStream
 import org.antlr.v4.runtime.atn.PredictionMode
 import org.antlr.v4.runtime.tree.ParseTree
 import ru.art2000.androraider.model.analyzer.Indexer
+import ru.art2000.androraider.model.analyzer.result.FileIndexingResult
+import ru.art2000.androraider.model.analyzer.result.FileLink
+import ru.art2000.androraider.model.analyzer.result.SimpleFileIndexingResult
 import ru.art2000.androraider.model.analyzer.xml.XMLLexer
 import ru.art2000.androraider.model.analyzer.xml.XMLParser
 import ru.art2000.androraider.model.analyzer.xml.XMLScanner
 import ru.art2000.androraider.model.analyzer.xml.types.Tag
 import java.io.File
 
-object AndroidResourceIndexer : Indexer<AndroidAppProject, AndroidIndexerSettings, AndroidResourceHolder> {
+object AndroidResourceIndexer : Indexer<AndroidAppProject> {
 
-    override fun indexFile(project: AndroidAppProject, settings: AndroidIndexerSettings, file: File): AndroidResourceHolder {
+    override fun indexFile(project: AndroidAppProject, file: File): FileIndexingResult {
 
         val resourceScope = if (file.startsWith(project.projectFolder))
             ResourceScope.LOCAL
@@ -27,7 +30,7 @@ object AndroidResourceIndexer : Indexer<AndroidAppProject, AndroidIndexerSetting
         val directoryNameParts = file.parentFile.name.split('-')
         val directoryResourcesType = directoryNameParts.first()
 
-        val result = AndroidResourceHolder(file)
+        val links = mutableListOf<Pair<Any, FileLink>>()
 
         if (directoryResourcesType == "values") {
             val lexer = XMLLexer(CharStreams.fromFileName(file.absolutePath))
@@ -37,13 +40,11 @@ object AndroidResourceIndexer : Indexer<AndroidAppProject, AndroidIndexerSetting
             parser.interpreter.predictionMode = PredictionMode.SLL
             val tree = parser.document()
 
-            val doc = XMLScanner(file).visit(tree as ParseTree).apply {
-                project.fileToXMLDocMapping[file] = this
-            }
+            val doc = XMLScanner().visit(tree as ParseTree)
 
             doc.tags.forEach { rootTag ->
                 // ignore <?xml and <resources tags and tags with level > 1
-                rootTag.subTags.forEach sub@ {
+                rootTag.subTags.forEach sub@{
                     val resourceName = it.attributes.find { attr ->
                         attr.name.text == "name"
                     }?.value?.text
@@ -64,45 +65,45 @@ object AndroidResourceIndexer : Indexer<AndroidAppProject, AndroidIndexerSetting
                     if (tagResourceType == null) {
                         println("Cannot determine resource type")
                     } else {
-                        indexTag(project, it, resourceName, tagResourceType, resourceScope)
+                        val link = indexTag(project, file, it, resourceName, tagResourceType, resourceScope)
+
+                        if (link != null) {
+                            links += link
+                        }
                     }
                 }
             }
         } else {
             val resource = SimpleAndroidResource(file.nameWithoutExtension, directoryResourcesType, resourceScope)
-
-            project.resources[resource] =
-                    project.resources.getOrDefault(resource, mutableListOf()).apply {
-                        add(AndroidResourceLink(resource, file))
-                    }
+            links += resource to AndroidResourceLink(resource, file)
         }
 
-        return result
+        return SimpleFileIndexingResult(file, links)
     }
 
-    override fun indexDirectory(project: AndroidAppProject, settings: AndroidIndexerSettings, directory: File): Observable<AndroidResourceHolder> {
+    override fun indexDirectory(project: AndroidAppProject, directory: File): Observable<FileIndexingResult> {
         return Observable
                 .fromIterable(directory.walk().asIterable())
                 .subscribeOn(Schedulers.io())
                 .filter {
                     !it.isDirectory
                 }.map { file ->
-                    indexFile(project, settings, file)
+                    indexFile(project, file)
                 }
     }
 
-    override fun indexProject(project: AndroidAppProject, settings: AndroidIndexerSettings): Observable<AndroidResourceHolder> {
+    override fun indexProject(project: AndroidAppProject,): Observable<FileIndexingResult> {
         val projectResFolder = project.projectFolder.resolve("res")
 
-        val observables = mutableListOf<Observable<AndroidResourceHolder>>()
+        val observables = mutableListOf<Observable<FileIndexingResult>>()
 
         projectResFolder.listFiles()?.forEach {
-            observables.add(indexDirectory(project, settings, it))
+            observables.add(indexDirectory(project, it))
         }
 
-        project.dependencies.forEach { frameDirectory ->
+        project.projectDependencies.forEach { frameDirectory ->
             frameDirectory.resolve("res").listFiles()?.forEach {
-                observables.add(indexDirectory(project, settings, it))
+                observables.add(indexDirectory(project, it))
             }
         }
 
@@ -115,7 +116,7 @@ object AndroidResourceIndexer : Indexer<AndroidAppProject, AndroidIndexerSetting
         }
 
         if (resourceTypeAttr == null) {
-            println("Cannot find public resource type in ${public.document.file} for tag $public")
+            println("Cannot find public resource type for tag $public")
             return
         }
 
@@ -124,12 +125,12 @@ object AndroidResourceIndexer : Indexer<AndroidAppProject, AndroidIndexerSetting
         }?.value?.text
 
         if (resourceId == null) {
-            println("Cannot find public resource id in ${public.document.file} for tag $public")
+            println("Cannot find public resource id for tag $public")
             return
         }
 
         if (!resourceId.startsWith("0x")) {
-            println("Invalid public resource id in ${public.document.file} for tag $public")
+            println("Invalid public resource id for tag $public")
             return
         }
 
@@ -139,23 +140,28 @@ object AndroidResourceIndexer : Indexer<AndroidAppProject, AndroidIndexerSetting
         project.public[intResourceId] = resource
     }
 
-    private fun indexTag(project: AndroidAppProject, tag: Tag, resourceName: String, resourceType: String, resourceScope: ResourceScope) {
+    private fun indexTag(
+            project: AndroidAppProject,
+            file: File,
+            tag: Tag,
+            resourceName: String,
+            resourceType: String,
+            resourceScope: ResourceScope
+    ) : Pair<Any, FileLink>? {
         if (resourceType == "public") {
             indexPublicTag(project, tag, resourceName, resourceScope)
-            return
+            return null
         }
 
         if (resourceType !in AndroidAppProject.resourceTypes) {
-            println("Unknown resource type $resourceType in file ${tag.document.file}, tag = $tag")
-            return
+            println("Unknown resource type $resourceType, tag = $tag")
+            return null
         }
 
         val tagStart = tag.styleSegments.firstOrNull()?.segmentRange?.first ?: 0
 
         val resource = SimpleAndroidResource(resourceName, resourceType, resourceScope)
-        project.resources[resource] =
-                project.resources.getOrDefault(resource, mutableListOf()).apply {
-                    add(AndroidResourceLink(resource, tag.document.file, tagStart))
-                }
+
+        return resource to AndroidResourceLink(resource, file, tagStart)
     }
 }

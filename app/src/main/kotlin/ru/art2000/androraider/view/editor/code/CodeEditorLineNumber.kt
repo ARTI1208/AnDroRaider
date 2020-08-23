@@ -12,7 +12,8 @@ class CodeEditorLineNumber(val area: GenericStyledArea<*, *, *>) : IntFunction<N
         val label = Label().apply { styleClass.add("lineno") }
         val text = (value + 1).toString()
         label.textProperty().bind(area.paragraphs.sizeProperty()) {
-            "${" ".repeat(it.toString().length - text.length)}$text"
+            val spaceCount = it.toString().length - text.length
+            "${" ".repeat(spaceCount.coerceAtLeast(0))}$text"
         }
         return label
     }

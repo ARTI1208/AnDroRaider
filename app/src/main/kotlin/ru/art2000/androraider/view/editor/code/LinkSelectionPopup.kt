@@ -8,15 +8,16 @@ import javafx.scene.layout.Region
 import javafx.stage.Popup
 import javafx.stage.PopupWindow
 import ru.art2000.androraider.model.analyzer.result.FileLink
+import ru.art2000.androraider.model.analyzer.result.Link
 import ru.art2000.androraider.utils.setItemCellFactory
 
 @Suppress("NON_EXHAUSTIVE_WHEN")
-class LinkSelectionPopup(links: List<FileLink>, openLink: (FileLink) -> Unit) : Popup() {
+class LinkSelectionPopup(links: List<Link>, openLink: (Link) -> Unit) : Popup() {
 
     init {
         isAutoHide = true
 
-        val listView = ListView<FileLink>()
+        val listView = ListView<Link>()
         listView.items.addAll(links)
         listView.setItemCellFactory { item, empty, cell ->
             if (item == null || empty) {

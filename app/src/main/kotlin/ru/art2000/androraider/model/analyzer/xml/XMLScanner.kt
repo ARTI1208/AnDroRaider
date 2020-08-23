@@ -1,6 +1,9 @@
 package ru.art2000.androraider.model.analyzer.xml
 
 import org.antlr.v4.runtime.RuleContext
+import org.antlr.v4.runtime.tree.ErrorNode
+import ru.art2000.androraider.model.analyzer.result.Error
+import ru.art2000.androraider.model.analyzer.result.TextSegment
 import ru.art2000.androraider.model.analyzer.xml.types.Document
 import ru.art2000.androraider.model.analyzer.xml.types.Tag
 import ru.art2000.androraider.utils.firstPos
@@ -8,9 +11,18 @@ import ru.art2000.androraider.utils.lastPos
 import ru.art2000.androraider.utils.textRange
 import java.io.File
 
-class XMLScanner(private val document: Document) : XMLParserBaseVisitor<Document>() {
+class XMLScanner : XMLParserBaseVisitor<Document>() {
 
-    constructor(file: File) : this(Document(file))
+    private val document = Document()
+
+    val errors = mutableListOf<TextSegment>()
+
+    override fun visitErrorNode(node: ErrorNode): Document {
+
+        errors.add(Error.from(node))
+
+        return super.visitErrorNode(node)
+    }
 
     override fun defaultResult() = document
 

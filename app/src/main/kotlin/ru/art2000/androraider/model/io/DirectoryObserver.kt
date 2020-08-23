@@ -1,6 +1,7 @@
 package ru.art2000.androraider.model.io
 
 import javafx.application.Platform
+import org.reactfx.Subscription
 import java.io.File
 import java.lang.Exception
 import java.nio.file.*
@@ -8,9 +9,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 @Suppress("RedundantVisibilityModifier")
-class DirectoryObserver(directory: File) {
+class DirectoryObserver(val directory: File) {
 
-    private val onChangeListeners: MutableList<(File, WatchEvent.Kind<*>) -> Unit> = mutableListOf()
+    private val directoryEventListeners: MutableList<(File, WatchEvent.Kind<*>) -> Unit> = mutableListOf()
+
+    private val fileEventListeners: MutableMap<File, MutableSet<DirectoryBasedFileObserver>> = mutableMapOf()
 
     private var shouldStop = AtomicBoolean(false)
 
@@ -28,12 +31,24 @@ class DirectoryObserver(directory: File) {
         }
     }
 
-    public fun addListener(func: (File, WatchEvent.Kind<*>) -> Unit) {
-        onChangeListeners.add(func)
+    public fun observe(func: (File, WatchEvent.Kind<*>) -> Unit): Subscription {
+        addListener(func)
+        return Subscription { removeListener(func) }
     }
 
+    public fun addListener(func: (File, WatchEvent.Kind<*>) -> Unit) {
+        directoryEventListeners.add(func)
+    }
+
+    public fun removeListener(func: (File, WatchEvent.Kind<*>) -> Unit) {
+        directoryEventListeners.remove(func)
+    }
+
+    private val hasListeners: Boolean
+        get() = directoryEventListeners.isNotEmpty() || fileEventListeners.flatMap { it.value }.isNotEmpty()
+
     public fun start() {
-        if (isRunning.get()) {
+        if (isRunning.get() || !hasListeners) {
             return
         }
 
@@ -90,7 +105,8 @@ class DirectoryObserver(directory: File) {
 
     private fun handleFileEvent(file: File, kind: WatchEvent.Kind<*>, key: WatchKey) {
         if (!(file.isDirectory && kind == StandardWatchEventKinds.ENTRY_MODIFY)) {
-            onChangeListeners.forEach {
+            fileEventListeners[file]?.forEach { it.notifyListeners(kind) }
+            directoryEventListeners.forEach {
                 it(file, kind)
             }
         }
@@ -98,5 +114,41 @@ class DirectoryObserver(directory: File) {
             file.isDirectory && kind == StandardWatchEventKinds.ENTRY_DELETE -> keys.removeIf { it == key }
             file.isDirectory && kind == StandardWatchEventKinds.ENTRY_CREATE -> keys.add(register(file))
         }
+    }
+
+    public fun getFileObserver(file: File): FileObserver {
+        return DirectoryBasedFileObserver(file).also {
+            fileEventListeners.getOrPut(file) { mutableSetOf() }.add(it)
+        }
+    }
+
+    private inner class DirectoryBasedFileObserver(file: File): FileObserver(file) {
+
+        private val listeners = mutableSetOf<(WatchEvent.Kind<*>) -> Unit>()
+
+        fun notifyListeners(event: WatchEvent.Kind<*>) {
+            listeners.forEach { it(event) }
+        }
+
+        override fun addListener(func: (WatchEvent.Kind<*>) -> Unit) {
+            listeners.add(func)
+        }
+
+        override fun removeListener(func: (WatchEvent.Kind<*>) -> Unit) {
+            listeners.remove(func)
+        }
+
+        override fun start() {
+            fileEventListeners.getOrPut(file) { mutableSetOf() }.add(this)
+            this@DirectoryObserver.start()
+        }
+
+        override fun stop() {
+            fileEventListeners[file]?.remove(this)
+            if (!this@DirectoryObserver.hasListeners) {
+                this@DirectoryObserver.stop()
+            }
+        }
+
     }
 }

@@ -8,7 +8,7 @@ import ru.art2000.androraider.model.App
 import ru.art2000.androraider.model.editor.file.CaretPosition
 import ru.art2000.androraider.view.dialogs.icons
 
-class GoToLineDialog(caretPosition: CaretPosition) : Dialog<Pair<Int, Int>>(),
+class GoToLineDialog(line: Int, column: Int) : Dialog<Pair<Int, Int>>(),
         IGoToLineController by GoToLineController() {
 
     init {
@@ -17,9 +17,6 @@ class GoToLineDialog(caretPosition: CaretPosition) : Dialog<Pair<Int, Int>>(),
 
         dialogPane.content = root
         dialogPane.buttonTypes.addAll(ButtonType.OK, ButtonType.CLOSE)
-
-        val line = caretPosition.line
-        val column = caretPosition.column
 
         hintLabel.text = "[Line][:column]:"
         textField.text = "${line + 1}:${column + 1}"

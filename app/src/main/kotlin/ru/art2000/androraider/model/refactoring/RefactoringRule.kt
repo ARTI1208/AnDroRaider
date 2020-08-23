@@ -1,6 +1,6 @@
 package ru.art2000.androraider.model.refactoring
 
-interface FileRefactoringRule {
+interface RefactoringRule {
 
     fun isFragmentCommented(string: String): Boolean
 
