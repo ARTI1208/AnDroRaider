@@ -30,18 +30,19 @@ interface Project {
     fun requestFileAnalyze(file: File, mode: AnalyzeMode, callback: (FileAnalyzeResult?) -> Unit): Subscription
 
     fun requestTextAnalyze(
-            text: String,
-            lang: String,
-            mode: AnalyzeMode,
-            callback: (TextAnalyzeResult?) -> Unit,
+        text: String,
+        lang: String,
+        mode: AnalyzeMode,
+        callback: (TextAnalyzeResult?) -> Unit,
     ): Subscription = requestTextAnalyze(Val.constant(text), lang, mode, callback)
 
     fun requestTextAnalyze(
-            text: ObservableValue<String>,
-            lang: String,
-            mode: AnalyzeMode,
-            callback: (TextAnalyzeResult?) -> Unit,
+        text: ObservableValue<String>,
+        lang: String,
+        mode: AnalyzeMode,
+        callback: (TextAnalyzeResult?) -> Unit,
     ): Subscription
 
-    fun getLinksFor(any: Any): ObservableSet<FileLink> = links.getOrPut(any) { FXCollections.observableSet(IdentityHashSet()) }
+    fun getLinksFor(any: Any): ObservableSet<FileLink> =
+        links.getOrPut(any) { FXCollections.observableSet(IdentityHashSet()) }
 }

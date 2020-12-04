@@ -22,16 +22,13 @@ import ru.art2000.androraider.presenter.settings.SettingsPresenter
 import ru.art2000.androraider.utils.connect
 import ru.art2000.androraider.utils.observe
 import ru.art2000.androraider.utils.plus
+import tornadofx.*
 import java.io.File
 import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchEvent
 import kotlin.concurrent.thread
-import tornadofx.getValue
-import tornadofx.setValue
-import java.util.ArrayList
-import kotlin.collections.HashSet
 
-class AndroidAppProject(override val projectFolder: File): Project, SmaliProject, XMLProject {
+class AndroidAppProject(override val projectFolder: File) : Project, SmaliProject, XMLProject {
 
     // Project implementation
 
@@ -42,26 +39,26 @@ class AndroidAppProject(override val projectFolder: File): Project, SmaliProject
     companion object {
 
         val resourceTypes = listOf(
-                "drawable",
-                "plurals",
-                "array",
-                "string-array",
-                "integer-array",
-                "mipmap",
-                "string",
-                "style",
-                "dimen",
-                "bool",
-                "attr",
-                "color",
-                "id",
-                "integer",
-                "xml",
-                "fraction"
+            "drawable",
+            "plurals",
+            "array",
+            "string-array",
+            "integer-array",
+            "mipmap",
+            "string",
+            "style",
+            "dimen",
+            "bool",
+            "attr",
+            "color",
+            "id",
+            "integer",
+            "xml",
+            "fraction"
         )
     }
 
-    public val projectDependencies: List<File>
+    val projectDependencies: List<File>
         get() = deps
 
     private val deps = mutableListOf<File>()
@@ -138,23 +135,6 @@ class AndroidAppProject(override val projectFolder: File): Project, SmaliProject
                         println("Removed resource links to $eventFile")
                     }
                 }
-
-
-//                val removedAll = links.values.any { it.any { it.file == eventFile } }
-//
-//                if (!removedAll) {
-//                    println("ERRRRRRRRRRRRRROoR! not all links to ")
-//                }
-
-//                links.values.forEach { links ->
-//                    val removed = links.removeIf { link ->
-//                        link.file == eventFile
-//                    }
-//
-//                    if (removed) {
-//                        println("Removed resource links to $eventFile")
-//                    }
-//                }
             }
 
             if (kind != StandardWatchEventKinds.ENTRY_DELETE) {
@@ -179,7 +159,8 @@ class AndroidAppProject(override val projectFolder: File): Project, SmaliProject
                             } += link
                             fileToLinkables.getOrPut(link.file) { mutableListOf() }.add(obj)
                         }
-                    } catch (_ : Exception) {}
+                    } catch (_: Exception) {
+                    }
                 }
             }
         }
@@ -197,8 +178,9 @@ class AndroidAppProject(override val projectFolder: File): Project, SmaliProject
         directoryObserver.addListener { childFile, kind ->
 
             if (!(childFile.parentFile == file
-                    && childFile.isDirectory
-                    && childFile.name.matches(smaliFolderNameRegex)))
+                        && childFile.isDirectory
+                        && childFile.name.matches(smaliFolderNameRegex))
+            )
                 return@addListener
 
             when (kind) {
@@ -208,18 +190,18 @@ class AndroidAppProject(override val projectFolder: File): Project, SmaliProject
         }
     }
 
-    override fun findOrTryCreateSmaliPackage(name: String): SmaliPackage {
-        val packageToReturn = findSmaliPackage(name)
+    override fun findOrTryCreateSmaliPackage(packageName: String): SmaliPackage {
+        val packageToReturn = findSmaliPackage(packageName)
         if (packageToReturn != null)
             return packageToReturn
 
-        val lastDot = name.lastIndexOf('.')
+        val lastDot = packageName.lastIndexOf('.')
         return if (lastDot == -1) {
-            SmaliPackage(name, rootPackage)
+            SmaliPackage(packageName, rootPackage)
         } else {
-            val parentPackageName = name.substring(0, lastDot)
-            val packageName = name.substring(lastDot + 1)
-            SmaliPackage(packageName, findOrTryCreateSmaliPackage(parentPackageName))
+            val parentPackageName = packageName.substring(0, lastDot)
+            val simpleName = packageName.substring(lastDot + 1)
+            SmaliPackage(simpleName, findOrTryCreateSmaliPackage(parentPackageName))
         }
     }
 
@@ -316,13 +298,13 @@ class AndroidAppProject(override val projectFolder: File): Project, SmaliProject
         return null
     }
 
-    override fun findSmaliClass(relativeName: String): SmaliClass? {
+    override fun findSmaliClass(className: String): SmaliClass? {
         for (cl in rootPackage.classes) {
-            if (cl.fullname == relativeName)
+            if (cl.fullname == className)
                 return cl
         }
 
-        return findClass(rootPackage.subpackages, relativeName)
+        return findClass(rootPackage.subpackages, className)
     }
 
     private fun findClass(packages: List<SmaliPackage>, relativeName: String): SmaliClass? {
@@ -342,45 +324,49 @@ class AndroidAppProject(override val projectFolder: File): Project, SmaliProject
     override fun indexProject(): Observable<out FileIndexingResult> {
 
         val indexing = listOf(
-                AndroidResourceIndexer.indexProject(this),
-                SmaliIndexer.indexProject(this)
+            AndroidResourceIndexer.indexProject(this),
+            SmaliIndexer.indexProject(this)
         )
 
         return Observable.merge(indexing)
-                .doOnNext {
-                    it.links.forEach { (obj, link) ->
-                        getLinksFor(obj) += link
+            .doOnNext {
+                it.links.forEach { (obj, link) ->
+                    getLinksFor(obj) += link
 
-                        fileToLinkables.getOrPut(link.file) { mutableListOf() }.add(obj)
-                    }
-                }.doOnSubscribe {
-                    println("Indexing")
-                    state = State.INDEXING
+                    fileToLinkables.getOrPut(link.file) { mutableListOf() }.add(obj)
                 }
+            }.doOnSubscribe {
+                println("Indexing")
+                state = State.INDEXING
+            }
     }
 
     override fun analyzeProject(): Observable<out FileAnalyzeResult> {
         val analyzing = listOf(
-                AndroidResourceAnalyzer.analyzeProject(this, AndroidResourceAnalyzerSettings(AnalyzeMode.ERRORS)),
-                SmaliAnalyzer.analyzeProject(this, SmaliAnalyzerSettings(AnalyzeMode.ERRORS))
+            AndroidResourceAnalyzer.analyzeProject(this, AndroidResourceAnalyzerSettings(AnalyzeMode.ERRORS)),
+            SmaliAnalyzer.analyzeProject(this, SmaliAnalyzerSettings(AnalyzeMode.ERRORS))
         )
 
         return Observable.merge(analyzing)
-                .doOnSubscribe {
-                    println("Analyzing")
-                    state = State.ANALYZING
-                }
+            .doOnSubscribe {
+                println("Analyzing")
+                state = State.ANALYZING
+            }
     }
 
     override fun setupProject(): Observable<*> {
         return Observable.concat(indexProject(), analyzeProject())
-                .doOnTerminate {
-                    println("IDLE")
-                    state = State.IDLE
-                }
+            .doOnTerminate {
+                println("IDLE")
+                state = State.IDLE
+            }
     }
 
-    override fun requestFileAnalyze(file: File, mode: AnalyzeMode, callback: (FileAnalyzeResult?) -> Unit): Subscription {
+    override fun requestFileAnalyze(
+        file: File,
+        mode: AnalyzeMode,
+        callback: (FileAnalyzeResult?) -> Unit
+    ): Subscription {
 
         val observer = directoryObservers.find {
             file.startsWith(it.directory)
@@ -403,7 +389,8 @@ class AndroidAppProject(override val projectFolder: File): Project, SmaliProject
 
         val listener = { eventFile: File, kind: WatchEvent.Kind<*> ->
             if ((eventFile == file && kind == StandardWatchEventKinds.ENTRY_MODIFY)
-                    || fileDependencies[file]?.contains(eventFile) == true) {
+                || fileDependencies[file]?.contains(eventFile) == true
+            ) {
                 runAnalyzeAsync()
             }
         }
@@ -446,7 +433,12 @@ class AndroidAppProject(override val projectFolder: File): Project, SmaliProject
         }
     }
 
-    override fun requestTextAnalyze(text: ObservableValue<String>, lang: String, mode: AnalyzeMode, callback: (TextAnalyzeResult?) -> Unit): Subscription {
+    override fun requestTextAnalyze(
+        text: ObservableValue<String>,
+        lang: String,
+        mode: AnalyzeMode,
+        callback: (TextAnalyzeResult?) -> Unit
+    ): Subscription {
 
         val dependenciesSet = FXCollections.observableSet<javafx.beans.Observable>()
 
@@ -479,10 +471,12 @@ class AndroidAppProject(override val projectFolder: File): Project, SmaliProject
             runAnalyzeAsync(newValue)
         }
 
-        val dependencySubscription = Subscription.dynamic(dependenciesSet) { it.observe {
-            println("dependency change ${it.hashCode()}")
-            runAnalyzeAsync(text.value ?: "")
-        }}
+        val dependencySubscription = Subscription.dynamic(dependenciesSet) {
+            it.observe {
+                println("dependency change ${it.hashCode()}")
+                runAnalyzeAsync(text.value ?: "")
+            }
+        }
 
         return textSubscription + dependencySubscription
     }
