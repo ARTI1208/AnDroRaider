@@ -12,7 +12,7 @@ version '0.1'
 
 mainClassName = 'ru.art2000.androraider.view.AnDroRaider'
 
-sourceCompatibility = 13
+sourceCompatibility = 11
 
 dependencies {
     antlr "org.antlr:antlr4:4.8"
@@ -28,14 +28,14 @@ dependencies {
 //compileKotlin.destinationDir = compileJava.destinationDir
 compileKotlin {
     kotlinOptions {
-        jvmTarget = "12"
+        jvmTarget = "11"
         freeCompilerArgs = ['-Xjvm-default=compatibility']
         languageVersion = "1.4"
 //        useIR = true
     }
 }
 compileTestKotlin {
-    kotlinOptions.jvmTarget = "12"
+    kotlinOptions.jvmTarget = "11"
 }
 
 //tasks.compileKotlin.dependsOn(generateGrammarSource)
