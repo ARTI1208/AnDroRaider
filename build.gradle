@@ -1,32 +1,5 @@
-plugins {
-//    id 'application' // to define mainClassName
-//    id 'org.openjfx.javafxplugin' version '0.0.8' // dunno why but is needed in root gradle script
-//    id 'com.github.johnrengelman.shadow' version '5.2.0'
-//    id 'org.beryx.jlink' version '2.17.8'
-}
-
-group 'ru.art2000'
-version 'BETA_0.1'
-
 allprojects {
     repositories {
         mavenCentral()
     }
 }
-
-//mainClassName = 'ru.art2000.androraider.view.AnDroRaider'
-
-dependencies {
-//    implementation project(':app')
-}
-
-//jlink {
-//    launcher {
-//        name = 'AnDroRaider'
-//    }
-//}
-
-//javafx {
-//    version = "14"
-//    modules = [ 'javafx.controls', 'javafx.fxml', 'javafx.graphics' ]
-//}
