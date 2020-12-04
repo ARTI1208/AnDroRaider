@@ -136,13 +136,6 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
         fileManagerView.prefHeightProperty().bind(heightProperty())
 
-        try {
-            val t = File("addsdssf").readText()
-            println("NotExistingFileText: $t")
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
     }
 
     private fun getTabCodeEditor(tab: Tab): CodeEditorArea {
