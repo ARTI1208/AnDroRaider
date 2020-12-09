@@ -3,16 +3,18 @@ module app {
     requires javafx.fxml;
     requires javafx.graphics;
     requires org.fxmisc.richtext;
-    requires reactfx;
     requires java.prefs;
     requires kotlin.stdlib;
 
-    requires flowless;
     requires io.reactivex.rxjava2;
-    requires rxjavafx;
     requires org.apache.commons.io;
-    requires undofx;
     requires org.antlr.antlr4.runtime;
+
+// problematic modules with GRADLE 6.4+
+    requires reactfx;
+    requires flowless;
+    requires rxjavafx;
+    requires undofx;
     requires tornadofx;
 
 
