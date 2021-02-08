@@ -6,7 +6,7 @@ plugins {
     java
     antlr
 
-    kotlin("jvm") version "1.4.20"
+    kotlin("jvm") version "1.4.30"
 
 //  not working properly with GRADLE 6.4+
     id("org.openjfx.javafxplugin") version "0.0.9"
