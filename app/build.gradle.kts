@@ -10,7 +10,7 @@ plugins {
 
 //  not working properly with GRADLE 6.4+
     id("org.openjfx.javafxplugin") version "0.0.9"
-    id("org.beryx.jlink") version "2.22.3"
+    id("org.beryx.jlink") version "2.23.3"
 }
 
 group = "ru.art2000"
