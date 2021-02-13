@@ -30,7 +30,7 @@ dependencies {
     implementation("org.jetbrains.kotlin", "kotlin-stdlib-jdk8")
     implementation("org.fxmisc.richtext", "richtextfx", "0.10.5")
     implementation("io.reactivex.rxjava2", "rxjava", "2.2.20")
-    implementation("io.reactivex.rxjava2", "rxjavafx", "2.2.2")
+    implementation("io.reactivex.rxjava2", "rxjavafx", "2.11.0-RC34")
     implementation("org.jetbrains.kotlinx", "kotlinx-coroutines-core", "1.4.2")
     implementation("commons-io", "commons-io", "2.8.0")
 

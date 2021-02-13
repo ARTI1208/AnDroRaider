@@ -10,10 +10,11 @@ module app {
     requires org.apache.commons.io;
     requires org.antlr.antlr4.runtime;
 
+    requires rxjavafx;
+
 // problematic modules with GRADLE 6.4+
     requires reactfx;
     requires flowless;
-    requires rxjavafx;
     requires undofx;
     requires tornadofx;
 
