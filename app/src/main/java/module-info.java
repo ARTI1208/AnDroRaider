@@ -1,16 +1,19 @@
 module app {
+
+    // javafx
     requires javafx.controls;
     requires javafx.fxml;
     requires javafx.graphics;
     requires org.fxmisc.richtext;
+
     requires java.prefs;
     requires kotlin.stdlib;
 
     requires io.reactivex.rxjava2;
+    requires rxjavafx;
+
     requires org.apache.commons.io;
     requires org.antlr.antlr4.runtime;
-
-    requires rxjavafx;
 
 // problematic modules with GRADLE 6.4+
     requires reactfx;

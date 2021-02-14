@@ -6,8 +6,6 @@ import org.reactfx.value.Var
 import ru.art2000.androraider.model.analyzer.result.Project
 import ru.art2000.androraider.model.editor.file.*
 import ru.art2000.androraider.utils.bind
-import ru.art2000.androraider.utils.connect
-import ru.art2000.androraider.view.editor.code.CodeEditorArea
 import ru.art2000.androraider.view.editor.statusbar.FileEditActions
 import tornadofx.getValue
 import tornadofx.setValue
@@ -17,10 +15,10 @@ import java.nio.charset.StandardCharsets
 import java.util.function.Consumer
 
 class CodeEditorStatusBarDataProvider(
-        codeEditorArea: CodeEditorArea,
-        val file: File?,
-        val project: Project? = null
-) : CodeEditorObserver(codeEditorArea), StatusBarDataProvider {
+    codeEditorDataProvider: CodeEditorDataProvider,
+    val file: File?,
+    val project: Project? = null
+) : StatusBarDataProvider {
 
     val positionProperty: Var<CaretPosition> = Var.newSimpleVar(CaretPosition(0, 0))
 
@@ -93,22 +91,22 @@ class CodeEditorStatusBarDataProvider(
                 fileLockProperty
         )
 
-        position = caretPosition(codeEditorArea.currentParagraph, codeEditorArea.caretColumn)
+        position = caretPosition(codeEditorDataProvider.currentLine, codeEditorDataProvider.currentColumn)
 
-        codeEditorArea.caretColumnProperty().addListener {  _, _, newValue ->
-            position = caretPosition(codeEditorArea.currentParagraph, newValue)
+        codeEditorDataProvider.currentColumnProperty.addListener { _, _, newValue ->
+            position = caretPosition(codeEditorDataProvider.currentLine, newValue)
         }
 
-        codeEditorArea.currentParagraphProperty().addListener { _, _, newValue ->
-            position = caretPosition(newValue, codeEditorArea.caretColumn)
+        codeEditorDataProvider.currentLineProperty.addListener { _, _, newValue ->
+            position = caretPosition(newValue, codeEditorDataProvider.currentColumn)
         }
 
-        lineSeparatorProperty.bindBidirectional(codeEditorArea.lineSeparatorProperty)
-        codeEditorArea.editableProperty().bind(isEditableProperty)
+        lineSeparatorProperty.bindBidirectional(codeEditorDataProvider.lineSeparatorProperty)
+        codeEditorDataProvider.editableProperty.bind(isEditableProperty)
     }
 
     private val caretAction = Consumer<Node> {
-        codeEditorArea.openGoToLineDialog()
+        codeEditorDataProvider.openGoToLineDialog()
     }
 
     private fun caretPosition(line: Int, column: Int): CaretPosition {

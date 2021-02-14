@@ -6,10 +6,7 @@ import io.reactivex.disposables.Disposable
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
 import javafx.application.Platform
-import javafx.beans.property.Property
-import javafx.beans.property.SimpleObjectProperty
-import javafx.beans.property.SimpleStringProperty
-import javafx.beans.property.StringProperty
+import javafx.beans.property.*
 import javafx.beans.value.ObservableValue
 import javafx.scene.Cursor
 import javafx.scene.control.Label
@@ -43,7 +40,7 @@ import kotlin.system.measureTimeMillis
 class CodeEditorArea(
         val dataProvider: CodeDataProvider,
         val settings: CodeEditingSettings
-) : CodeArea(), StringSearchable {
+) : CodeArea(), StringSearchable, CodeEditorDataProvider {
 
     private var currentDisposable: Disposable? = null
 
@@ -83,16 +80,6 @@ class CodeEditorArea(
     private val caretPositionListener: (ObservableValue<out Int>, Int, Int) -> Unit
 
     private val isStylingText = AtomicBoolean(false)
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 
     private val observableSegments: Var<List<TextSegment>> = Var.newSimpleVar(emptyList())
 
@@ -100,7 +87,21 @@ class CodeEditorArea(
 
     private var project: Project? by projectProperty
 
-    public val lineSeparatorProperty: Property<LineSeparator> = SimpleObjectProperty(LineSeparator.LF)
+    override val currentLineProperty: ObservableValue<Int>
+        get() = currentParagraphProperty()
+
+    override val currentLine: Int by currentLineProperty
+
+    override val currentColumnProperty: ObservableValue<Int>
+        get() = caretColumnProperty()
+
+    override val currentColumn: Int by currentColumnProperty
+
+
+    public override val lineSeparatorProperty: Property<LineSeparator> = SimpleObjectProperty(LineSeparator.LF)
+
+    override val editableProperty: BooleanProperty
+        get() = editableProperty()
 
     public var lineSeparator: LineSeparator by lineSeparatorProperty
 
@@ -465,7 +466,7 @@ class CodeEditorArea(
         }
     }
 
-    public fun openGoToLineDialog() {
+    public override fun openGoToLineDialog() {
         val dialog = GoToLineDialog(currentParagraph, caretColumn)
 
         val res = dialog.showAndWait()
