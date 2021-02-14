@@ -19,10 +19,7 @@ import ru.art2000.androraider.model.analyzer.xml.types.Document
 import ru.art2000.androraider.model.editor.ProjectSettings
 import ru.art2000.androraider.model.io.DirectoryObserver
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
-import ru.art2000.androraider.utils.connect
-import ru.art2000.androraider.utils.observe
-import ru.art2000.androraider.utils.plus
-import tornadofx.*
+import ru.art2000.androraider.utils.*
 import java.io.File
 import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchEvent

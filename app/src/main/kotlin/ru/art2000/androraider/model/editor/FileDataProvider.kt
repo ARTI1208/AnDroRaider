@@ -2,12 +2,12 @@ package ru.art2000.androraider.model.editor
 
 import javafx.beans.property.Property
 import javafx.beans.property.SimpleStringProperty
+import javafx.beans.value.ChangeListener
 import ru.art2000.androraider.model.io.DirectoryFileObserver
 import ru.art2000.androraider.model.io.FileObserver
-import tornadofx.ChangeListener
+import ru.art2000.androraider.utils.getValue
+import ru.art2000.androraider.utils.setValue
 import java.io.File
-import tornadofx.getValue
-import tornadofx.setValue
 import java.nio.file.Files
 import java.nio.file.StandardWatchEventKinds
 import kotlin.concurrent.thread

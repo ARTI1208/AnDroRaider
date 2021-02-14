@@ -28,8 +28,8 @@ import ru.art2000.androraider.model.analyzer.result.*
 import ru.art2000.androraider.model.editor.*
 import ru.art2000.androraider.model.editor.file.LineSeparator
 import ru.art2000.androraider.utils.*
-import tornadofx.getValue
-import tornadofx.setValue
+import ru.art2000.androraider.utils.getValue
+import ru.art2000.androraider.utils.setValue
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.regex.Pattern

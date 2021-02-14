@@ -8,8 +8,8 @@ import ru.art2000.androraider.model.editor.StatusBarElement
 import ru.art2000.androraider.model.editor.StatusBarElementBase
 import ru.art2000.androraider.utils.bind
 import ru.art2000.androraider.view.editor.statusbar.FileEditActions
-import tornadofx.getValue
-import tornadofx.setValue
+import ru.art2000.androraider.utils.getValue
+import ru.art2000.androraider.utils.setValue
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets

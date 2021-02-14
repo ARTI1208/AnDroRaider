@@ -4,22 +4,22 @@ import javafx.beans.property.Property
 import javafx.beans.property.SimpleDoubleProperty
 import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.value.ObservableDoubleValue
+import javafx.scene.control.Button
 import javafx.scene.control.TextField
+import javafx.scene.image.ImageView
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.layout.Background
 import javafx.scene.layout.BackgroundFill
 import javafx.scene.layout.BorderPane
+import javafx.scene.layout.HBox
 import javafx.scene.paint.Color
 import ru.art2000.androraider.utils.Visibility
 import ru.art2000.androraider.utils.getDrawable
 import ru.art2000.androraider.utils.visibility
 import ru.art2000.androraider.model.editor.Searchable
-import tornadofx.button
-import tornadofx.hbox
-import tornadofx.imageview
-import tornadofx.getValue
-import tornadofx.setValue
+import ru.art2000.androraider.utils.getValue
+import ru.art2000.androraider.utils.setValue
 
 class SearchPanel(initialSearchable: Searchable<String>? = null) : BorderPane() {
 
@@ -73,31 +73,31 @@ class SearchPanel(initialSearchable: Searchable<String>? = null) : BorderPane() 
             searchable?.find(newValue ?: "")
         }
 
-        val prevButton = button(text = "Prev") {
+        val prevButton = Button("Prev").apply {
             setOnAction { searchable?.findPrevious() }
             prefHeight = panelHeight
         }
 
-        val nextButton = button(text = "Next") {
+        val nextButton = Button("Next").apply {
             setOnAction { searchable?.findNext() }
             prefHeight = panelHeight
         }
 
         val buttonImage = javaClass.getDrawable("cross.png")?.let {
-            imageview(it) {
+            ImageView(it).apply {
                 fitHeight = panelHeight / 2
                 fitWidth = panelHeight / 2
             }
         }
 
-        val closeButton = button(graphic = buttonImage) {
+        val closeButton = Button("", buttonImage).apply {
             setOnAction { hide() }
             prefHeight = panelHeight
         }
 
         prefHeight = panelHeight
 
-        left = hbox {
+        left = HBox().apply {
             children += listOf(searchField, prevButton, nextButton)
         }
         right = closeButton

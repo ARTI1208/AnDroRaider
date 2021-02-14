@@ -6,9 +6,9 @@ import org.reactfx.value.Var
 import ru.art2000.androraider.model.analyzer.result.Project
 import ru.art2000.androraider.model.editor.file.*
 import ru.art2000.androraider.utils.bind
+import ru.art2000.androraider.utils.getValue
+import ru.art2000.androraider.utils.setValue
 import ru.art2000.androraider.view.editor.statusbar.FileEditActions
-import tornadofx.getValue
-import tornadofx.setValue
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
@@ -25,10 +25,10 @@ class CodeEditorStatusBarDataProvider(
     val lineSeparatorProperty: Var<LineSeparator> = Var.newSimpleVar(LineSeparator.LF)
 
     val charsetProperty: Var<StatusBarElementBase<Charset>> =
-            Var.newSimpleVar(StatusBarElementBase(StandardCharsets.UTF_8))
+        Var.newSimpleVar(StatusBarElementBase(StandardCharsets.UTF_8))
 
     val indentConfigurationProperty: Var<IndentConfiguration> =
-            Var.newSimpleVar(IndentConfiguration(IndentConfiguration.IndentType.SPACE, 4))
+        Var.newSimpleVar(IndentConfiguration(IndentConfiguration.IndentType.SPACE, 4))
 
     var position: CaretPosition by positionProperty
 
@@ -45,11 +45,11 @@ class CodeEditorStatusBarDataProvider(
     private val lineSeparatorElementProperty: Var<LineSeparatorElement> = Var.newSimpleVar(null)
 
     private val fileLockProperty: Var<FileLockElement> =
-            Var.newSimpleVar(null)
+        Var.newSimpleVar(null)
 
-    public val isEditableProperty: Var<Boolean> = Var.newSimpleVar(true)
+    val isEditableProperty: Var<Boolean> = Var.newSimpleVar(true)
 
-    public val isEditable: Boolean by isEditableProperty
+    val isEditable: Boolean by isEditableProperty
 
     override val dataList: List<Val<out StatusBarElement>>
 
@@ -70,9 +70,9 @@ class CodeEditorStatusBarDataProvider(
         }
 
         val readOnlyDependents = listOf(
-                lineSeparatorElementProperty,
-                charsetProperty,
-                indentConfigurationProperty
+            lineSeparatorElementProperty,
+            charsetProperty,
+            indentConfigurationProperty
         )
 
         readOnlyDependents.forEach { property ->
@@ -84,11 +84,11 @@ class CodeEditorStatusBarDataProvider(
 
 
         dataList = listOf(
-                positionProperty,
-                lineSeparatorElementProperty,
-                charsetProperty,
-                indentConfigurationProperty,
-                fileLockProperty
+            positionProperty,
+            lineSeparatorElementProperty,
+            charsetProperty,
+            indentConfigurationProperty,
+            fileLockProperty
         )
 
         position = caretPosition(codeEditorDataProvider.currentLine, codeEditorDataProvider.currentColumn)
@@ -133,7 +133,9 @@ class CodeEditorStatusBarDataProvider(
     }
 
     private fun createLineSeparatorElement(lineSeparator: LineSeparator): LineSeparatorElement {
-        return LineSeparatorElement(lineSeparator,
-                FileEditActions.getLineSeparatorAction(lineSeparatorProperty, lineSeparator))
+        return LineSeparatorElement(
+            lineSeparator,
+            FileEditActions.getLineSeparatorAction(lineSeparatorProperty, lineSeparator)
+        )
     }
 }

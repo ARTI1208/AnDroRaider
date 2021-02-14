@@ -14,7 +14,7 @@ import ru.art2000.androraider.model.editor.CodeDataProvider
 import ru.art2000.androraider.model.editor.CodeEditingSettings
 import ru.art2000.androraider.model.editor.file.IndentConfiguration
 import ru.art2000.androraider.view.editor.search.SearchableNodeWrapper
-import tornadofx.getValue
+import ru.art2000.androraider.utils.getValue
 
 class EditorTabContent(dataProvider: CodeDataProvider, openLink: (Link) -> Unit): VBox() {
 

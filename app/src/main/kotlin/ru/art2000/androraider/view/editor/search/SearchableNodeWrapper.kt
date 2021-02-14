@@ -9,8 +9,8 @@ import javafx.scene.input.KeyEvent
 import javafx.scene.layout.Region
 import javafx.scene.layout.VBox
 import ru.art2000.androraider.model.editor.Searchable
-import tornadofx.getValue
-import tornadofx.setValue
+import ru.art2000.androraider.utils.getValue
+import ru.art2000.androraider.utils.setValue
 
 class SearchableNodeWrapper(initialContent: Region? = null, initialSearchable: Searchable<String>? = null): VBox() {
 

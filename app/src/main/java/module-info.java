@@ -19,7 +19,6 @@ module app {
     requires reactfx;
     requires flowless;
     requires undofx;
-    requires tornadofx;
 
 
     opens ru.art2000.androraider.view;

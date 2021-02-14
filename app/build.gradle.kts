@@ -34,8 +34,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx", "kotlinx-coroutines-core", "1.4.2")
     implementation("commons-io", "commons-io", "2.8.0")
 
-    implementation("no.tornado", "tornadofx", "1.7.20")
-
 //    GRADLE 6.4+ javafx workaround
 //    val jfxOptions = object {
 //        val group = "org.openjfx"
