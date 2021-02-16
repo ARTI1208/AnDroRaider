@@ -15,7 +15,6 @@ module app {
     requires org.apache.commons.io;
     requires org.antlr.antlr4.runtime;
 
-// problematic modules with GRADLE 6.4+
     requires reactfx;
     requires flowless;
     requires undofx;
