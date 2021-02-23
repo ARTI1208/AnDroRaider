@@ -110,3 +110,19 @@ jlink {
     addExtraDependencies("javafx")
     forceMerge("Flowless", "ReactFX", "UndoFX")
 }
+
+fun Task.checkJPackageAvailable() {
+    doFirst {
+        if (JavaVersion.current() < JavaVersion.VERSION_14) {
+            throw GradleException("JPackage is only available staring with jdk14. Current version: ${JavaVersion.current()}")
+        }
+    }
+}
+
+tasks.withType(org.beryx.jlink.JPackageTask::class) {
+    checkJPackageAvailable()
+}
+
+tasks.withType(org.beryx.jlink.JPackageImageTask::class) {
+    checkJPackageAvailable()
+}
