@@ -76,7 +76,11 @@ compileKotlin.kotlinOptions {
     freeCompilerArgs = listOf("-Xjvm-default=compatibility")
 }
 
-project.gradle.startParameter.excludedTaskNames.add("generateGrammarSource")
+val generateGrammarSource: AntlrTask by tasks
+generateGrammarSource.apply {
+    outputDirectory = File("${project.buildDir}/generated-src/antlr/main/ru/art2000/androraider/antlr")
+    arguments.plusAssign(listOf("-visitor", "-long-messages", "-package", "ru.art2000.androraider.antlr"))
+}
 
 java {
 //    GRADLE 6.4+

@@ -1,8 +1,8 @@
 package ru.art2000.androraider.model.analyzer.android
 
 import org.antlr.v4.runtime.RuleContext
-import ru.art2000.androraider.model.analyzer.xml.XMLParser
-import ru.art2000.androraider.model.analyzer.xml.XMLParserBaseVisitor
+import ru.art2000.androraider.antlr.XMLParser
+import ru.art2000.androraider.antlr.XMLParserBaseVisitor
 import ru.art2000.androraider.model.analyzer.xml.types.Document
 import ru.art2000.androraider.model.analyzer.xml.types.Tag
 import ru.art2000.androraider.utils.firstPos

@@ -12,8 +12,8 @@ import ru.art2000.androraider.model.analyzer.Indexer
 import ru.art2000.androraider.model.analyzer.result.FileIndexingResult
 import ru.art2000.androraider.model.analyzer.result.FileLink
 import ru.art2000.androraider.model.analyzer.result.SimpleFileIndexingResult
-import ru.art2000.androraider.model.analyzer.xml.XMLLexer
-import ru.art2000.androraider.model.analyzer.xml.XMLParser
+import ru.art2000.androraider.antlr.XMLLexer
+import ru.art2000.androraider.antlr.XMLParser
 import ru.art2000.androraider.model.analyzer.xml.XMLScanner
 import ru.art2000.androraider.model.analyzer.xml.types.Tag
 import java.io.File

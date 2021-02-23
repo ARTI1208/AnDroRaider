@@ -2,6 +2,8 @@ package ru.art2000.androraider.model.analyzer.smali
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor
 import org.antlr.v4.runtime.tree.ErrorNode
+import ru.art2000.androraider.antlr.SmaliParser
+import ru.art2000.androraider.antlr.SmaliParserVisitor
 import ru.art2000.androraider.model.analyzer.android.AndroidAppProject
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliComponent

@@ -6,11 +6,12 @@ import ru.art2000.androraider.model.analyzer.result.StyledSegment
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliClass
 import ru.art2000.androraider.model.analyzer.smali.types.SmaliMethod
 
-class RegisterSegment(override val segmentRange: IntRange,
-                      private val register: Register,
-                      private val num: Int,
-                      private val smaliMethod: SmaliMethod,
-                      private val clazz: SmaliClass?
+class RegisterSegment(
+    override val segmentRange: IntRange,
+    private val register: Register,
+    private val num: Int,
+    private val smaliMethod: SmaliMethod,
+    private val clazz: SmaliClass?
 ) : StyledSegment, DescriptiveSegment, HighlightableSegment {
 
     override val style: String = register.style

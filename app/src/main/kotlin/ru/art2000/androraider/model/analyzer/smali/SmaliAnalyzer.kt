@@ -7,6 +7,8 @@ import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.TokenSource
 import org.antlr.v4.runtime.TokenStream
 import org.antlr.v4.runtime.tree.ParseTree
+import ru.art2000.androraider.antlr.SmaliLexer
+import ru.art2000.androraider.antlr.SmaliParser
 import ru.art2000.androraider.model.analyzer.AnalyzeMode
 import ru.art2000.androraider.model.analyzer.Analyzer
 import ru.art2000.androraider.model.analyzer.result.*

@@ -1,12 +1,13 @@
 package ru.art2000.androraider.model.analyzer.android
 
 import org.antlr.v4.runtime.tree.ErrorNode
+import ru.art2000.androraider.antlr.XMLParser
+import ru.art2000.androraider.antlr.XMLParserBaseVisitor
 import ru.art2000.androraider.model.analyzer.result.Error
 import ru.art2000.androraider.model.analyzer.result.TextSegment
-import ru.art2000.androraider.model.analyzer.xml.XMLParser
-import ru.art2000.androraider.model.analyzer.xml.XMLParserBaseVisitor
 
-class AndroidResourceErrorScanner(val resourceChecker: (AndroidResource) -> Boolean) : XMLParserBaseVisitor<List<TextSegment>>() {
+class AndroidResourceErrorScanner(val resourceChecker: (AndroidResource) -> Boolean) :
+    XMLParserBaseVisitor<List<TextSegment>>() {
 
     private val errors = mutableListOf<TextSegment>()
 

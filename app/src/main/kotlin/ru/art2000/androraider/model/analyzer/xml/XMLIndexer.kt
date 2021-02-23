@@ -8,6 +8,8 @@ import org.antlr.v4.runtime.TokenSource
 import org.antlr.v4.runtime.TokenStream
 import org.antlr.v4.runtime.atn.PredictionMode
 import org.antlr.v4.runtime.tree.ParseTree
+import ru.art2000.androraider.antlr.XMLLexer
+import ru.art2000.androraider.antlr.XMLParser
 import ru.art2000.androraider.model.analyzer.Indexer
 import ru.art2000.androraider.model.analyzer.result.FileIndexingResult
 import ru.art2000.androraider.model.analyzer.result.SimpleFileIndexingResult

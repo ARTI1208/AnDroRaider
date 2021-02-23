@@ -2,6 +2,8 @@ package ru.art2000.androraider.model.analyzer.xml
 
 import org.antlr.v4.runtime.RuleContext
 import org.antlr.v4.runtime.tree.ErrorNode
+import ru.art2000.androraider.antlr.XMLParser
+import ru.art2000.androraider.antlr.XMLParserBaseVisitor
 import ru.art2000.androraider.model.analyzer.result.Error
 import ru.art2000.androraider.model.analyzer.result.TextSegment
 import ru.art2000.androraider.model.analyzer.xml.types.Document
@@ -9,7 +11,6 @@ import ru.art2000.androraider.model.analyzer.xml.types.Tag
 import ru.art2000.androraider.utils.firstPos
 import ru.art2000.androraider.utils.lastPos
 import ru.art2000.androraider.utils.textRange
-import java.io.File
 
 class XMLScanner : XMLParserBaseVisitor<Document>() {
 
@@ -88,7 +89,7 @@ class XMLScanner : XMLParserBaseVisitor<Document>() {
         val parentTag = ruleToTag[ctx.parent]
 
         val tag = parentTag?.createTag(name, tagRanges, tagNameRanges, tagValue)
-                ?: document.createTag(name, tagRanges, tagNameRanges, tagValue)
+            ?: document.createTag(name, tagRanges, tagNameRanges, tagValue)
 
         ctx.attribute().forEach {
             val fullname = it.Name().text

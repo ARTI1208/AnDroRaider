@@ -4,6 +4,8 @@ import javafx.beans.Observable
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RuleContext
 import org.antlr.v4.runtime.tree.ErrorNode
+import ru.art2000.androraider.antlr.SmaliParser
+import ru.art2000.androraider.antlr.SmaliParserBaseVisitor
 import ru.art2000.androraider.model.analyzer.AnalyzeMode
 import ru.art2000.androraider.model.analyzer.android.*
 import ru.art2000.androraider.model.analyzer.result.*
@@ -15,7 +17,6 @@ import ru.art2000.androraider.utils.parseCompound
 import ru.art2000.androraider.utils.textRange
 import java.lang.Exception
 import java.lang.reflect.Modifier
-import kotlin.properties.Delegates
 
 class SmaliAllInOneAnalyzer(val project: SmaliProject, val settings: SmaliAnalyzerSettings) :
         SmaliParserBaseVisitor<SmaliClass>() {
