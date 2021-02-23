@@ -82,6 +82,8 @@ generateGrammarSource.apply {
     arguments.plusAssign(listOf("-visitor", "-long-messages", "-package", "ru.art2000.androraider.antlr"))
 }
 
+compileKotlin.dependsOn(generateGrammarSource.name)
+
 java {
 //    GRADLE 6.4+
     modularity.inferModulePath.set(true)
