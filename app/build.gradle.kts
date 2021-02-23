@@ -102,4 +102,5 @@ jlink {
     }
 
     addExtraDependencies("javafx")
+    forceMerge("Flowless", "ReactFX", "UndoFX")
 }
