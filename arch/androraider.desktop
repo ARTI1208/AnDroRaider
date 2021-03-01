@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=AnDroRaider
+Comment=Small IDE for decompiled Android apps
+Exec=/opt/androraider/bin/AnDroRaider
+Icon=/opt/androraider/assets/logo.png
+Terminal=false
+Type=Application
+Categories=Development
