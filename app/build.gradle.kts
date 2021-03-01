@@ -8,8 +8,6 @@ plugins {
 
     kotlin("jvm") version "1.4.30"
 
-//  not working properly with GRADLE 6.4+
-//    id("org.openjfx.javafxplugin") version "0.0.9"
     id("org.beryx.jlink") version "2.23.3"
 }
 
@@ -17,20 +15,14 @@ group = "ru.art2000"
 version = "0.1"
 
 application {
-//    GRADLE 6.4+
     mainModule.set("app")
     mainClass.set("ru.art2000.androraider.view.AnDroRaider")
-
-//    GRADLE <6.4
-//    mainClassName = "app/ru.art2000.androraider.view.AnDroRaider"
 }
 
 dependencies {
     antlr("org.antlr", "antlr4", "4.9")
-    implementation("org.jetbrains.kotlin", "kotlin-stdlib-jdk8")
     implementation("io.reactivex.rxjava2", "rxjava", "2.2.20")
     implementation("io.reactivex.rxjava2", "rxjavafx", "2.11.0-RC34")
-    implementation("org.jetbrains.kotlinx", "kotlinx-coroutines-core", "1.4.2")
     implementation("commons-io", "commons-io", "2.8.0")
 
     // Use custom builds of ReactFX, Flowless and UndoFX that support modularity
@@ -71,9 +63,7 @@ val compileKotlin: KotlinCompile by tasks
 compileJava.destinationDir = compileKotlin.destinationDir
 
 compileKotlin.kotlinOptions {
-    languageVersion = "1.4"
     jvmTarget = "11"
-    freeCompilerArgs = listOf("-Xjvm-default=compatibility")
 }
 
 val generateGrammarSource: AntlrTask by tasks
@@ -97,18 +87,19 @@ val jar by tasks.getting(Jar::class) {
     }
 }
 
-//javafx {
-//    version = "15"
-//    modules = listOf("javafx.base", "javafx.controls", "javafx.fxml", "javafx.graphics", "javafx.swing")
-//}
-
 jlink {
     launcher {
         name = "AnDroRaider"
     }
 
-    addExtraDependencies("javafx")
-    forceMerge("Flowless", "ReactFX", "UndoFX")
+    mergedModuleName.set("androraider")
+
+    mergedModule {
+        requires("javafx.graphics")
+        requires("javafx.controls")
+    }
+
+    forceMerge("Flowless", "ReactFX", "UndoFX", "kotlin")
 }
 
 fun Task.checkJPackageAvailable() {
