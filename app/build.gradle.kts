@@ -100,6 +100,17 @@ jlink {
     }
 
     forceMerge("Flowless", "ReactFX", "UndoFX", "kotlin")
+
+    jpackage {
+
+        val os = org.gradle.internal.os.OperatingSystem.current()
+
+        if (os.isUnix && !os.isMacOsX) {
+            val logoInModule = File("src/main/resources/drawable/logo.png")
+            val logoAbsolute = project.projectDir.resolve(logoInModule)
+            icon = logoAbsolute.absolutePath
+        }
+    }
 }
 
 fun Task.checkJPackageAvailable() {
