@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.util.Properties
+import java.io.FileInputStream
 
 plugins {
 
@@ -11,8 +13,41 @@ plugins {
     id("org.beryx.jlink") version "2.23.3"
 }
 
+fun File.properties(): Properties = Properties().also {
+    it.load(FileInputStream(this))
+}
+
+fun readVersion(properties: Properties): String {
+
+    fun Properties.intProperty(prop: String): Int {
+        val value = getProperty(prop) ?: throw IllegalStateException("missing property '$prop'")
+        return value.toIntOrNull() ?: throw IllegalStateException("not integer property '$prop'")
+    }
+
+    val major = properties.intProperty("major")
+    val minor = properties.intProperty("minor")
+    val patch = properties.intProperty("patch")
+
+    val shortVersion = if (patch == 0) "$major.$minor" else "$major.$minor.$patch"
+
+    val os = org.gradle.internal.os.OperatingSystem.current()
+    if (os.isMacOsX) return shortVersion
+
+    val type = properties.getProperty("type")
+    val build = properties.intProperty("build")
+
+    return if (type.isNullOrEmpty()) {
+        shortVersion
+    } else {
+        "$shortVersion-$type.$build"
+    }
+}
+
+val appPropertiesFile = file("src/main/resources/property/app.properties")
+val appProperties = appPropertiesFile.properties()
+
 group = "ru.art2000"
-version = "0.1"
+version = readVersion(appProperties)
 
 application {
     mainModule.set("app")
@@ -101,7 +136,7 @@ val jar by tasks.getting(Jar::class) {
 
 jlink {
     launcher {
-        name = "AnDroRaider"
+        name = appProperties.getProperty("name")
     }
 
     mergedModuleName.set("androraider")
