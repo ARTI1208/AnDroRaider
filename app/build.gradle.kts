@@ -111,6 +111,7 @@ jlink {
         requires("javafx.controls")
     }
 
+    addExtraDependencies("javafx")
     forceMerge("Flowless", "ReactFX", "UndoFX", "kotlin")
 
     jpackage {
