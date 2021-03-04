@@ -19,9 +19,9 @@ package() {
 	appInstallRoot=opt/androraider
 	cp -R app/build/image "$pkgdir"/"$appInstallRoot"
 
-    logoDir="$pkgdir"/opt/androraider/assets
+    logoDir="$pkgdir"/usr/share/pixmaps
 	mkdir -p "$logoDir"
-	cp app/src/main/resources/drawable/logo.png "$logoDir"/logo.png
+	cp app/src/main/resources/drawable/logo.png "$logoDir"/AnDroRaider.png
 
 	desktopDir="$pkgdir"/usr/share/applications
 	mkdir -p "$desktopDir"
