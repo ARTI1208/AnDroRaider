@@ -20,26 +20,38 @@ application {
 }
 
 dependencies {
+
+    fun <T : ModuleDependency> T.removeJavaFxDependencies() : T {
+        return exclude("org.openjfx")
+    }
+
     antlr("org.antlr", "antlr4", "4.9")
+
     implementation("io.reactivex.rxjava2", "rxjava", "2.2.20")
     implementation("io.reactivex.rxjava2", "rxjavafx", "2.11.0-RC34")
+        .removeJavaFxDependencies()
+
     implementation("commons-io", "commons-io", "2.8.0")
 
     // Use custom builds of ReactFX, Flowless and UndoFX that support modularity
     implementation("org.fxmisc.richtext", "richtextfx", "0.10.5")
+        .removeJavaFxDependencies()
         .exclude("org.reactfx", "reactfx")
         .exclude("org.fxmisc.flowless", "flowless")
         .exclude("org.fxmisc.undo", "undofx")
 
-    implementation("com.github.ARTI1208:ReactFX:v3.0.1-modularity")
-    implementation("com.github.ARTI1208:Flowless:v1.0-modularity")
-    implementation("com.github.ARTI1208:UndoFX:v3.0.1-modularity")
+    implementation("com.github.ARTI1208", "ReactFX", "v3.0.1-modularity")
+        .removeJavaFxDependencies()
+    implementation("com.github.ARTI1208", "Flowless", "v1.0-modularity")
+        .removeJavaFxDependencies()
+    implementation("com.github.ARTI1208","UndoFX","v3.0.1-modularity")
+        .removeJavaFxDependencies()
 
 //    GRADLE 6.4+ javafx workaround
     val jfxOptions = object {
         val group = "org.openjfx"
         val version = "15.0.1"
-        val fxModules = listOf("javafx.base", "javafx.controls", "javafx.fxml", "javafx.graphics", "javafx.swing")
+        val fxModules = listOf("javafx.base", "javafx.controls", "javafx.fxml", "javafx.graphics")
     }
     jfxOptions.run {
         val osName = System.getProperty("os.name")
@@ -105,10 +117,19 @@ jlink {
 
         val os = org.gradle.internal.os.OperatingSystem.current()
 
-        if (os.isUnix && !os.isMacOsX) {
-            val logoInModule = File("src/main/resources/drawable/logo.png")
-            val logoAbsolute = project.projectDir.resolve(logoInModule)
-            icon = logoAbsolute.absolutePath
+        val iconFormat = when {
+            os.isWindows -> "ico"
+            os.isMacOsX -> "icns"
+            else -> "png"
+        }
+
+        val logoInModule = File("src/main/resources/drawable/icons/icon.$iconFormat")
+        val logoAbsolute = project.projectDir.resolve(logoInModule)
+        icon = logoAbsolute.absolutePath
+
+        if (os.isWindows) {
+            val appParentDir = "Art2000"
+            installerOptions = listOf("--win-dir-chooser", "--win-menu", "--win-menu-group", appParentDir)
         }
     }
 }
