@@ -159,13 +159,25 @@ jlink {
             else -> "png"
         }
 
-        val logoInModule = File("src/main/resources/drawable/icons/icon.$iconFormat")
+        val logoInModule = "src/main/resources/drawable/icons/icon.$iconFormat"
         val logoAbsolute = project.projectDir.resolve(logoInModule)
         icon = logoAbsolute.absolutePath
 
         if (os.isWindows) {
             val appParentDir = "Art2000"
-            installerOptions = listOf("--win-dir-chooser", "--win-menu", "--win-menu-group", appParentDir)
+            installerOptions = listOf(
+                "--win-dir-chooser",
+                "--win-menu",
+                "--win-menu-group", appParentDir
+            )
+        } else if (os.isLinux) {
+            val appCategory = "Development;IDE;Programming;"
+            val devEmail = "leonardo906@mail.ru"
+            installerOptions = listOf(
+                "--linux-shortcut",
+                "--linux-menu-group", appCategory,
+                "--linux-deb-maintainer", devEmail
+            )
         }
     }
 }

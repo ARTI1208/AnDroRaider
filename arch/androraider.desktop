@@ -5,4 +5,4 @@ Exec=androraider
 Icon=AnDroRaider
 Terminal=false
 Type=Application
-Categories=Development
+Categories=Development;IDE;Programming;
