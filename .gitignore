@@ -2,7 +2,6 @@
 /.idea
 !.idea/
 .idea/*
-!.idea/runConfigurations
 !.idea/dictionaries
 /gradle
 /__artifacts_temp
@@ -14,3 +13,14 @@ local.properties
 !/arch/androraider.desktop
 !/arch/androraider.sh
 !/arch/PKGBUILD
+
+*
+!.gitignore
+!build.gradle
+!gradle.properties
+!gradlew.bat
+!README.md
+!settings.gradle
+
+!app/src
+!app/build.gradle.kts
