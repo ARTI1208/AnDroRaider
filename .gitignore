@@ -10,9 +10,9 @@
 /app/build
 local.properties
 /arch/*
-!/arch/androraider.desktop
-!/arch/androraider.sh
 !/arch/PKGBUILD
+!/config
+!/config/*
 
 *
 !.gitignore

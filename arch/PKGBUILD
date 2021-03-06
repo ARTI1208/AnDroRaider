@@ -1,6 +1,7 @@
 # Maintainer: Art Pinch <leonardo90690@gmail.com>
 
 pkgname=androraider
+appName=AnDroRaider
 pkgver=0.1
 pkgrel=1
 pkgdesc="Small IDE for decompiled Android apps"
@@ -9,27 +10,30 @@ arch=('x86_64')
 build() {
     cd ../..
 
-    ./gradlew jlink
+    ./gradlew packageArch
 }
 
 package() {
     cd ../..
 
+    buildDir=app/build
+    extraResources="$buildDir"/linux-extra
+
 	install -d "$pkgdir"/opt
-	appInstallRoot=opt/androraider
-	cp -R app/build/image "$pkgdir"/"$appInstallRoot"
+	appInstallRoot=opt/"$pkgname"
+	cp -R "$buildDir"/image "$pkgdir"/"$appInstallRoot"
 
     logoDir="$pkgdir"/usr/share/pixmaps
 	mkdir -p "$logoDir"
-	cp app/src/main/resources/drawable/logo.png "$logoDir"/AnDroRaider.png
+	cp "$extraResources"/"$appName".png "$logoDir"/"$appName".png
 
 	desktopDir="$pkgdir"/usr/share/applications
 	mkdir -p "$desktopDir"
-    cp arch/androraider.desktop "$desktopDir"/androraider.desktop
+    cp "$extraResources"/"$appName".desktop "$desktopDir"/"$pkgname".desktop
 
-    execFile=/"$appInstallRoot"/bin/AnDroRaider
+    execFile=/"$appInstallRoot"/bin/"$appName"
 
     binDir="$pkgdir"/usr/bin
     mkdir -p "$binDir"
-    install arch/${pkgname}.sh "$binDir"/androraider
+    install "$extraResources"/"$pkgname".sh "$binDir"/"$pkgname"
 }

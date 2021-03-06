@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=AnDroRaider
-Comment=Small IDE for decompiled Android apps
-Exec=androraider
-Icon=AnDroRaider
-Terminal=false
-Type=Application
-Categories=Development;IDE;Programming;

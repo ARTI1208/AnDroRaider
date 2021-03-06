@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.Properties
 import java.io.FileInputStream
+import java.nio.file.*
 
 plugins {
 
@@ -56,7 +57,7 @@ application {
 
 dependencies {
 
-    fun <T : ModuleDependency> T.removeJavaFxDependencies() : T {
+    fun <T : ModuleDependency> T.removeJavaFxDependencies(): T {
         return exclude("org.openjfx")
     }
 
@@ -79,7 +80,7 @@ dependencies {
         .removeJavaFxDependencies()
     implementation("com.github.ARTI1208", "Flowless", "v1.0-modularity")
         .removeJavaFxDependencies()
-    implementation("com.github.ARTI1208","UndoFX","v3.0.1-modularity")
+    implementation("com.github.ARTI1208", "UndoFX", "v3.0.1-modularity")
         .removeJavaFxDependencies()
 
 //    GRADLE 6.4+ javafx workaround
@@ -134,6 +135,10 @@ val jar by tasks.getting(Jar::class) {
     }
 }
 
+val os = org.gradle.internal.os.OperatingSystem.current()
+val linuxExtraResources = project.buildDir.resolve("linux-extra")
+val archBuildDir = project.buildDir.resolve("arch-pkg")
+
 jlink {
     launcher {
         name = appProperties.getProperty("name")
@@ -151,7 +156,14 @@ jlink {
 
     jpackage {
 
-        val os = org.gradle.internal.os.OperatingSystem.current()
+        val configDir = project.rootDir.resolve("config")
+        val buildProperties = configDir.resolve("build.properties").properties()
+
+        val osConfigDir = when {
+            os.isWindows -> "win"
+            os.isMacOsX -> "mac"
+            else -> "linux"
+        }
 
         val iconFormat = when {
             os.isWindows -> "ico"
@@ -159,27 +171,53 @@ jlink {
             else -> "png"
         }
 
-        val logoInModule = "src/main/resources/drawable/icons/icon.$iconFormat"
-        val logoAbsolute = project.projectDir.resolve(logoInModule)
-        icon = logoAbsolute.absolutePath
+        val logoRelativePath = "$osConfigDir/AnDroRaider.$iconFormat"
+        val logoAbsolutePath = configDir.resolve(logoRelativePath)
+        icon = logoAbsolutePath.absolutePath
 
         if (os.isWindows) {
-            val appParentDir = "Art2000"
             installerOptions = listOf(
                 "--win-dir-chooser",
                 "--win-menu",
-                "--win-menu-group", appParentDir
+                "--win-menu-group", buildProperties.getProperty("winMenuDir")
             )
         } else if (os.isLinux) {
-            val appCategory = "Development;IDE;Programming;"
-            val devEmail = "leonardo906@mail.ru"
+            installerType = os.getLinuxInstallerType() ?: return@jpackage
+
             installerOptions = listOf(
                 "--linux-shortcut",
-                "--linux-menu-group", appCategory,
-                "--linux-deb-maintainer", devEmail
+                "--resource-dir", linuxExtraResources.absolutePath,
+                "--linux-deb-maintainer", buildProperties.getProperty("email"),
+                "--description", buildProperties.getProperty("description"),
+                "--vendor", buildProperties.getProperty("developer"),
+                "--verbose"
             )
         }
     }
+}
+
+fun executeNoError(command: List<String>): Boolean {
+    val processBuilder = ProcessBuilder(command)
+    try {
+        val process = processBuilder.start()
+        return process.waitFor() == 0
+    } catch (_: Exception) {
+    }
+
+    return false
+}
+
+fun org.gradle.internal.os.OperatingSystem.getLinuxInstallerType(): String? {
+    if (!isLinux) return null
+
+    data class LinuxInstaller(val type: String, val testCommand: List<String>)
+
+    val installers = listOf(
+        LinuxInstaller("deb", listOf("dpkg-deb", "--help")),
+        LinuxInstaller("rpm", listOf("rpmbuild", "--help"))
+    )
+
+    return installers.firstOrNull { executeNoError(it.testCommand) }?.type
 }
 
 fun Task.checkJPackageAvailable() {
@@ -196,4 +234,90 @@ tasks.withType(org.beryx.jlink.JPackageTask::class) {
 
 tasks.withType(org.beryx.jlink.JPackageImageTask::class) {
     checkJPackageAvailable()
+}
+
+fun insertProperties(text: String, properties: Properties): String {
+    var result = text
+    properties.entries.forEach {
+        val key = it.key as? String ?: return@forEach
+        val value = it.value?.toString() ?: return@forEach
+
+        result = result.replace("{@$key}", value)
+    }
+
+    return result
+}
+
+val generateLinuxResources = task("generateLinuxResources") {
+    val configDir = project.rootDir.resolve("config")
+    val linuxConfigDir = configDir.resolve("linux")
+
+    val buildProperties = configDir.resolve("build.properties").properties()
+
+    val appName = buildProperties.getProperty("name")
+    val appPackage = buildProperties.getProperty("package")
+
+    val desktopTemplateContent = linuxConfigDir.resolve("template.desktop").readText()
+    val desktopFileContent = insertProperties(desktopTemplateContent, buildProperties)
+
+    linuxExtraResources.mkdirs()
+
+    val desktopFile = linuxExtraResources.resolve("$appName.desktop")
+    Files.writeString(desktopFile.toPath(), desktopFileContent)
+
+    val sourceIcon = project.rootDir.resolve(buildProperties.getProperty("pngIcon"))
+    val targetIcon = linuxExtraResources.resolve("$appName.png")
+    Files.copy(sourceIcon.toPath(), targetIcon.toPath(), StandardCopyOption.REPLACE_EXISTING)
+
+    val execTemplateContent = linuxConfigDir.resolve("template.exec.sh").readText()
+    val execFileContent = insertProperties(execTemplateContent, buildProperties)
+
+    val execScriptFile = linuxExtraResources.resolve("$appPackage.sh")
+    Files.writeString(execScriptFile.toPath(), execFileContent)
+}
+
+val generatePKGBUILD = task("generatePKGBUILD") {
+    generatePkgbuild()
+}
+
+fun generatePkgbuild(): File {
+    linuxExtraResources.mkdirs()
+
+    val configDir = project.rootDir.resolve("config")
+    val archConfigDir = configDir.resolve("linux").resolve("arch")
+
+    val buildProperties = configDir.resolve("build.properties").properties()
+
+    val pkgbuildTemplateContent = archConfigDir.resolve("template.PKGBUILD").readText()
+    val pkgbuildFileContent = insertProperties(pkgbuildTemplateContent, buildProperties)
+        .replace("{%linuxExtraResources}", linuxExtraResources.absolutePath)
+        .replace("{%projectRoot}", project.rootDir.absolutePath)
+        .replace("{%projectBuild}", project.buildDir.absolutePath)
+
+    archBuildDir.mkdirs()
+
+    val pkgbuildFile = archBuildDir.resolve("PKGBUILD")
+    Files.writeString(pkgbuildFile.toPath(), pkgbuildFileContent)
+
+    return archBuildDir
+}
+
+task("packageArch") {
+    onlyIf { executeNoError(listOf("makepkg", "--help")) }
+    dependsOn(generateLinuxResources)
+    doLast {
+        val pkgbuildDir = generatePkgbuild()
+        val processBuilder = ProcessBuilder(listOf("makepkg", "-f", pkgbuildDir.absolutePath))
+        try {
+            val process = processBuilder.start()
+            process.waitFor()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+}
+
+if (os.isLinux) {
+    val jpackage: org.beryx.jlink.JPackageTask by tasks
+    jpackage.dependsOn(generateLinuxResources)
 }
