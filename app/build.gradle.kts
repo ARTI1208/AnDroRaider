@@ -200,7 +200,7 @@ jlink {
     }
 }
 
-fun executeNoError(command: List<String>): Boolean {
+fun executesWithoutError(command: List<String>): Boolean {
     val processBuilder = ProcessBuilder(command)
     try {
         val process = processBuilder.start()
@@ -221,7 +221,7 @@ fun org.gradle.internal.os.OperatingSystem.getLinuxInstallerType(): String? {
         LinuxInstaller("rpm", listOf("rpmbuild", "--help"))
     )
 
-    return installers.firstOrNull { executeNoError(it.testCommand) }?.type
+    return installers.firstOrNull { executesWithoutError(it.testCommand) }?.type
 }
 
 fun Task.checkJPackageAvailable() {
@@ -243,9 +243,8 @@ tasks.withType(org.beryx.jlink.JPackageImageTask::class) {
 fun insertProperties(text: String, properties: Properties): String {
     var result = text
 
-    properties.entries.forEach innerFor@ {
-        val key = it.key as? String ?: return@innerFor
-        val value = it.value?.toString() ?: return@innerFor
+    properties.stringPropertyNames().forEach { key ->
+        val value = properties.getProperty(key)?.toString() ?: return@forEach
 
         result = result.replace("{@$key}", value)
     }
@@ -281,12 +280,8 @@ val generateLinuxResources = task("generateLinuxResources") {
     Files.writeString(execScriptFile.toPath(), execFileContent)
 }
 
-val generatePKGBUILD = task("generatePKGBUILD") {
-    generatePkgbuild()
-}
-
 fun isArch(): Boolean {
-    return executeNoError(listOf("makepkg", "--help"))
+    return executesWithoutError(listOf("makepkg", "--help"))
 }
 
 fun org.gradle.internal.os.OperatingSystem.loadBuildProperties(): Properties {
@@ -328,18 +323,41 @@ fun generatePkgbuild(): File {
     return archBuildDir
 }
 
-task("packageArch") {
+val packageArch = task("packageArch") {
     onlyIf { isArch() }
-    dependsOn(generateLinuxResources)
+    val jlink: org.beryx.jlink.JlinkTask by tasks
+    dependsOn(generateLinuxResources, jlink)
     doLast {
         val pkgbuildDir = generatePkgbuild()
-        val processBuilder = ProcessBuilder(listOf("makepkg", "-f", pkgbuildDir.absolutePath))
+
+        val processBuilder = ProcessBuilder(
+            listOf("makepkg", "-f")
+        ).directory(pkgbuildDir)
+
+        val logDir = pkgbuildDir.resolve("logs").apply {
+            mkdirs()
+        }
+
+        processBuilder.redirectOutput(File(logDir,"output.txt"))
+        processBuilder.redirectError(File(logDir,"error.txt"))
+
         try {
             val process = processBuilder.start()
-            process.waitFor()
+
+            val result = process.waitFor()
+            System.err.println("MakePkgRes: $result")
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+}
+
+task("universalPackage") {
+    if (isArch()) {
+        dependsOn(packageArch)
+    } else {
+        val jpackage: org.beryx.jlink.JPackageTask by tasks
+        dependsOn(jpackage)
     }
 }
 
