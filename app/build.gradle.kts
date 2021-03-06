@@ -18,6 +18,10 @@ fun File.properties(): Properties = Properties().also {
     it.load(FileInputStream(this))
 }
 
+fun File.properties(defaultProperties: Properties): Properties = Properties(defaultProperties).also {
+    it.load(FileInputStream(this))
+}
+
 fun readVersion(properties: Properties): String {
 
     fun Properties.intProperty(prop: String): Int {
@@ -238,9 +242,10 @@ tasks.withType(org.beryx.jlink.JPackageImageTask::class) {
 
 fun insertProperties(text: String, properties: Properties): String {
     var result = text
-    properties.entries.forEach {
-        val key = it.key as? String ?: return@forEach
-        val value = it.value?.toString() ?: return@forEach
+
+    properties.entries.forEach innerFor@ {
+        val key = it.key as? String ?: return@innerFor
+        val value = it.value?.toString() ?: return@innerFor
 
         result = result.replace("{@$key}", value)
     }
@@ -252,7 +257,7 @@ val generateLinuxResources = task("generateLinuxResources") {
     val configDir = project.rootDir.resolve("config")
     val linuxConfigDir = configDir.resolve("linux")
 
-    val buildProperties = configDir.resolve("build.properties").properties()
+    val buildProperties = os.loadBuildProperties()
 
     val appName = buildProperties.getProperty("name")
     val appPackage = buildProperties.getProperty("package")
@@ -265,7 +270,7 @@ val generateLinuxResources = task("generateLinuxResources") {
     val desktopFile = linuxExtraResources.resolve("$appName.desktop")
     Files.writeString(desktopFile.toPath(), desktopFileContent)
 
-    val sourceIcon = project.rootDir.resolve(buildProperties.getProperty("pngIcon"))
+    val sourceIcon = linuxConfigDir.resolve("$appName.png")
     val targetIcon = linuxExtraResources.resolve("$appName.png")
     Files.copy(sourceIcon.toPath(), targetIcon.toPath(), StandardCopyOption.REPLACE_EXISTING)
 
@@ -278,6 +283,27 @@ val generateLinuxResources = task("generateLinuxResources") {
 
 val generatePKGBUILD = task("generatePKGBUILD") {
     generatePkgbuild()
+}
+
+fun isArch(): Boolean {
+    return executeNoError(listOf("makepkg", "--help"))
+}
+
+fun org.gradle.internal.os.OperatingSystem.loadBuildProperties(): Properties {
+    val configDir = project.rootDir.resolve("config")
+
+    var properties = configDir.resolve("build.properties").properties()
+
+    if (isLinux) {
+        val linuxConfigDir = configDir.resolve("linux")
+        if (isArch()) {
+            val archConfigDir = linuxConfigDir.resolve("arch")
+            val archProperties = archConfigDir.resolve("arch_build.properties").properties(properties)
+            properties = archProperties
+        }
+    }
+
+    return properties
 }
 
 fun generatePkgbuild(): File {
@@ -303,7 +329,7 @@ fun generatePkgbuild(): File {
 }
 
 task("packageArch") {
-    onlyIf { executeNoError(listOf("makepkg", "--help")) }
+    onlyIf { isArch() }
     dependsOn(generateLinuxResources)
     doLast {
         val pkgbuildDir = generatePkgbuild()
