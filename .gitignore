@@ -10,11 +10,12 @@
 /app/build
 local.properties
 /arch/*
-!/arch/PKGBUILD
-!/config
-!/config/*
 
 *
+!/arch/PKGBUILD
+!/config
+!/config/**
+
 !.gitignore
 !build.gradle
 !gradle.properties
