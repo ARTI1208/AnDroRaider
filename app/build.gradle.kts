@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.Properties
 import java.io.FileInputStream
 import java.nio.file.*
+import ru.art2000.build.*
 
 plugins {
 
@@ -36,7 +37,7 @@ fun readVersion(properties: Properties): String {
     val shortVersion = if (patch == 0) "$major.$minor" else "$major.$minor.$patch"
 
     val os = org.gradle.internal.os.OperatingSystem.current()
-    if (os.isMacOsX) return shortVersion
+    if (os.isMacOsX || isRpmDistro()) return shortVersion
 
     val type = properties.getProperty("type")
     val build = properties.intProperty("build")
@@ -141,7 +142,7 @@ val jar by tasks.getting(Jar::class) {
 
 val os = org.gradle.internal.os.OperatingSystem.current()
 val linuxExtraResources = project.buildDir.resolve("linux-extra")
-val archBuildDir = project.buildDir.resolve("arch-pkg")
+val archBuildDir = project.buildDir.resolve("pkg-arch")
 
 jlink {
     launcher {
@@ -280,6 +281,10 @@ val generateLinuxResources = task("generateLinuxResources") {
     Files.writeString(execScriptFile.toPath(), execFileContent)
 }
 
+fun isRpmDistro(): Boolean {
+    return executesWithoutError(listOf("rpmbuild", "--help"))
+}
+
 fun isArch(): Boolean {
     return executesWithoutError(listOf("makepkg", "--help"))
 }
@@ -353,6 +358,7 @@ val packageArch = task("packageArch") {
 }
 
 task("universalPackage") {
+    BuildUtils.someFunction()
     if (isArch()) {
         dependsOn(packageArch)
     } else {
