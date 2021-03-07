@@ -8,5 +8,7 @@ pkgdesc="{@description}"
 arch=({@arch})
 
 package() {
-    # Everything is done by gradle task
+
+    cp -R "$srcdir"/{@package}/ "$pkgdir"/..
+
 }

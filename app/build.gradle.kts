@@ -312,14 +312,14 @@ fun org.gradle.internal.os.OperatingSystem.loadBuildProperties(): Properties {
 
     var properties = configDir.resolve("build.properties").properties()
 
-    if (isLinux) {
-        val linuxConfigDir = configDir.resolve("linux")
-        if (isArch()) {
-            val archConfigDir = linuxConfigDir.resolve("arch")
-            val archProperties = archConfigDir.resolve("arch_build.properties").properties(properties)
-            properties = archProperties
-        }
-    }
+//    if (isLinux) {
+//        val linuxConfigDir = configDir.resolve("linux")
+//        if (isArch()) {
+//            val archConfigDir = linuxConfigDir.resolve("arch")
+//            val archProperties = archConfigDir.resolve("arch_build.properties").properties(properties)
+//            properties = archProperties
+//        }
+//    }
 
     return properties
 }
@@ -496,7 +496,7 @@ fun insertPropertiesAndCopy(properties: Properties, sourceFile: File, sourceDir:
     if (sourceFile.extension == "template") {
         val parent = fsPath.parentFile
         val newName = fsPath.nameWithoutExtension
-        val targetFile = targetDir.resolve(parent).resolve(newName)
+        val targetFile = (parent?.let { targetDir.resolve(parent) } ?: targetDir).resolve(newName)
 
         val templateContent = sourceFile.readText()
         val fileContent = insertProperties(templateContent, properties)
@@ -557,10 +557,10 @@ enum class LinuxPackager(
     val packageCommand: List<String> = emptyList()
 ) {
 
-    ARCH("arch", listOf("makepkg", "--help")) {
+    ARCH("arch", listOf("makepkg", "--help"), listOf("makepkg", "-f")) {
 
         override fun getSourcesDir(rootDir: File, buildProperties: Properties): File {
-            return rootDir.resolve("pkg").resolve(buildProperties.getProperty("package"))
+            return rootDir.resolve("src").resolve(buildProperties.getProperty("package"))
         }
 
         override fun getOutputFileName(buildProperties: Properties): String {
