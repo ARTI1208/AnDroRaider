@@ -1,0 +1,12 @@
+# Maintainer: {@developer} <{@email}>
+
+pkgname={@package}
+appName={@name}
+pkgver={@version}
+pkgrel={@build}
+pkgdesc="{@description}"
+arch=({@arch})
+
+package() {
+    # Everything is done by gradle task
+}

@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.Properties
 import java.io.FileInputStream
 import java.nio.file.*
+import java.nio.file.attribute.PosixFileAttributes
 import ru.art2000.build.*
 
 plugins {
@@ -111,6 +112,8 @@ dependencies {
 
 val compileJava: JavaCompile by tasks
 val compileKotlin: KotlinCompile by tasks
+val jpackage: org.beryx.jlink.JPackageTask by tasks
+jpackage.onlyIf { !os.isLinux }
 
 
 compileJava.destinationDir = compileKotlin.destinationDir
@@ -141,8 +144,9 @@ val jar by tasks.getting(Jar::class) {
 }
 
 val os = org.gradle.internal.os.OperatingSystem.current()
-val linuxExtraResources = project.buildDir.resolve("linux-extra")
+val linuxExtraResourcesBuilt = project.buildDir.resolve("linux-extra")
 val archBuildDir = project.buildDir.resolve("pkg-arch")
+val debBuildDir = project.buildDir.resolve("pkg-deb")
 
 jlink {
     launcher {
@@ -191,7 +195,7 @@ jlink {
 
             installerOptions = listOf(
                 "--linux-shortcut",
-                "--resource-dir", linuxExtraResources.absolutePath,
+                "--resource-dir", linuxExtraResourcesBuilt.absolutePath,
                 "--linux-deb-maintainer", buildProperties.getProperty("email"),
                 "--description", buildProperties.getProperty("description"),
                 "--vendor", buildProperties.getProperty("developer"),
@@ -219,7 +223,8 @@ fun org.gradle.internal.os.OperatingSystem.getLinuxInstallerType(): String? {
 
     val installers = listOf(
         LinuxInstaller("deb", listOf("dpkg-deb", "--help")),
-        LinuxInstaller("rpm", listOf("rpmbuild", "--help"))
+        LinuxInstaller("rpm", listOf("rpmbuild", "--help")),
+        LinuxInstaller("arch", listOf("makepkg", "--help"))
     )
 
     return installers.firstOrNull { executesWithoutError(it.testCommand) }?.type
@@ -251,34 +256,47 @@ fun insertProperties(text: String, properties: Properties): String {
     }
 
     return result
+        .replace("{%linuxExtraResources}", linuxExtraResourcesBuilt.absolutePath)
+        .replace("{%projectRoot}", project.rootDir.absolutePath)
+        .replace("{%projectBuild}", project.buildDir.absolutePath)
 }
 
 val generateLinuxResources = task("generateLinuxResources") {
     val configDir = project.rootDir.resolve("config")
-    val linuxConfigDir = configDir.resolve("linux")
+    val resourcesDir = configDir.resolve("linux").resolve("resources")
 
     val buildProperties = os.loadBuildProperties()
 
-    val appName = buildProperties.getProperty("name")
-    val appPackage = buildProperties.getProperty("package")
+    linuxExtraResourcesBuilt.deleteRecursively()
+    linuxExtraResourcesBuilt.mkdirs()
 
-    val desktopTemplateContent = linuxConfigDir.resolve("template.desktop").readText()
-    val desktopFileContent = insertProperties(desktopTemplateContent, buildProperties)
+    resourcesDir.walk().forEach {
+        val fsPath = it.relativeTo(resourcesDir)
 
-    linuxExtraResources.mkdirs()
+        if (it.extension == "template") {
+            val parent = fsPath.parentFile
+            val newName = fsPath.nameWithoutExtension
+            val targetFile = linuxExtraResourcesBuilt.resolve(parent).resolve(newName)
 
-    val desktopFile = linuxExtraResources.resolve("$appName.desktop")
-    Files.writeString(desktopFile.toPath(), desktopFileContent)
+            val templateContent = it.readText()
+            val fileContent = insertProperties(templateContent, buildProperties)
 
-    val sourceIcon = linuxConfigDir.resolve("$appName.png")
-    val targetIcon = linuxExtraResources.resolve("$appName.png")
-    Files.copy(sourceIcon.toPath(), targetIcon.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            val targetFilePath = targetFile.toPath()
 
-    val execTemplateContent = linuxConfigDir.resolve("template.exec.sh").readText()
-    val execFileContent = insertProperties(execTemplateContent, buildProperties)
+            Files.writeString(targetFilePath, fileContent)
 
-    val execScriptFile = linuxExtraResources.resolve("$appPackage.sh")
-    Files.writeString(execScriptFile.toPath(), execFileContent)
+            val permissions = Files.readAttributes(it.toPath(), PosixFileAttributes::class.java).permissions()
+            Files.setPosixFilePermissions(targetFilePath, permissions)
+
+        } else {
+            val targetFile = linuxExtraResourcesBuilt.resolve(fsPath)
+            Files.copy(
+                it.toPath(), targetFile.toPath(),
+                StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES
+            )
+        }
+    }
+
 }
 
 fun isRpmDistro(): Boolean {
@@ -306,21 +324,51 @@ fun org.gradle.internal.os.OperatingSystem.loadBuildProperties(): Properties {
     return properties
 }
 
-fun generatePkgbuild(): File {
-    linuxExtraResources.mkdirs()
+fun copyPkgFiles(targetRootDir: File, properties: Properties) {
+    val sourceFilesDir = project.buildDir.resolve("image")
+    val targetFilesDir = targetRootDir
+        .resolve(properties.getProperty("installDir"))
+        .resolve(properties.getProperty("package"))
+
+
+    val sourceDirs = mapOf(
+        sourceFilesDir to targetFilesDir,
+        linuxExtraResourcesBuilt to targetRootDir
+    )
+
+    sourceDirs.forEach { (sourceDirectory, targetDirectory) ->
+        sourceDirectory.walk().forEach {
+            val fsPath = it.relativeTo(sourceDirectory)
+            val targetFile = targetDirectory.resolve(fsPath)
+
+            if (it.isDirectory) {
+                targetFile.mkdirs()
+            } else {
+                Files.copy(
+                    it.toPath(), targetFile.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES
+                )
+            }
+        }
+    }
+}
+
+fun installArchFiles(): File {
+    linuxExtraResourcesBuilt.mkdirs()
 
     val configDir = project.rootDir.resolve("config")
     val archConfigDir = configDir.resolve("linux").resolve("arch")
 
     val buildProperties = configDir.resolve("build.properties").properties()
 
-    val pkgbuildTemplateContent = archConfigDir.resolve("template.PKGBUILD").readText()
+    val pkgbuildTemplateContent = archConfigDir.resolve("PKGBUILD.template").readText()
     val pkgbuildFileContent = insertProperties(pkgbuildTemplateContent, buildProperties)
-        .replace("{%linuxExtraResources}", linuxExtraResources.absolutePath)
-        .replace("{%projectRoot}", project.rootDir.absolutePath)
-        .replace("{%projectBuild}", project.buildDir.absolutePath)
 
-    archBuildDir.mkdirs()
+    val pkgDir = archBuildDir.resolve("pkg")
+
+    pkgDir.mkdirs()
+
+    copyPkgFiles(pkgDir, buildProperties)
 
     val pkgbuildFile = archBuildDir.resolve("PKGBUILD")
     Files.writeString(pkgbuildFile.toPath(), pkgbuildFileContent)
@@ -333,7 +381,7 @@ val packageArch = task("packageArch") {
     val jlink: org.beryx.jlink.JlinkTask by tasks
     dependsOn(generateLinuxResources, jlink)
     doLast {
-        val pkgbuildDir = generatePkgbuild()
+        val pkgbuildDir = installArchFiles()
 
         val processBuilder = ProcessBuilder(
             listOf("makepkg", "-f")
@@ -343,8 +391,8 @@ val packageArch = task("packageArch") {
             mkdirs()
         }
 
-        processBuilder.redirectOutput(File(logDir,"output.txt"))
-        processBuilder.redirectError(File(logDir,"error.txt"))
+        processBuilder.redirectOutput(File(logDir, "output.txt"))
+        processBuilder.redirectError(File(logDir, "error.txt"))
 
         try {
             val process = processBuilder.start()
@@ -357,17 +405,240 @@ val packageArch = task("packageArch") {
     }
 }
 
-task("universalPackage") {
-    BuildUtils.someFunction()
-    if (isArch()) {
-        dependsOn(packageArch)
-    } else {
-        val jpackage: org.beryx.jlink.JPackageTask by tasks
-        dependsOn(jpackage)
+fun installDebFiles(): Pair<File, File> {
+    debBuildDir.deleteRecursively()
+
+    val configDir = project.rootDir.resolve("config")
+    val debConfigDir = configDir.resolve("linux").resolve("deb")
+
+    val buildProperties = configDir.resolve("build.properties").properties()
+
+    val controlTemplateContent = debConfigDir.resolve("control.template").readText()
+    val controlFileContent = insertProperties(controlTemplateContent, buildProperties)
+
+    val debPkgDir = debBuildDir.resolve("pkg")
+
+    val controlParentDir = debPkgDir.resolve("DEBIAN")
+    controlParentDir.mkdirs()
+
+    val controlFile = controlParentDir.resolve("control")
+    Files.writeString(controlFile.toPath(), controlFileContent)
+
+    copyPkgFiles(debPkgDir, buildProperties)
+
+    val pkg = buildProperties.getProperty("package")
+    val verMajor = buildProperties.getProperty("version.major")
+    val verMinor = buildProperties.getProperty("version.minor")
+    val verPatch = buildProperties.getProperty("version.patch")
+    val verType = buildProperties.getProperty("version.type")
+    val verBuild = buildProperties.getProperty("build")
+    val arch = buildProperties.getProperty("arch")
+
+    val debFileName = "$pkg-$verMajor.$verMinor.$verPatch-$verType.$verBuild-$arch.deb"
+    val debFile = debBuildDir.resolve(debFileName)
+
+    return debPkgDir to debFile
+}
+
+val packageDeb = task("packageDeb") {
+
+    val jlink: org.beryx.jlink.JlinkTask by tasks
+    dependsOn(generateLinuxResources, jlink)
+    doLast {
+        val (workDir, debFile) = installDebFiles()
+
+        val processBuilder = ProcessBuilder(
+            listOf("dpkg-deb", "-b", ".", debFile.absolutePath)
+        ).directory(workDir)
+
+        val logDir = project.buildDir.resolve("logs").resolve("deb").apply {
+            mkdirs()
+        }
+
+        processBuilder.redirectOutput(File(logDir, "output.txt"))
+        processBuilder.redirectError(File(logDir, "error.txt"))
+
+        try {
+            val process = processBuilder.start()
+
+            val result = process.waitFor()
+            System.err.println("MakePkgRes: $result")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }
 
-if (os.isLinux) {
-    val jpackage: org.beryx.jlink.JPackageTask by tasks
-    jpackage.dependsOn(generateLinuxResources)
+val linuxPackageTasks: Map<String, Any> = mapOf(
+    "arch" to packageArch,
+    "deb" to packageDeb
+)
+
+
+fun getLinuxProperties(configDir: File, packageType: String): Properties {
+
+    var properties = configDir.resolve("build.properties").properties()
+
+    val linuxConfigDir = configDir.resolve("linux")
+    val packageSpecificPropertiesFile = linuxConfigDir.resolve(packageType).resolve("build.properties")
+    if (packageSpecificPropertiesFile.exists()) {
+        val packageSpecificProperties = packageSpecificPropertiesFile.properties(properties)
+        properties = packageSpecificProperties
+    }
+
+    return properties
+}
+
+fun insertPropertiesAndCopy(properties: Properties, sourceFile: File, sourceDir: File, targetDir: File) {
+
+    val fsPath = sourceFile.relativeTo(sourceDir)
+
+    if (sourceFile.extension == "template") {
+        val parent = fsPath.parentFile
+        val newName = fsPath.nameWithoutExtension
+        val targetFile = targetDir.resolve(parent).resolve(newName)
+
+        val templateContent = sourceFile.readText()
+        val fileContent = insertProperties(templateContent, properties)
+
+        val targetFilePath = targetFile.toPath()
+
+        Files.writeString(targetFilePath, fileContent)
+
+        val permissions = Files.readAttributes(sourceFile.toPath(), PosixFileAttributes::class.java).permissions()
+        Files.setPosixFilePermissions(targetFilePath, permissions)
+
+    } else {
+        val targetFile = targetDir.resolve(fsPath)
+
+        if (sourceFile.isDirectory) {
+            targetFile.mkdir()
+        } else {
+            Files.copy(
+                sourceFile.toPath(), targetFile.toPath(),
+                StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES
+            )
+        }
+    }
+}
+
+fun installLinuxFiles(packager: LinuxPackager): Pair<File, File> {
+    val packageType = packager.type
+
+    val packageBuildDir = project.buildDir.resolve("pkg-$packageType")
+    packageBuildDir.deleteRecursively()
+
+    val workingDir = packageBuildDir.resolve("work")
+    val outputDir = packageBuildDir.resolve("output")
+
+    val configDir = project.rootDir.resolve("config")
+
+    val buildProperties = getLinuxProperties(configDir, packageType)
+
+    val sourcesDir = packager.getSourcesDir(workingDir, buildProperties)
+    copyPkgFiles(sourcesDir, buildProperties)
+
+    val packageSpecificConfigDir = configDir.resolve("linux").resolve(packageType)
+    val packageSpecificControlsDir = packageSpecificConfigDir.resolve("controls")
+
+    packageSpecificControlsDir.walk().forEach {
+        insertPropertiesAndCopy(buildProperties, it, packageSpecificControlsDir, workingDir)
+    }
+
+    val packageFileName = packager.getOutputFileName(buildProperties)
+    val packageFile = outputDir.resolve(packageFileName)
+
+    return workingDir to packageFile
+}
+
+enum class LinuxPackager(
+    val type: String,
+    val testCommand: List<String>,
+    val packageCommand: List<String> = emptyList()
+) {
+
+    ARCH("arch", listOf("makepkg", "--help")) {
+
+        override fun getSourcesDir(rootDir: File, buildProperties: Properties): File {
+            return rootDir.resolve("pkg").resolve(buildProperties.getProperty("package"))
+        }
+
+        override fun getOutputFileName(buildProperties: Properties): String {
+            val pkg = buildProperties.getProperty("package")
+            val verMajor = buildProperties.getProperty("version.major")
+            val verMinor = buildProperties.getProperty("version.minor")
+            val verPatch = buildProperties.getProperty("version.patch")
+            val verType = buildProperties.getProperty("version.type")
+            val verBuild = buildProperties.getProperty("build")
+            val arch = buildProperties.getProperty("arch")
+
+            return "$pkg-$verMajor.$verMinor.$verPatch-$verType.$verBuild-$arch.pkg.tar.zst"
+        }
+    },
+    DEB("deb", listOf("dpkg-deb", "--help"), listOf("dpkg-deb", "-b", ".")),
+    RPM("rpm", listOf("rpmbuild", "--help"));
+
+
+    open fun getSourcesDir(rootDir: File, buildProperties: Properties): File = rootDir
+
+    open fun getOutputFileName(buildProperties: Properties): String {
+
+        val pkg = buildProperties.getProperty("package")
+        val verMajor = buildProperties.getProperty("version.major")
+        val verMinor = buildProperties.getProperty("version.minor")
+        val verPatch = buildProperties.getProperty("version.patch")
+        val verType = buildProperties.getProperty("version.type")
+        val verBuild = buildProperties.getProperty("build")
+        val arch = buildProperties.getProperty("arch")
+
+        return "$pkg-$verMajor.$verMinor.$verPatch-$verType.$verBuild-$arch.$type"
+    }
+
+    open fun packageFiles(workDir: File, outputFile: File) {
+        val processBuilder = ProcessBuilder(
+            packageCommand + outputFile.absolutePath
+        ).directory(workDir)
+
+        val logDir = workDir.parentFile.resolve("logs").apply {
+            mkdirs()
+        }
+
+        processBuilder.redirectOutput(File(logDir, "output.txt"))
+        processBuilder.redirectError(File(logDir, "error.txt"))
+
+        outputFile.parentFile.mkdirs()
+
+        try {
+            val process = processBuilder.start()
+
+            val result = process.waitFor()
+            System.err.println("MakePkgRes: $result")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+}
+
+val packageLinux = task("packageLinux") {
+    dependsOn("jlink", generateLinuxResources)
+
+    val linuxPackager = LinuxPackager.values().firstOrNull { executesWithoutError(it.testCommand) }
+
+    onlyIf { os.isLinux && linuxPackager != null }
+
+    linuxPackager ?: return@task
+
+    doLast {
+        val (workDir, outputFile) = installLinuxFiles(linuxPackager)
+        linuxPackager.packageFiles(workDir, outputFile)
+    }
+}
+
+val universalPackage = task("universalPackage") {
+    BuildUtils.someFunction()
+    if (os.isLinux) {
+        dependsOn(packageLinux)
+    } else {
+        dependsOn(jpackage)
+    }
 }

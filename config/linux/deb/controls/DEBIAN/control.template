@@ -1,0 +1,8 @@
+Package: {@package}
+Version: {@version.major}.{@version.minor}.{@version.patch}-{@version.type}.{@build}
+Section: misc
+Maintainer: {@developer} <{@email}>
+Priority: optional
+Architecture: amd64
+Provides: {@package}
+Description: {@description}
