@@ -1,7 +1,7 @@
 Summary: {@description}
 Name: {@package}
 Version: {%version}
-Release: {@version.type}.{@build}
+Release: {%release}
 License: {@license}
 Vendor: {@developer} <{@email}>
 

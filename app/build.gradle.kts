@@ -633,7 +633,17 @@ enum class LinuxPackager(
 
             val withFileList = text.replace("{%fileList}", packageListFile.absolutePath)
 
-            return super.insertSpecificData(withFileList, workingDir, buildProperties)
+            val verBuild = buildProperties.intProperty("build")
+            val release = buildProperties.getProperty("version.type").let {
+                if (it.isNullOrEmpty()) {
+                    verBuild.toString()
+                } else {
+                    "$it.$verBuild"
+                }
+            }
+            val withRelease = withFileList.replace("{%release}", release)
+
+            return super.insertSpecificData(withRelease, workingDir, buildProperties)
         }
 
         override fun actualPackageCommand(outputFile: File): List<String> {
