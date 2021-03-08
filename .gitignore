@@ -9,10 +9,8 @@
 /out
 /app/build
 local.properties
-/arch/*
 
 *
-!/arch/PKGBUILD
 !/config
 !/config/**
 !/buildSrc
