@@ -19,6 +19,8 @@ module app {
     requires flowless;
     requires undofx;
 
+    requires common;
+
 
     opens ru.art2000.androraider.view;
     exports ru.art2000.androraider.view;

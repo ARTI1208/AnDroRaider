@@ -7,5 +7,5 @@ repositories {
 }
 
 dependencies {
-    implementation("org.apache.commons:commons-configuration2:2.7")
+//    implementation(project(":common"))
 }

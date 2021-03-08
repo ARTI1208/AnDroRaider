@@ -7,7 +7,7 @@ import java.util.*
 
 object PropertiesHelper {
 
-    private inline val propertiesFileName: String
+    inline val propertiesFileName: String
         get() = "build.properties"
 
     private inline val configDirName: String

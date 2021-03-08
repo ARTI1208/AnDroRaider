@@ -7,9 +7,13 @@ import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.PosixFileAttributes
 import java.util.*
 import ru.art2000.packaging.linux.LinuxPackager
+import java.io.File
 
 val Project.linuxExtraResourcesBuilt
     get() = project.buildDir.resolve("linux-extra")
+
+private val Project.configDir
+    get() = project.rootDir.resolve("config")
 
 fun insertProperties(text: String, properties: Properties): String {
 
@@ -24,8 +28,7 @@ fun generateLinuxResources(project: Project, currentOs : OperatingSystem) {
     if (!currentOs.isLinux) return
     val packager = LinuxPackager.getCurrentOsPackager()
 
-    val configDir = project.rootDir.resolve("config")
-    val resourcesDir = configDir.resolve("linux").resolve("resources")
+    val resourcesDir = project.configDir.resolve("linux").resolve("resources")
 
     val buildProperties = PropertiesHelper.loadBuildProperties(project, packager)
 
@@ -58,4 +61,9 @@ fun generateLinuxResources(project: Project, currentOs : OperatingSystem) {
             )
         }
     }
+}
+
+fun copyBuildProperties(project: Project, targetFile: File) {
+    val basePropertiesFile = project.configDir.resolve(PropertiesHelper.propertiesFileName)
+    basePropertiesFile.copyTo(targetFile, overwrite = true)
 }

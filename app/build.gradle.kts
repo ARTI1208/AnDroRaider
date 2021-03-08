@@ -8,7 +8,7 @@ plugins {
     java
     antlr
 
-    kotlin("jvm") version "1.4.31"
+    kotlin("jvm")
 
     id("org.beryx.jlink") version "2.23.3"
 }
@@ -16,7 +16,7 @@ plugins {
 val baseAppProperties = PropertiesHelper.loadBaseProperties(project)
 
 group = "ru.art2000"
-version = fullVersion(baseAppProperties)
+version = shortVersion(baseAppProperties)
 
 application {
     mainModule.set("app")
@@ -50,6 +50,8 @@ dependencies {
         .removeJavaFxDependencies()
     implementation("com.github.ARTI1208", "UndoFX", "v3.0.1-modularity")
         .removeJavaFxDependencies()
+
+    implementation(project(":common"))
 
 //    GRADLE 6.4+ javafx workaround
     val jfxOptions = object {
@@ -129,10 +131,6 @@ jlink {
         icon = logoAbsolutePath.absolutePath
 
         val buildProperties = PropertiesHelper.loadBuildProperties(project, currentOs.distro)
-
-        installerOptions = listOf(
-            "--app-version", versionForOs(currentOs, buildProperties)
-        )
 
         if (currentOs.isWindows) {
 

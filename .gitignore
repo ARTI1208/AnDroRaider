@@ -17,7 +17,7 @@ local.properties
 !/buildSrc/**
 
 !.gitignore
-!build.gradle
+!build.gradle.kts
 !gradle.properties
 !gradlew.bat
 !README.md
