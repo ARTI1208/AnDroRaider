@@ -2,7 +2,7 @@
 
 pkgname={@package}
 appName={@name}
-pkgver={@version}
+pkgver={%version}
 pkgrel={@build}
 pkgdesc="{@description}"
 arch=({@arch})

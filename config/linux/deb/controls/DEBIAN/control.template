@@ -1,8 +1,11 @@
 Package: {@package}
-Version: {@version.major}.{@version.minor}.{@version.patch}-{@version.type}.{@build}
-Section: misc
+Version: {%version}
+Section: devel
 Maintainer: {@developer} <{@email}>
 Priority: optional
-Architecture: amd64
+Architecture: {@arch}
 Provides: {@package}
 Description: {@description}
+ {@description}
+Homepage: {@homepage}
+Installed-Size: {%size}

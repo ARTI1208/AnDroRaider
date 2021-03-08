@@ -1,6 +1,6 @@
 Summary: {@description}
 Name: {@package}
-Version: {@version.major}.{@version.minor}.{@version.patch}
+Version: {%version}
 Release: {@version.type}.{@build}
 License: {@license}
 Vendor: {@developer} <{@email}>

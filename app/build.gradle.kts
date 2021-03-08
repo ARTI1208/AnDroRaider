@@ -593,7 +593,19 @@ enum class LinuxPackager(
         }
 
     },
-    DEB("deb", listOf("dpkg-deb", "--help"), listOf("dpkg-deb", "-b", ".")),
+    DEB("deb", listOf("dpkg-deb", "--help"), listOf("dpkg-deb", "-b", ".")) {
+
+        override fun insertSpecificData(text: String, workingDir: File, buildProperties: Properties): String {
+
+            val sourcesDir = getSourcesDir(workingDir, buildProperties)
+            val sourcesSize = sourcesDir.walk().filter { it.isFile }.map { it.length() }.sum()
+
+            val withSize = text.replace("{%size}", (sourcesSize / 1024).toString())
+
+            return super.insertSpecificData(withSize, workingDir, buildProperties)
+        }
+
+    },
     RPM("rpm", listOf("rpmbuild", "--help"), listOf("rpmbuild", "-bb", "spec", "--define")) {
 
         override fun getSourcesDir(workingDir: File, buildProperties: Properties): File {
@@ -619,7 +631,25 @@ enum class LinuxPackager(
 
             Files.write(packageListFile.toPath(), files)
 
-            return text.replace("{%fileList}", packageListFile.absolutePath)
+            val withFileList = text.replace("{%fileList}", packageListFile.absolutePath)
+
+            return super.insertSpecificData(withFileList, workingDir, buildProperties)
+        }
+
+        override fun actualPackageCommand(outputFile: File): List<String> {
+            return packageCommand + "_rpmdir ${outputFile.parentFile.absolutePath}"
+        }
+
+        override fun displayVersion(buildProperties: Properties): String {
+            val verMajor = buildProperties.intProperty("version.major")
+            val verMinor = buildProperties.intProperty("version.minor")
+            val verPatch = buildProperties.intProperty("version.patch")
+
+            return if (verPatch == 0) {
+                "$verMajor.$verMinor"
+            } else {
+                "$verMajor.$verMinor.$verPatch"
+            }
         }
     };
 
@@ -632,21 +662,48 @@ enum class LinuxPackager(
     open fun getOutputFileName(buildProperties: Properties): String {
 
         val pkg = buildProperties.getProperty("package")
-        val verMajor = buildProperties.getProperty("version.major")
-        val verMinor = buildProperties.getProperty("version.minor")
-        val verPatch = buildProperties.getProperty("version.patch")
-        val verType = buildProperties.getProperty("version.type")
-        val verBuild = buildProperties.getProperty("build")
+        val version = fullVersion(buildProperties)
         val arch = buildProperties.getProperty("arch")
 
-        return "$pkg-$verMajor.$verMinor.$verPatch-$verType.$verBuild-$arch.$outputFileFormat"
+        return "$pkg-$version-$arch.$outputFileFormat"
     }
 
-    open fun insertSpecificData(text: String, workingDir: File, buildProperties: Properties): String = text
+    protected fun Properties.intProperty(prop: String): Int {
+        val value = getProperty(prop) ?: throw IllegalStateException("missing property '$prop'")
+        return value.toIntOrNull() ?: throw IllegalStateException("not integer property '$prop'")
+    }
+
+    private fun fullVersion(buildProperties: Properties): String {
+        val verMajor = buildProperties.intProperty("version.major")
+        val verMinor = buildProperties.intProperty("version.minor")
+        val verPatch = buildProperties.intProperty("version.patch")
+        val verType = buildProperties.getProperty("version.type")
+        val verBuild = buildProperties.intProperty("build")
+
+        val mainPart = if (verPatch == 0) {
+            "$verMajor.$verMinor"
+        } else {
+            "$verMajor.$verMinor.$verPatch"
+        }
+
+        return if (verType.isNullOrEmpty()) {
+            mainPart
+        } else {
+            "$mainPart-$verType.$verBuild"
+        }
+    }
+
+    protected open fun displayVersion(buildProperties: Properties): String = fullVersion(buildProperties)
+
+    open fun insertSpecificData(text: String, workingDir: File, buildProperties: Properties): String {
+        return text.replace("{%version}", displayVersion(buildProperties))
+    }
+
+    protected open fun actualPackageCommand(outputFile: File): List<String> = packageCommand + outputFile.absolutePath
 
     open fun packageFiles(workDir: File, outputFile: File) {
         val processBuilder = ProcessBuilder(
-            packageCommand + "_rpmdir ${outputFile.parentFile.absolutePath}"
+            actualPackageCommand(outputFile)
         ).directory(workDir)
 
         val logDir = workDir.parentFile.resolve("logs").apply {
