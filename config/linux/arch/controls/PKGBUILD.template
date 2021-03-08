@@ -9,6 +9,6 @@ arch=({@arch})
 
 package() {
 
-    cp -R "$srcdir"/{@package}/ "$pkgdir"/..
+    cp -R "$srcdir"/{@package}/. "$pkgdir"/
 
 }

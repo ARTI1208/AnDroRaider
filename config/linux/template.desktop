@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name={@name}
-Comment={@description}
-Exec={@executable}
-Icon={@icon}
-Terminal=false
-Type=Application
-Categories=Development;IDE;Programming;

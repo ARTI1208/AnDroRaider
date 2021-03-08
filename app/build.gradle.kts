@@ -3,6 +3,7 @@ import java.util.Properties
 import java.io.FileInputStream
 import java.nio.file.*
 import java.nio.file.attribute.PosixFileAttributes
+import java.util.Date
 import ru.art2000.build.*
 
 plugins {
@@ -256,9 +257,6 @@ fun insertProperties(text: String, properties: Properties): String {
     }
 
     return result
-        .replace("{%linuxExtraResources}", linuxExtraResourcesBuilt.absolutePath)
-        .replace("{%projectRoot}", project.rootDir.absolutePath)
-        .replace("{%projectBuild}", project.buildDir.absolutePath)
 }
 
 val generateLinuxResources = task("generateLinuxResources") {
@@ -489,7 +487,19 @@ fun getLinuxProperties(configDir: File, packageType: String): Properties {
     return properties
 }
 
-fun insertPropertiesAndCopy(properties: Properties, sourceFile: File, sourceDir: File, targetDir: File) {
+fun insertLocations(text: String, locations: Map<String, File>): String {
+    return locations.entries.fold(text) { currentText, entry ->
+        currentText.replace("{%${entry.key}}", entry.value.absolutePath)
+    }
+}
+
+fun LinuxPackager.insertPropertiesAndCopy(
+    properties: Properties,
+    sourceFile: File,
+    sourceDir: File,
+    targetDir: File,
+    locations: Map<String, File> = emptyMap()
+) {
 
     val fsPath = sourceFile.relativeTo(sourceDir)
 
@@ -499,7 +509,11 @@ fun insertPropertiesAndCopy(properties: Properties, sourceFile: File, sourceDir:
         val targetFile = (parent?.let { targetDir.resolve(parent) } ?: targetDir).resolve(newName)
 
         val templateContent = sourceFile.readText()
-        val fileContent = insertProperties(templateContent, properties)
+        val fileContent = insertProperties(templateContent, properties).let {
+            insertLocations(it, locations)
+        }.let {
+            insertSpecificData(it, targetDir, properties)
+        }
 
         val targetFilePath = targetFile.toPath()
 
@@ -525,7 +539,7 @@ fun insertPropertiesAndCopy(properties: Properties, sourceFile: File, sourceDir:
 fun installLinuxFiles(packager: LinuxPackager): Pair<File, File> {
     val packageType = packager.type
 
-    val packageBuildDir = project.buildDir.resolve("pkg-$packageType")
+    val packageBuildDir = project.buildDir.resolve("pkg").resolve(packageType)
     packageBuildDir.deleteRecursively()
 
     val workingDir = packageBuildDir.resolve("work")
@@ -536,17 +550,29 @@ fun installLinuxFiles(packager: LinuxPackager): Pair<File, File> {
     val buildProperties = getLinuxProperties(configDir, packageType)
 
     val sourcesDir = packager.getSourcesDir(workingDir, buildProperties)
+    val packagingDir = packager.getPackagingDir(workingDir, buildProperties)
+
     copyPkgFiles(sourcesDir, buildProperties)
 
     val packageSpecificConfigDir = configDir.resolve("linux").resolve(packageType)
     val packageSpecificControlsDir = packageSpecificConfigDir.resolve("controls")
 
-    packageSpecificControlsDir.walk().forEach {
-        insertPropertiesAndCopy(buildProperties, it, packageSpecificControlsDir, workingDir)
-    }
-
     val packageFileName = packager.getOutputFileName(buildProperties)
     val packageFile = outputDir.resolve(packageFileName)
+
+    val locationsMap = mapOf(
+        "linuxExtraResources" to linuxExtraResourcesBuilt,
+        "projectRoot" to project.rootDir,
+        "projectBuild" to project.buildDir,
+        "sourcesDir" to sourcesDir,
+        "workingDir" to workingDir,
+        "packagingDir" to packagingDir,
+        "outputFile" to packageFile
+    )
+
+    packageSpecificControlsDir.walk().forEach {
+        packager.insertPropertiesAndCopy(buildProperties, it, packageSpecificControlsDir, workingDir, locationsMap)
+    }
 
     return workingDir to packageFile
 }
@@ -559,27 +585,49 @@ enum class LinuxPackager(
 
     ARCH("arch", listOf("makepkg", "--help"), listOf("makepkg", "-f")) {
 
-        override fun getSourcesDir(rootDir: File, buildProperties: Properties): File {
-            return rootDir.resolve("src").resolve(buildProperties.getProperty("package"))
+        override val outputFileFormat: String
+            get() = "pkg.tar.zst"
+
+        override fun getSourcesDir(workingDir: File, buildProperties: Properties): File {
+            return workingDir.resolve("src").resolve(buildProperties.getProperty("package"))
         }
 
-        override fun getOutputFileName(buildProperties: Properties): String {
-            val pkg = buildProperties.getProperty("package")
-            val verMajor = buildProperties.getProperty("version.major")
-            val verMinor = buildProperties.getProperty("version.minor")
-            val verPatch = buildProperties.getProperty("version.patch")
-            val verType = buildProperties.getProperty("version.type")
-            val verBuild = buildProperties.getProperty("build")
-            val arch = buildProperties.getProperty("arch")
-
-            return "$pkg-$verMajor.$verMinor.$verPatch-$verType.$verBuild-$arch.pkg.tar.zst"
-        }
     },
     DEB("deb", listOf("dpkg-deb", "--help"), listOf("dpkg-deb", "-b", ".")),
-    RPM("rpm", listOf("rpmbuild", "--help"));
+    RPM("rpm", listOf("rpmbuild", "--help"), listOf("rpmbuild", "-bb", "spec", "--define")) {
+
+        override fun getSourcesDir(workingDir: File, buildProperties: Properties): File {
+            return workingDir.resolve("src")
+        }
+
+        override fun getPackagingDir(workingDir: File, buildProperties: Properties): File {
+            return workingDir.resolve("pkg")
+        }
+
+        override fun insertSpecificData(text: String, workingDir: File, buildProperties: Properties): String {
+
+            val sourcesDir = getSourcesDir(workingDir, buildProperties)
+            val files = sourcesDir.walk().mapNotNull {
+                if (it.isDirectory) return@mapNotNull null
+
+                "/" + it.relativeTo(sourcesDir).path
+            }.toList()
+
+            val packageListFile = workingDir.resolve("filelist.txt")
 
 
-    open fun getSourcesDir(rootDir: File, buildProperties: Properties): File = rootDir
+
+            Files.write(packageListFile.toPath(), files)
+
+            return text.replace("{%fileList}", packageListFile.absolutePath)
+        }
+    };
+
+    protected open inline val outputFileFormat: String get() = type
+
+    open fun getSourcesDir(workingDir: File, buildProperties: Properties): File = workingDir
+
+    open fun getPackagingDir(workingDir: File, buildProperties: Properties): File = workingDir
 
     open fun getOutputFileName(buildProperties: Properties): String {
 
@@ -591,12 +639,14 @@ enum class LinuxPackager(
         val verBuild = buildProperties.getProperty("build")
         val arch = buildProperties.getProperty("arch")
 
-        return "$pkg-$verMajor.$verMinor.$verPatch-$verType.$verBuild-$arch.$type"
+        return "$pkg-$verMajor.$verMinor.$verPatch-$verType.$verBuild-$arch.$outputFileFormat"
     }
+
+    open fun insertSpecificData(text: String, workingDir: File, buildProperties: Properties): String = text
 
     open fun packageFiles(workDir: File, outputFile: File) {
         val processBuilder = ProcessBuilder(
-            packageCommand + outputFile.absolutePath
+            packageCommand + "_rpmdir ${outputFile.parentFile.absolutePath}"
         ).directory(workDir)
 
         val logDir = workDir.parentFile.resolve("logs").apply {
@@ -606,15 +656,40 @@ enum class LinuxPackager(
         processBuilder.redirectOutput(File(logDir, "output.txt"))
         processBuilder.redirectError(File(logDir, "error.txt"))
 
+        outputFile.parentFile.deleteRecursively()
         outputFile.parentFile.mkdirs()
 
-        try {
+        val buildSuccessful = try {
             val process = processBuilder.start()
 
             val result = process.waitFor()
-            System.err.println("MakePkgRes: $result")
+            if (result != 0) {
+                System.err.println("Packaging failed. Exit code: $result")
+            }
+            result == 0
         } catch (e: Exception) {
             e.printStackTrace()
+            false
+        }
+
+        val builtFile = outputFile.parentFile.walk().find {
+            !it.isDirectory && it.name.endsWith(outputFileFormat)
+        }
+
+        builtFile?.apply { renameTo(outputFile) }
+
+        outputFile.parentFile.listFiles()?.forEach {
+            if (it.isDirectory || it != outputFile) {
+                it.deleteRecursively()
+            }
+        }
+
+        workDir.deleteRecursively()
+
+        if (buildSuccessful) {
+            println("Build finished. Output file: ${outputFile.absolutePath}")
+        } else {
+            System.err.println("Build failed. Logs directory: ${logDir.absolutePath}")
         }
     }
 }
