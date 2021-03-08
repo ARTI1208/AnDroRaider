@@ -592,6 +592,20 @@ enum class LinuxPackager(
             return workingDir.resolve("src").resolve(buildProperties.getProperty("package"))
         }
 
+        override fun displayVersion(buildProperties: Properties): String {
+            val mainPart = shortVersion(buildProperties)
+
+            val verType = buildProperties.getProperty("version.type")
+
+            return if (verType.isNullOrEmpty())
+                mainPart
+            else
+                "$mainPart+$verType"
+        }
+
+        override fun packageBuildDirectory(workDir: File, targetOutputFile: File): File {
+            return workDir
+        }
     },
     DEB("deb", listOf("dpkg-deb", "--help"), listOf("dpkg-deb", "-b", ".")) {
 
@@ -650,20 +664,10 @@ enum class LinuxPackager(
             return packageCommand + "_rpmdir ${outputFile.parentFile.absolutePath}"
         }
 
-        override fun displayVersion(buildProperties: Properties): String {
-            val verMajor = buildProperties.intProperty("version.major")
-            val verMinor = buildProperties.intProperty("version.minor")
-            val verPatch = buildProperties.intProperty("version.patch")
-
-            return if (verPatch == 0) {
-                "$verMajor.$verMinor"
-            } else {
-                "$verMajor.$verMinor.$verPatch"
-            }
-        }
+        override fun displayVersion(buildProperties: Properties): String = shortVersion(buildProperties)
     };
 
-    protected open inline val outputFileFormat: String get() = type
+    protected open val outputFileFormat: String get() = type
 
     open fun getSourcesDir(workingDir: File, buildProperties: Properties): File = workingDir
 
@@ -683,18 +687,23 @@ enum class LinuxPackager(
         return value.toIntOrNull() ?: throw IllegalStateException("not integer property '$prop'")
     }
 
-    private fun fullVersion(buildProperties: Properties): String {
+    protected fun shortVersion(buildProperties: Properties): String {
         val verMajor = buildProperties.intProperty("version.major")
         val verMinor = buildProperties.intProperty("version.minor")
         val verPatch = buildProperties.intProperty("version.patch")
-        val verType = buildProperties.getProperty("version.type")
-        val verBuild = buildProperties.intProperty("build")
 
-        val mainPart = if (verPatch == 0) {
+        return if (verPatch == 0) {
             "$verMajor.$verMinor"
         } else {
             "$verMajor.$verMinor.$verPatch"
         }
+    }
+
+    private fun fullVersion(buildProperties: Properties): String {
+        val verType = buildProperties.getProperty("version.type")
+        val verBuild = buildProperties.intProperty("build")
+
+        val mainPart = shortVersion(buildProperties)
 
         return if (verType.isNullOrEmpty()) {
             mainPart
@@ -710,6 +719,10 @@ enum class LinuxPackager(
     }
 
     protected open fun actualPackageCommand(outputFile: File): List<String> = packageCommand + outputFile.absolutePath
+
+    protected open fun packageBuildDirectory(workDir: File, targetOutputFile: File): File {
+        return targetOutputFile.parentFile
+    }
 
     open fun packageFiles(workDir: File, outputFile: File) {
         val processBuilder = ProcessBuilder(
@@ -739,11 +752,17 @@ enum class LinuxPackager(
             false
         }
 
-        val builtFile = outputFile.parentFile.walk().find {
+        val builtFileDir = packageBuildDirectory(workDir, outputFile)
+        val builtFile = builtFileDir.walk().find {
             !it.isDirectory && it.name.endsWith(outputFileFormat)
         }
 
-        builtFile?.apply { renameTo(outputFile) }
+        if (builtFile == null) {
+            System.err.println("Cannot locate built file. Try to find it yourself..")
+        } else {
+            println("Original built file location: ${builtFile.absolutePath}")
+            builtFile.renameTo(outputFile)
+        }
 
         outputFile.parentFile.listFiles()?.forEach {
             if (it.isDirectory || it != outputFile) {
@@ -751,12 +770,11 @@ enum class LinuxPackager(
             }
         }
 
-        workDir.deleteRecursively()
-
         if (buildSuccessful) {
+            workDir.deleteRecursively()
             println("Build finished. Output file: ${outputFile.absolutePath}")
         } else {
-            System.err.println("Build failed. Logs directory: ${logDir.absolutePath}")
+            System.err.println("Build failed. Build files are not deleted. Logs directory: ${logDir.absolutePath}")
         }
     }
 }

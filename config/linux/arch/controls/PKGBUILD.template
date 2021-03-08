@@ -5,7 +5,7 @@ appName={@name}
 pkgver={%version}
 pkgrel={@build}
 pkgdesc="{@description}"
-arch=({@arch})
+arch=('{@arch}')
 
 package() {
 
