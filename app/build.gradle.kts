@@ -8,7 +8,7 @@ plugins {
     java
     antlr
 
-    kotlin("jvm") version "1.4.31"
+    kotlin("jvm") version "1.4.32"
 
     id("org.beryx.jlink") version "2.23.3"
 }
