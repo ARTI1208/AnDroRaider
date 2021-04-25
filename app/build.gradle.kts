@@ -10,7 +10,7 @@ plugins {
 
     kotlin("jvm") version "1.4.32"
 
-    id("org.beryx.jlink") version "2.23.3"
+    id("org.beryx.jlink") version "2.23.7"
 }
 
 fun File.properties(): Properties = Properties().also {
