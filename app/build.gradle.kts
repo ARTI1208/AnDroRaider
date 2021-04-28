@@ -70,7 +70,20 @@ dependencies {
 
 }
 
-val compileJava: JavaCompile by tasks
+val compileJava by tasks.getting(JavaCompile::class) {
+    doFirst {
+        val baseBuildProps = project.rootDir.resolve("config").resolve(PropertiesHelper.propertiesFileName)
+        val appProperties = project.projectDir
+            .resolve("src")
+            .resolve("main")
+            .resolve("resources")
+            .resolve("property")
+            .resolve("app.properties")
+
+        baseBuildProps.copyTo(appProperties, overwrite = true)
+    }
+}
+
 val compileKotlin: KotlinCompile by tasks
 
 
