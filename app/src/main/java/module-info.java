@@ -19,9 +19,6 @@ module app {
     requires org.antlr.antlr4.runtime;
 
     requires reactfx;
-    requires flowless;
-    requires undofx;
-
 
     requires common;
 
