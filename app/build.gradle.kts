@@ -11,6 +11,7 @@ plugins {
     kotlin("jvm") version "1.4.32"
 
     id("org.beryx.jlink") version "2.23.7"
+    id("de.jjohannes.extra-java-module-info") version "0.6"
 }
 
 fun File.properties(): Properties = Properties().also {
@@ -54,38 +55,33 @@ application {
     mainClass.set("ru.art2000.androraider.view.AnDroRaider")
 }
 
+val flowlessVersion = "0.6.3"
+val reactfxVersion = "2.0-M5"
+
 dependencies {
 
-    fun <T : ModuleDependency> T.removeJavaFxDependencies() : T {
-        return exclude("org.openjfx")
-    }
+    antlr("org.antlr", "antlr4", "4.9.2")
 
-    antlr("org.antlr", "antlr4", "4.9")
-
-    implementation("io.reactivex.rxjava2", "rxjava", "2.2.20")
+    implementation("io.reactivex.rxjava2", "rxjava", "2.2.21")
     implementation("io.reactivex.rxjava2", "rxjavafx", "2.11.0-RC34")
-        .removeJavaFxDependencies()
 
     implementation("commons-io", "commons-io", "2.8.0")
 
-    // Use custom builds of ReactFX, Flowless and UndoFX that support modularity
-    implementation("org.fxmisc.richtext", "richtextfx", "0.10.5")
-        .removeJavaFxDependencies()
+    // Explicit implementation of ReactFX, Flowless and UndoFX for using concrete versions
+    implementation("org.fxmisc.richtext", "richtextfx", "0.10.6")
         .exclude("org.reactfx", "reactfx")
         .exclude("org.fxmisc.flowless", "flowless")
         .exclude("org.fxmisc.undo", "undofx")
 
-    implementation("com.github.ARTI1208", "ReactFX", "v3.0.1-modularity")
-        .removeJavaFxDependencies()
-    implementation("com.github.ARTI1208", "Flowless", "v1.0-modularity")
-        .removeJavaFxDependencies()
-    implementation("com.github.ARTI1208","UndoFX","v3.0.1-modularity")
-        .removeJavaFxDependencies()
+
+    implementation("org.fxmisc.flowless", "flowless", flowlessVersion) // Declare module via plugin
+    implementation("org.reactfx", "reactfx", reactfxVersion) // Declare module via plugin
+    implementation("org.fxmisc.undo", "undofx", "2.1.1") // Has automatic module name
 
 //    GRADLE 6.4+ javafx workaround
     val jfxOptions = object {
         val group = "org.openjfx"
-        val version = "15.0.1"
+        val version = "16"
         val fxModules = listOf("javafx.base", "javafx.controls", "javafx.fxml", "javafx.graphics")
     }
     jfxOptions.run {
@@ -196,4 +192,12 @@ tasks.withType(org.beryx.jlink.JPackageTask::class) {
 
 tasks.withType(org.beryx.jlink.JPackageImageTask::class) {
     checkJPackageAvailable()
+}
+
+extraJavaModuleInfo {
+
+    failOnMissingModuleInfo.set(false)
+
+    automaticModule("flowless-$flowlessVersion.jar", "org.fxmisc.flowless")
+    automaticModule("reactfx-$reactfxVersion.jar", "reactfx")
 }

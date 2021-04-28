@@ -2,6 +2,10 @@ allprojects {
     repositories {
         mavenCentral()
         maven { url "https://dl.bintray.com/reactivex/RxJava/" }
-        maven { url 'https://jitpack.io' }
     }
+}
+
+tasks.named('wrapper') {
+    distributionType = Wrapper.DistributionType.ALL
+    gradleVersion = "7.0"
 }

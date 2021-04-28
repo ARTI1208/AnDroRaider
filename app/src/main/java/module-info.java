@@ -4,7 +4,10 @@ module app {
     requires javafx.controls;
     requires javafx.fxml;
     requires javafx.graphics;
+
     requires org.fxmisc.richtext;
+    requires org.fxmisc.flowless;
+    requires org.fxmisc.undo;
 
     requires java.prefs;
     requires kotlin.stdlib;
@@ -16,9 +19,6 @@ module app {
     requires org.antlr.antlr4.runtime;
 
     requires reactfx;
-    requires flowless;
-    requires undofx;
-
 
     opens ru.art2000.androraider.view;
     exports ru.art2000.androraider.view;
