@@ -1,2 +1,3 @@
 rootProject.name = 'AnDroRaider'
 include 'app'
+include 'common'

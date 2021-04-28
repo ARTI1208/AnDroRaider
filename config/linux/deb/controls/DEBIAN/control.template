@@ -1,0 +1,11 @@
+Package: {@package}
+Version: {%version}
+Section: devel
+Maintainer: {@developer} <{@email}>
+Priority: optional
+Architecture: {@arch}
+Provides: {@package}
+Description: {@description}
+ {@description}
+Homepage: {@homepage}
+Installed-Size: {%size}

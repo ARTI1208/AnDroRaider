@@ -1,0 +1,29 @@
+Summary: {@description}
+Name: {@package}
+Version: {%version}
+Release: {%release}
+License: {@license}
+Vendor: {@developer} <{@email}>
+
+Provides: {@package}
+
+Autoprov: 0
+Autoreq: 0
+
+%description
+{@description}
+
+%prep
+
+%build
+
+%install
+cp -R {%sourcesDir}/. %{buildroot}/
+
+%files -f {%fileList}
+
+%post
+
+%preun
+
+%clean

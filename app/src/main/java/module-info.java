@@ -19,6 +19,11 @@ module app {
     requires org.antlr.antlr4.runtime;
 
     requires reactfx;
+    requires flowless;
+    requires undofx;
+
+
+    requires common;
 
     opens ru.art2000.androraider.view;
     exports ru.art2000.androraider.view;

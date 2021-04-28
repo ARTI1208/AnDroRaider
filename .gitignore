@@ -9,14 +9,17 @@
 /out
 /app/build
 local.properties
-/arch/*
-!/arch/androraider.desktop
-!/arch/androraider.sh
-!/arch/PKGBUILD
 
 *
+!/common
+!/common/**
+!/config
+!/config/**
+!/buildSrc
+!/buildSrc/**
+
 !.gitignore
-!build.gradle
+!build.gradle.kts
 !gradle.properties
 !gradlew.bat
 !README.md

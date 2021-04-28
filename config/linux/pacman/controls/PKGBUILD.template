@@ -1,0 +1,14 @@
+# Maintainer: {@developer} <{@email}>
+
+pkgname={@package}
+appName={@name}
+pkgver={%version}
+pkgrel={@build}
+pkgdesc="{@description}"
+arch=('{@arch}')
+
+package() {
+
+    cp -R "$srcdir"/{@package}/. "$pkgdir"/
+
+}

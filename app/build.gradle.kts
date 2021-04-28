@@ -1,6 +1,6 @@
+import org.gradle.internal.os.OperatingSystem
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import java.util.Properties
-import java.io.FileInputStream
+import ru.art2000.packaging.*
 
 plugins {
 
@@ -8,47 +8,16 @@ plugins {
     java
     antlr
 
-    kotlin("jvm") version "1.4.32"
+    kotlin("jvm")
 
     id("org.beryx.jlink") version "2.23.7"
     id("de.jjohannes.extra-java-module-info") version "0.6"
 }
 
-fun File.properties(): Properties = Properties().also {
-    it.load(FileInputStream(this))
-}
-
-fun readVersion(properties: Properties): String {
-
-    fun Properties.intProperty(prop: String): Int {
-        val value = getProperty(prop) ?: throw IllegalStateException("missing property '$prop'")
-        return value.toIntOrNull() ?: throw IllegalStateException("not integer property '$prop'")
-    }
-
-    val major = properties.intProperty("major")
-    val minor = properties.intProperty("minor")
-    val patch = properties.intProperty("patch")
-
-    val shortVersion = if (patch == 0) "$major.$minor" else "$major.$minor.$patch"
-
-    val os = org.gradle.internal.os.OperatingSystem.current()
-    if (os.isMacOsX) return shortVersion
-
-    val type = properties.getProperty("type")
-    val build = properties.intProperty("build")
-
-    return if (type.isNullOrEmpty()) {
-        shortVersion
-    } else {
-        "$shortVersion-$type.$build"
-    }
-}
-
-val appPropertiesFile = file("src/main/resources/property/app.properties")
-val appProperties = appPropertiesFile.properties()
+val baseAppProperties = PropertiesHelper.loadBaseProperties(project)
 
 group = "ru.art2000"
-version = readVersion(appProperties)
+version = shortVersion(baseAppProperties)
 
 application {
     mainModule.set("app")
@@ -62,7 +31,7 @@ dependencies {
 
     antlr("org.antlr", "antlr4", "4.9.2")
 
-    implementation("io.reactivex.rxjava2", "rxjava", "2.2.21")
+    implementation("io.reactivex.rxjava2", "rxjava", "2.2.20")
     implementation("io.reactivex.rxjava2", "rxjavafx", "2.11.0-RC34")
 
     implementation("commons-io", "commons-io", "2.8.0")
@@ -77,6 +46,8 @@ dependencies {
     implementation("org.fxmisc.flowless", "flowless", flowlessVersion) // Declare module via plugin
     implementation("org.reactfx", "reactfx", reactfxVersion) // Declare module via plugin
     implementation("org.fxmisc.undo", "undofx", "2.1.1") // Has automatic module name
+
+    implementation(project(":common"))
 
 //    GRADLE 6.4+ javafx workaround
     val jfxOptions = object {
@@ -132,7 +103,7 @@ val jar by tasks.getting(Jar::class) {
 
 jlink {
     launcher {
-        name = appProperties.getProperty("name")
+        name = baseAppProperties.getProperty("name")
     }
 
     mergedModuleName.set("androraider")
@@ -147,32 +118,24 @@ jlink {
 
     jpackage {
 
-        val os = org.gradle.internal.os.OperatingSystem.current()
+        val configDir = project.rootDir.resolve("config")
 
-        val iconFormat = when {
-            os.isWindows -> "ico"
-            os.isMacOsX -> "icns"
-            else -> "png"
-        }
+        val currentOs = OperatingSystem.current()
 
-        val logoInModule = "src/main/resources/drawable/icons/icon.$iconFormat"
-        val logoAbsolute = project.projectDir.resolve(logoInModule)
-        icon = logoAbsolute.absolutePath
+        val logoRelativePath = "${currentOs.configDirName}/AnDroRaider.${currentOs.iconFormat}"
+        val logoAbsolutePath = configDir.resolve(logoRelativePath)
+        icon = logoAbsolutePath.absolutePath
 
-        if (os.isWindows) {
-            val appParentDir = "Art2000"
-            installerOptions = listOf(
-                "--win-dir-chooser",
-                "--win-menu",
-                "--win-menu-group", appParentDir
-            )
-        } else if (os.isLinux) {
-            val appCategory = "Development;IDE;Programming;"
-            val devEmail = "leonardo906@mail.ru"
-            installerOptions = listOf(
-                "--linux-shortcut",
-                "--linux-menu-group", appCategory,
-                "--linux-deb-maintainer", devEmail
+        val buildProperties = PropertiesHelper.loadBuildProperties(project, currentOs.distro)
+
+        if (currentOs.isWindows) {
+
+            installerOptions.plusAssign(
+                listOf(
+                    "--win-dir-chooser",
+                    "--win-menu",
+                    "--win-menu-group", buildProperties.getProperty("winMenuDir")
+                )
             )
         }
     }
@@ -187,12 +150,39 @@ fun Task.checkJPackageAvailable() {
 }
 
 tasks.withType(org.beryx.jlink.JPackageTask::class) {
+    onlyIf { !OperatingSystem.current().isLinux }
     checkJPackageAvailable()
 }
 
 tasks.withType(org.beryx.jlink.JPackageImageTask::class) {
+    onlyIf { !OperatingSystem.current().isLinux }
     checkJPackageAvailable()
 }
+
+val generateLinuxResources = task("generateLinuxResources") {
+    onlyIf { OperatingSystem.current().isLinux }
+    doLast {
+        generateLinuxResources(project, OperatingSystem.current())
+    }
+}
+
+val packageLinux = task("packageLinux") {
+    dependsOn("jlink", generateLinuxResources)
+    onlyIf { OperatingSystem.current().isLinux}
+    doLast {
+        packageAppForLinux(project)
+    }
+}
+
+val universalPackage = task("universalPackage") {
+    if (OperatingSystem.current().isLinux) {
+        dependsOn(packageLinux)
+    } else {
+        val jpackage: org.beryx.jlink.JPackageTask by tasks
+        dependsOn(jpackage)
+    }
+}
+
 
 extraJavaModuleInfo {
 
