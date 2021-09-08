@@ -86,7 +86,7 @@ class SmaliClass() : SmaliComponent {
                 SmaliClass().also {
                     it.arrayCount = arrayCount - 1
                     it.parentClass = parentClass
-                    println("$parentClass|${it.fullname}")
+//                    println("$parentClass|${it.fullname}")
                 }
             else
                 parentClass

@@ -87,6 +87,7 @@ class FileManagerView : TreeView<File>(), StringSearchable {
     }
 
     private fun onTreeItemClick(treeItem: TreeItem<File>?, byMouse: Boolean = false) {
+        println("onTreeItemClick: $treeItem, $byMouse")
         if (treeItem == null) {
             return
         }
@@ -101,7 +102,9 @@ class FileManagerView : TreeView<File>(), StringSearchable {
     }
 
     private fun onFileItemClick(file: File) {
+        println("onFileItemClick: $file (${onFileSelectedListeners.size})")
         onFileSelectedListeners.forEach {
+            println("onFileItemClick listener: $it")
             it(file)
         }
     }

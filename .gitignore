@@ -25,5 +25,7 @@ local.properties
 !README.md
 !settings.gradle
 
+!app
 !app/src
+!app/src/**
 !app/build.gradle.kts

@@ -1,7 +1,5 @@
 package ru.art2000.androraider.model.analyzer.android
 
-import io.reactivex.Observable
-import io.reactivex.schedulers.Schedulers
 import javafx.collections.FXCollections
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -12,20 +10,16 @@ import org.antlr.v4.runtime.tree.ParseTree
 import ru.art2000.androraider.antlr.XMLLexer
 import ru.art2000.androraider.antlr.XMLParser
 import ru.art2000.androraider.model.analyzer.AnalyzeMode
-import ru.art2000.androraider.model.analyzer.Analyzer
+import ru.art2000.androraider.model.analyzer.extensions.SimplifiedAnalyzer
 import ru.art2000.androraider.model.analyzer.result.*
 import ru.art2000.androraider.model.analyzer.xml.XMLScanner
 import ru.art2000.androraider.model.analyzer.xml.types.Tag
 import ru.art2000.androraider.model.apktool.addAll
 import java.io.File
 
-object AndroidResourceAnalyzer : Analyzer<AndroidAppProject, AndroidResourceAnalyzerSettings> {
+object AndroidResourceAnalyzer : SimplifiedAnalyzer<AndroidAppProject, AndroidResourceAnalyzerSettings> {
 
-    override fun analyzeText(
-        project: AndroidAppProject,
-        settings: AndroidResourceAnalyzerSettings,
-        text: String
-    ): TextAnalyzeResult {
+    override fun analyzeText(project: AndroidAppProject, settings: AndroidResourceAnalyzerSettings, text: String): TextAnalyzeResult {
         val lexer = XMLLexer(CharStreams.fromString(text))
         val tokenStream = CommonTokenStream(lexer as TokenSource)
         val parser = XMLParser(tokenStream as TokenStream)
@@ -38,11 +32,7 @@ object AndroidResourceAnalyzer : Analyzer<AndroidAppProject, AndroidResourceAnal
         }
     }
 
-    override fun analyzeFile(
-        project: AndroidAppProject,
-        settings: AndroidResourceAnalyzerSettings,
-        file: File
-    ): FileAnalyzeResult {
+    override fun analyzeFile(project: AndroidAppProject, settings: AndroidResourceAnalyzerSettings, file: File): FileAnalyzeResult {
         val lexer = XMLLexer(CharStreams.fromFileName(file.absolutePath))
         val tokenStream = CommonTokenStream(lexer as TokenSource)
         val parser = XMLParser(tokenStream as TokenStream)
@@ -145,34 +135,12 @@ object AndroidResourceAnalyzer : Analyzer<AndroidAppProject, AndroidResourceAnal
         tag.subTags.forEach { getTagSegments(it, list) }
     }
 
-    override fun analyzeDirectory(
-        project: AndroidAppProject,
-        settings: AndroidResourceAnalyzerSettings,
-        directory: File
-    ): Observable<out FileAnalyzeResult> {
-        return Observable
-            .fromIterable(directory.walk().asIterable())
-            .subscribeOn(Schedulers.io())
-            .filter {
-                !it.isDirectory && it.extension == "xml"
-            }.map { file ->
-                analyzeFile(project, settings, file)
-            }
-    }
+    override fun isSuitableFile(file: File): Boolean = !file.isDirectory && file.extension == "xml"
 
-    override fun analyzeProject(
-        project: AndroidAppProject,
-        settings: AndroidResourceAnalyzerSettings
-    ): Observable<out FileAnalyzeResult> {
-        val projectResFolder = project.projectFolder.resolve("res")
-
-        val observables = projectResFolder.listFiles()?.map {
-            analyzeDirectory(project, settings, it)
-        } ?: emptyList()
-
-        val manifest = project.projectFolder.resolve("AndroidManifest.xml")
-        val manifestObservable = analyzeDirectory(project, settings, manifest)
-
-        return Observable.concat(observables + manifestObservable)
-    }
+    @ExperimentalStdlibApi
+    override val AndroidAppProject.examinedDirectories: Iterable<File>
+        get() = buildList {
+            add(projectFolder.resolve("AndroidManifest.xml"))
+            addAll(projectFolder.resolve("res").listFiles() ?: emptyArray())
+        }
 }

@@ -1,24 +1,22 @@
 package ru.art2000.androraider.model.analyzer.android
 
-import io.reactivex.Observable
-import io.reactivex.schedulers.Schedulers
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.TokenSource
 import org.antlr.v4.runtime.TokenStream
 import org.antlr.v4.runtime.atn.PredictionMode
 import org.antlr.v4.runtime.tree.ParseTree
-import ru.art2000.androraider.model.analyzer.Indexer
+import ru.art2000.androraider.antlr.XMLLexer
+import ru.art2000.androraider.antlr.XMLParser
+import ru.art2000.androraider.model.analyzer.extensions.SimplifiedIndexer
 import ru.art2000.androraider.model.analyzer.result.FileIndexingResult
 import ru.art2000.androraider.model.analyzer.result.FileLink
 import ru.art2000.androraider.model.analyzer.result.SimpleFileIndexingResult
-import ru.art2000.androraider.antlr.XMLLexer
-import ru.art2000.androraider.antlr.XMLParser
 import ru.art2000.androraider.model.analyzer.xml.XMLScanner
 import ru.art2000.androraider.model.analyzer.xml.types.Tag
 import java.io.File
 
-object AndroidResourceIndexer : Indexer<AndroidAppProject> {
+object AndroidResourceIndexer : SimplifiedIndexer<AndroidAppProject> {
 
     override fun indexFile(project: AndroidAppProject, file: File): FileIndexingResult {
 
@@ -81,34 +79,19 @@ object AndroidResourceIndexer : Indexer<AndroidAppProject> {
         return SimpleFileIndexingResult(file, links)
     }
 
-    override fun indexDirectory(project: AndroidAppProject, directory: File): Observable<FileIndexingResult> {
-        return Observable
-                .fromIterable(directory.walk().asIterable())
-                .subscribeOn(Schedulers.io())
-                .filter {
-                    !it.isDirectory
-                }.map { file ->
-                    indexFile(project, file)
+    override fun isSuitableFile(file: File): Boolean = !file.isDirectory
+
+    @ExperimentalStdlibApi
+    override val AndroidAppProject.examinedDirectories: Iterable<File>
+        get() = buildList {
+            addAll(projectFolder.resolve("res").listFiles() ?: emptyArray())
+
+            projectDependencies.forEach { frameDirectory ->
+                frameDirectory.resolve("res").listFiles()?.forEach {
+                    this += it
                 }
-    }
-
-    override fun indexProject(project: AndroidAppProject,): Observable<FileIndexingResult> {
-        val projectResFolder = project.projectFolder.resolve("res")
-
-        val observables = mutableListOf<Observable<FileIndexingResult>>()
-
-        projectResFolder.listFiles()?.forEach {
-            observables.add(indexDirectory(project, it))
-        }
-
-        project.projectDependencies.forEach { frameDirectory ->
-            frameDirectory.resolve("res").listFiles()?.forEach {
-                observables.add(indexDirectory(project, it))
             }
         }
-
-        return Observable.concat(observables)
-    }
 
     private fun indexPublicTag(project: AndroidAppProject, public: Tag, resourceName: String, resourceScope: ResourceScope) {
         val resourceTypeAttr = public.attributes.find { attr ->
@@ -141,12 +124,12 @@ object AndroidResourceIndexer : Indexer<AndroidAppProject> {
     }
 
     private fun indexTag(
-            project: AndroidAppProject,
-            file: File,
-            tag: Tag,
-            resourceName: String,
-            resourceType: String,
-            resourceScope: ResourceScope
+        project: AndroidAppProject,
+        file: File,
+        tag: Tag,
+        resourceName: String,
+        resourceType: String,
+        resourceScope: ResourceScope
     ) : Pair<Any, FileLink>? {
         if (resourceType == "public") {
             indexPublicTag(project, tag, resourceName, resourceScope)

@@ -25,7 +25,7 @@ class FileDataProvider(val file: File, override val offset: Int = 0) : CodeDataP
     init {
 
         val listener = ChangeListener<String> { _, _, newValue ->
-            Files.write(file.toPath(), newValue.toByteArray())
+//            Files.write(file.toPath(), newValue.toByteArray())
         }
 
         fun applyNewText(newText: String) {

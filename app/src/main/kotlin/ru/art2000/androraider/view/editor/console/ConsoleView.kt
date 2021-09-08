@@ -1,33 +1,21 @@
 package ru.art2000.androraider.view.editor.console
 
-import io.reactivex.Single
-import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
-import io.reactivex.schedulers.Schedulers
 import javafx.application.Platform
-import javafx.beans.property.SimpleStringProperty
-import javafx.beans.property.StringProperty
 import javafx.geometry.Insets
 import javafx.scene.control.ScrollPane
 import org.fxmisc.flowless.VirtualizedScrollPane
 import org.fxmisc.richtext.Caret
-import org.fxmisc.richtext.StyleClassedTextArea
-import org.fxmisc.richtext.model.ReadOnlyStyledDocument
-import ru.art2000.androraider.model.editor.SearchSpanList
 import ru.art2000.androraider.model.io.StreamOutput
-import ru.art2000.androraider.model.editor.StringSearchable
 import ru.art2000.androraider.view.editor.search.SearchableNodeWrapper
+import ru.art2000.androraider.view.extensions.SearchableTextArea
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
-import java.util.regex.Pattern
 
-class ConsoleView : ScrollPane(), StreamOutput, StringSearchable {
+class ConsoleView : ScrollPane(), StreamOutput {
 
-    private val textArea = StyleClassedTextArea().apply { isEditable = false; showCaret = Caret.CaretVisibility.ON }
-    private val searchSpanList = SearchSpanList()
-
-    override val currentSearchValueProperty: StringProperty = SimpleStringProperty("")
+    private val textArea = SearchableTextArea().apply { isEditable = false; showCaret = Caret.CaretVisibility.ON }
 
     init {
         val areaParent = VirtualizedScrollPane(textArea).apply {
@@ -37,46 +25,11 @@ class ConsoleView : ScrollPane(), StreamOutput, StringSearchable {
             }
         }
 
-        content = SearchableNodeWrapper(areaParent, this)
+        content = SearchableNodeWrapper(areaParent, textArea)
 
         textArea.padding = Insets(5.0)
         isFitToHeight = true
         isFitToWidth = true
-
-        currentSearchValueProperty.addListener { _, _, newValue ->
-            Single.fromCallable {
-                var b = textArea.createMultiChange()
-                var ch = false
-                searchSpanList.searchString = newValue
-                if (newValue.isNotEmpty()) {
-                    val pattern = Pattern.compile(Pattern.quote(newValue.toLowerCase()))
-                    val searchMatcher = pattern.matcher(textArea.text.toLowerCase())
-                    if (pattern.pattern().isNotEmpty()) {
-                        while (searchMatcher.find()) {
-                            searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
-                            val doc = ReadOnlyStyledDocument.fromString(
-                                    textArea.getText(searchMatcher.start(), searchMatcher.end()),
-                                    textArea.getParagraphStyleForInsertionAt(searchMatcher.start() + 1),
-                                    mutableListOf("search"),
-                                    textArea.segOps
-                            )
-
-
-                            ch = true
-                            b = b.replaceAbsolutely(searchMatcher.start(), searchMatcher.end(), doc)
-                        }
-                    }
-                }
-                ch to b
-            }.subscribeOn(Schedulers.computation())
-                    .observeOn(JavaFxScheduler.platform())
-                    .subscribe { (hasChanges, builder) ->
-                        textArea.clearStyle(0, textArea.length)
-                        if (hasChanges) {
-                            builder.commit()
-                        }
-                    }
-        }
     }
 
     private fun writelnImpl(tag: String, string: String) {
@@ -91,7 +44,7 @@ class ConsoleView : ScrollPane(), StreamOutput, StringSearchable {
             if (selection.length > 0)
                 textArea.selectRange(selection.start, selection.end)
         }
-        updateSearchIndex(currentSearchValue)
+//        updateSearchIndex(currentSearchValue)
 
     }
 
@@ -126,52 +79,17 @@ class ConsoleView : ScrollPane(), StreamOutput, StringSearchable {
     }
 
     private fun updateSearchIndex(valueToFind: String) {
-        currentSearchValue = valueToFind.toLowerCase()
-        searchSpanList.searchString = currentSearchValue
-        if (currentSearchValue.isNotEmpty()) {
-            val pattern = Pattern.compile("(?<SEARCH>$currentSearchValue)")
-            val searchMatcher = pattern.matcher(textArea.text.toLowerCase())
-            if (pattern.pattern().isNotEmpty()) {
-                while (searchMatcher.find()) {
-                    searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
-                    textArea.setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
-                }
-            }
-        }
-    }
-
-    private fun selectSearchRange(new: Int) {
-        searchSpanList.currentPosition = new
-
-        if (new in 0..searchSpanList.lastIndex) {
-            textArea.clearStyle(searchSpanList[new].first, searchSpanList[new].last)
-            textArea.setStyle(searchSpanList[new].first, searchSpanList[new].last, listOf("search"))
-            textArea.moveTo(searchSpanList[new].last)
-        }
-    }
-
-    override fun findNext() {
-        if (searchSpanList.isEmpty())
-            return
-
-        val newPos = if (searchSpanList.currentPosition < 0) {
-            searchSpanList.withIndex().find { it.value.last >= textArea.caretPosition }?.index ?: 0
-        } else
-            (searchSpanList.currentPosition + 1) % searchSpanList.size
-
-        selectSearchRange(newPos)
-    }
-
-    override fun findPrevious() {
-        if (searchSpanList.isEmpty())
-            return
-
-        val newPos = if (searchSpanList.currentPosition < 0)
-            searchSpanList.withIndex().findLast { it.value.last <= textArea.caretPosition }?.index
-                    ?: searchSpanList.lastIndex
-        else
-            (searchSpanList.size + searchSpanList.currentPosition - 1) % searchSpanList.size
-
-        selectSearchRange(newPos)
+//        currentSearchValue = valueToFind.toLowerCase()
+//        searchSpanList.searchString = currentSearchValue
+//        if (currentSearchValue.isNotEmpty()) {
+//            val pattern = Pattern.compile("(?<SEARCH>$currentSearchValue)")
+//            val searchMatcher = pattern.matcher(textArea.text.toLowerCase())
+//            if (pattern.pattern().isNotEmpty()) {
+//                while (searchMatcher.find()) {
+//                    searchSpanList.add(IntRange(searchMatcher.start(), searchMatcher.end()))
+//                    textArea.setStyle(searchMatcher.start(), searchMatcher.end(), listOf("search"))
+//                }
+//            }
+//        }
     }
 }

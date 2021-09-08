@@ -1,7 +1,5 @@
 package ru.art2000.androraider.model.analyzer.smali
 
-import io.reactivex.Observable
-import io.reactivex.schedulers.Schedulers
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.TokenSource
@@ -10,15 +8,15 @@ import org.antlr.v4.runtime.atn.PredictionMode
 import org.antlr.v4.runtime.tree.ParseTree
 import ru.art2000.androraider.antlr.SmaliLexer
 import ru.art2000.androraider.antlr.SmaliParser
-import ru.art2000.androraider.model.analyzer.Indexer
 import ru.art2000.androraider.model.analyzer.android.AndroidAppProject
+import ru.art2000.androraider.model.analyzer.extensions.SimplifiedIndexer
 import ru.art2000.androraider.model.analyzer.result.FileIndexingResult
 import ru.art2000.androraider.model.analyzer.result.FileLink
 import ru.art2000.androraider.model.analyzer.result.SimpleFileIndexingResult
 import ru.art2000.androraider.model.analyzer.result.SimpleFileLink
 import java.io.File
 
-object SmaliIndexer : Indexer<AndroidAppProject> {
+object SmaliIndexer : SimplifiedIndexer<AndroidAppProject> {
 
     override fun indexFile(project: AndroidAppProject, file: File): FileIndexingResult {
         val lexer = SmaliLexer(CharStreams.fromFileName(file.absolutePath))
@@ -49,20 +47,8 @@ object SmaliIndexer : Indexer<AndroidAppProject> {
         return SimpleFileIndexingResult(file, links)
     }
 
-    override fun indexDirectory(project: AndroidAppProject, directory: File): Observable<FileIndexingResult> {
-        return Observable
-                .fromIterable(directory.walk().asIterable())
-                .subscribeOn(Schedulers.io())
-                .filter {
-                    !it.isDirectory && it.extension == "smali"
-                }.map { file ->
-                    indexFile(project, file)
-                }
-    }
+    override fun isSuitableFile(file: File): Boolean = !file.isDirectory && file.extension == "smali"
 
-    override fun indexProject(project: AndroidAppProject,): Observable<out FileIndexingResult> {
-        return Observable.concat(project.smaliFolders.map {
-            indexDirectory(project, it)
-        })
-    }
+    override val AndroidAppProject.examinedDirectories: Iterable<File>
+        get() = smaliFolders
 }

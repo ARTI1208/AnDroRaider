@@ -12,8 +12,8 @@ module app {
     requires java.prefs;
     requires kotlin.stdlib;
 
-    requires io.reactivex.rxjava2;
-    requires rxjavafx;
+//    requires io.reactivex.rxjava2;
+//    requires rxjavafx;
 
     requires org.apache.commons.io;
     requires org.antlr.antlr4.runtime;
@@ -21,6 +21,8 @@ module app {
     requires reactfx;
 
     requires common;
+    requires kotlinx.coroutines.core.jvm;
+    requires kotlinx.coroutines.javafx;
 
     opens ru.art2000.androraider.view;
     exports ru.art2000.androraider.view;

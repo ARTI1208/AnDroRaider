@@ -1,6 +1,6 @@
 package ru.art2000.androraider.model.analyzer
 
-import io.reactivex.Observable
+import kotlinx.coroutines.flow.Flow
 import ru.art2000.androraider.model.analyzer.result.FileIndexingResult
 import ru.art2000.androraider.model.analyzer.result.Project
 import java.io.File
@@ -12,7 +12,7 @@ interface Indexer<in P : Project> {
      */
     fun indexFile(project: P, file: File): FileIndexingResult
 
-    fun indexDirectory(project: P, directory: File): Observable<out FileIndexingResult>
+    fun indexDirectory(project: P, directory: File): Flow<FileIndexingResult>
 
-    fun indexProject(project: P,): Observable<out FileIndexingResult>
+    fun indexProject(project: P,): Flow<FileIndexingResult>
 }

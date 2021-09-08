@@ -1,10 +1,5 @@
 package ru.art2000.androraider.view.editor.code
 
-import io.reactivex.Maybe
-import io.reactivex.Single
-import io.reactivex.disposables.Disposable
-import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
-import io.reactivex.schedulers.Schedulers
 import javafx.application.Platform
 import javafx.beans.property.*
 import javafx.beans.value.ObservableValue
@@ -16,11 +11,12 @@ import javafx.scene.input.KeyEvent
 import javafx.scene.input.ScrollEvent
 import javafx.scene.shape.Rectangle
 import javafx.stage.Popup
+import kotlinx.coroutines.*
+import kotlinx.coroutines.javafx.JavaFx
 import org.fxmisc.richtext.Caret
 import org.fxmisc.richtext.CodeArea
 import org.fxmisc.richtext.event.MouseOverTextEvent
 import org.fxmisc.richtext.model.ReadOnlyStyledDocument
-import org.fxmisc.richtext.model.StyledDocument
 import org.reactfx.Subscription
 import org.reactfx.value.Var
 import ru.art2000.androraider.model.analyzer.AnalyzeMode
@@ -41,10 +37,6 @@ class CodeEditorArea(
         val dataProvider: CodeDataProvider,
         val settings: CodeEditingSettings
 ) : CodeArea(), StringSearchable, CodeEditorDataProvider {
-
-    private var currentDisposable: Disposable? = null
-
-    private var currentHighlightDisposable: Disposable? = null
 
     override val currentSearchValueProperty: StringProperty = SimpleStringProperty("")
 
@@ -385,40 +377,46 @@ class CodeEditorArea(
         cursor = Cursor.TEXT
     }
 
-    private fun applyTextSegmentsStyle(segments: List<TextSegment>) {
-        currentHighlightDisposable?.dispose()
-        currentHighlightDisposable = Maybe.fromCallable {
-            val replacements = mutableListOf<CodeReplacement>()
+    private fun createReplacements(segments: List<TextSegment>): List<CodeReplacement> {
+        val replacements = mutableListOf<CodeReplacement>()
 
-            replacements += changeStyleReplacement(0, length) { emptyList() }
+        replacements += changeStyleReplacement(0, length) { emptyList() }
 
-            println("Total segments: ${segments.size}")
+        println("Total segments: ${segments.size}")
 
-            val time = measureTimeMillis {
-                var k = 0
-                segments.forEach { segment ->
-                    if (segment is StyledSegment && segment.style.isNotEmpty()) {
-                        ++k
-                        val (from, to) = segment.segmentRange
-                        replacements += setStyleClassReplacement(from, to, segment.style)
-                    }
+        val time = measureTimeMillis {
+            var k = 0
+            segments.forEach { segment ->
+                if (segment is StyledSegment && segment.style.isNotEmpty()) {
+                    ++k
+                    val (from, to) = segment.segmentRange
+                    replacements += setStyleClassReplacement(from, to, segment.style)
                 }
-                println("Styled segments: $k")
+            }
+            println("Styled segments: $k")
+        }
+
+        println("Style computing time millis: $time")
+
+        return replacements
+    }
+
+    private fun applyTextSegmentsStyle(segments: List<TextSegment>) = GlobalScope.launch {
+        println("applyTextSegmentsStyle: ${Thread.currentThread().name}")
+        val replacements = withContext(Job()) {
+            println("applyTextSegmentsStyle createReplacements: ${Thread.currentThread().name}")
+            createReplacements(segments)
+        }
+
+        withContext(Dispatchers.JavaFx) {
+            println("applyTextSegmentsStyle jfx: ${Thread.currentThread().name}")
+            val time = measureTimeMillis {
+                content.replaceMulti(replacements)
             }
 
-            println("Style computing time millis: $time")
-
-            replacements
-        }.subscribeOn(Schedulers.computation())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe { replacements ->
-                    val time = measureTimeMillis {
-                        content.replaceMulti(replacements)
-                    }
-
-                    println("Style applying time millis: $time")
-                    onNewCaretPosition(caretPosition)
-                }
+            println("Style applying time millis: $time")
+            onNewCaretPosition(caretPosition)
+        }
     }
 
     fun getLineStartIndex(index: Int): Int {
@@ -521,51 +519,45 @@ class CodeEditorArea(
         selectSearchRange(searchSpanList.currentPosition, newPos)
     }
 
-    private fun <T> computationSingle(f: () -> T): Single<T> {
-        return Single.fromCallable {
-            f()
-        }.subscribeOn(Schedulers.computation())
+    private fun createSearchChanges(): List<CodeReplacement> {
+        val changes = mutableListOf<CodeReplacement>()
+
+        changes += searchSpanList.map {
+            removeStyleClassReplacement(it.first, it.last, "search")
+        }
+
+        searchSpanList.searchString = currentSearchValue
+        if (currentSearchValue.isNotEmpty()) {
+            val pattern = Pattern.compile(Pattern.quote(currentSearchValue.toLowerCase()))
+            val searchMatcher = pattern.matcher(text.toLowerCase())
+            if (pattern.pattern().isNotEmpty()) {
+                while (searchMatcher.find()) {
+                    val start = searchMatcher.start()
+                    val end = searchMatcher.end()
+
+                    searchSpanList.add(start..end)
+
+                    changes += addStyleClassReplacement(start, end, "search")
+                }
+            }
+        }
+        return changes
     }
 
-    private fun highlightSearch() {
+    private fun highlightSearch() = GlobalScope.launch {
+        println("highlightSearch: ${Thread.currentThread().name}")
+        val changes = withContext(Job()) {
+            println("highlightSearch 2: ${Thread.currentThread().name}")
+            createSearchChanges()
+        }
 
-        if (isStylingText.getAndSet(true))
-            return
+        launch(Dispatchers.JavaFx) {
+            println("highlightSearch jfx: ${Thread.currentThread().name}")
+            content.replaceMulti(changes)
 
-        currentDisposable?.dispose()
-
-        currentDisposable = computationSingle {
-            val changes = mutableListOf<CodeReplacement>()
-
-            changes += searchSpanList.map {
-                removeStyleClassReplacement(it.first, it.last, "search")
-            }
-
-            searchSpanList.searchString = currentSearchValue
-            if (currentSearchValue.isNotEmpty()) {
-                val pattern = Pattern.compile(Pattern.quote(currentSearchValue.toLowerCase()))
-                val searchMatcher = pattern.matcher(text.toLowerCase())
-                if (pattern.pattern().isNotEmpty()) {
-                    while (searchMatcher.find()) {
-                        val start = searchMatcher.start()
-                        val end = searchMatcher.end()
-
-                        searchSpanList.add(start..end)
-
-                        changes += addStyleClassReplacement(start, end, "search")
-                    }
-                }
-            }
-            changes
-        }.observeOn(JavaFxScheduler.platform())
-                .subscribe { replacements ->
-                    content.replaceMulti(replacements)
-
-                    isStylingText.set(false)
-                    findNext(true)
-                }
-
-        currentHighlightDisposable = currentDisposable
+            isStylingText.set(false)
+            findNext(true)
+        }
     }
 
     public fun getTextTrueTerminator(): String {
@@ -584,13 +576,6 @@ class CodeEditorArea(
         content.replace(0, length, doc)
     }
 
-    //    public fun getLengthTrueTerminator(): Int {
-//        return if (lineSeparator.separator.length == 1)
-//            length
-//        else
-//            length + (lineSeparator.separator.length - 1) * text.count('\n')
-//    }
-
     override fun layoutChildren() {
 
         try {
@@ -607,8 +592,6 @@ class CodeEditorArea(
 
     override fun dispose() {
         super.dispose()
-        currentDisposable?.dispose()
-        currentHighlightDisposable?.dispose()
         fileSpecificSubscriptions.forEach { it.unsubscribe() }
         projectSpecificSubscriptions.unsubscribe()
         permanentSubscriptions.unsubscribe()

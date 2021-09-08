@@ -1,12 +1,12 @@
 package ru.art2000.androraider.model.analyzer.android
 
-import io.reactivex.Observable
 import javafx.application.Platform
 import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.value.ObservableValue
 import javafx.collections.FXCollections
 import javafx.collections.ObservableMap
 import javafx.collections.ObservableSet
+import kotlinx.coroutines.flow.*
 import org.reactfx.Subscription
 import ru.art2000.androraider.model.analyzer.*
 import ru.art2000.androraider.model.analyzer.result.*
@@ -19,11 +19,15 @@ import ru.art2000.androraider.model.analyzer.xml.types.Document
 import ru.art2000.androraider.model.editor.ProjectSettings
 import ru.art2000.androraider.model.io.DirectoryObserver
 import ru.art2000.androraider.presenter.settings.SettingsPresenter
-import ru.art2000.androraider.utils.*
+import ru.art2000.androraider.utils.connect
+import ru.art2000.androraider.utils.observe
+import ru.art2000.androraider.utils.plus
 import java.io.File
 import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchEvent
 import kotlin.concurrent.thread
+import ru.art2000.androraider.utils.getValue
+import ru.art2000.androraider.utils.setValue
 
 class AndroidAppProject(override val projectFolder: File) : Project, SmaliProject, XMLProject {
 
@@ -147,7 +151,7 @@ class AndroidAppProject(override val projectFolder: File) : Project, SmaliProjec
                         println("$eventFile got ${indexingResult.links.size} links")
 
                         indexingResult.links.forEach { (obj, link) ->
-                            println(obj)
+//                            println(obj)
                             getLinksFor(obj).also {
 
                                 if (it.isNotEmpty()) {
@@ -318,42 +322,41 @@ class AndroidAppProject(override val projectFolder: File) : Project, SmaliProjec
         return null
     }
 
-    override fun indexProject(): Observable<out FileIndexingResult> {
+    override fun indexProject(): Flow<FileIndexingResult> {
 
         val indexing = listOf(
             AndroidResourceIndexer.indexProject(this),
             SmaliIndexer.indexProject(this)
         )
 
-        return Observable.merge(indexing)
-            .doOnNext {
-                it.links.forEach { (obj, link) ->
-                    getLinksFor(obj) += link
+        return indexing.merge().onEach {
+            it.links.forEach { (obj, link) ->
+                getLinksFor(obj) += link
 
-                    fileToLinkables.getOrPut(link.file) { mutableListOf() }.add(obj)
-                }
-            }.doOnSubscribe {
-                println("Indexing")
-                state = State.INDEXING
+                fileToLinkables.getOrPut(link.file) { mutableListOf() }.add(obj)
             }
+        }.onStart {
+            println("Indexing")
+            state = State.INDEXING
+        }
     }
 
-    override fun analyzeProject(): Observable<out FileAnalyzeResult> {
+    override fun analyzeProject(): Flow<FileAnalyzeResult> {
         val analyzing = listOf(
             AndroidResourceAnalyzer.analyzeProject(this, AndroidResourceAnalyzerSettings(AnalyzeMode.ERRORS)),
             SmaliAnalyzer.analyzeProject(this, SmaliAnalyzerSettings(AnalyzeMode.ERRORS))
         )
 
-        return Observable.merge(analyzing)
-            .doOnSubscribe {
-                println("Analyzing")
+        return analyzing.merge()
+            .onStart {
+//                println("Analyzing")
                 state = State.ANALYZING
             }
     }
 
-    override fun setupProject(): Observable<*> {
-        return Observable.concat(indexProject(), analyzeProject())
-            .doOnTerminate {
+    override fun setupProject(): Flow<*> {
+        return indexProject().flatMapConcat { analyzeProject() }
+            .onCompletion {
                 println("IDLE")
                 state = State.IDLE
             }

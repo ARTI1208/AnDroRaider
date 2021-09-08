@@ -1,10 +1,12 @@
 package ru.art2000.androraider.model.analyzer.result
 
-import io.reactivex.Observable
 import javafx.beans.value.ObservableValue
 import javafx.collections.FXCollections
 import javafx.collections.ObservableMap
 import javafx.collections.ObservableSet
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapConcat
 import org.reactfx.Subscription
 import org.reactfx.value.Val
 import ru.art2000.androraider.model.analyzer.AnalyzeMode
@@ -19,12 +21,13 @@ interface Project {
 
     val links: MutableMap<Any, ObservableSet<FileLink>>
 
-    fun indexProject(): Observable<out FileIndexingResult>
+    fun indexProject(): Flow<FileIndexingResult>
 
-    fun analyzeProject(): Observable<out FileAnalyzeResult>
+    fun analyzeProject(): Flow<FileAnalyzeResult>
 
-    fun setupProject(): Observable<*> {
-        return Observable.concat(indexProject(), analyzeProject())
+    @OptIn(FlowPreview::class)
+    fun setupProject(): Flow<*> {
+        return indexProject().flatMapConcat { analyzeProject() }
     }
 
     fun requestFileAnalyze(file: File, mode: AnalyzeMode, callback: (FileAnalyzeResult?) -> Unit): Subscription

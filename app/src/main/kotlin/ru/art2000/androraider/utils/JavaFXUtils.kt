@@ -18,6 +18,7 @@ import javafx.scene.input.KeyCodeCombination
 import javafx.scene.input.KeyCombination
 import javafx.scene.input.KeyEvent
 import org.reactfx.Subscription
+import kotlin.reflect.KProperty
 
 fun <T, E> Property<T>.bind(observable: ObservableValue<E>, converter: (e: E) -> T) {
     observable.addListener { _, _, newValue ->

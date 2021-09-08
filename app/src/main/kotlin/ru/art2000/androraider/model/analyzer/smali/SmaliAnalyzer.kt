@@ -1,7 +1,5 @@
 package ru.art2000.androraider.model.analyzer.smali
 
-import io.reactivex.Observable
-import io.reactivex.schedulers.Schedulers
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.TokenSource
@@ -10,12 +8,12 @@ import org.antlr.v4.runtime.tree.ParseTree
 import ru.art2000.androraider.antlr.SmaliLexer
 import ru.art2000.androraider.antlr.SmaliParser
 import ru.art2000.androraider.model.analyzer.AnalyzeMode
-import ru.art2000.androraider.model.analyzer.Analyzer
+import ru.art2000.androraider.model.analyzer.extensions.SimplifiedAnalyzer
 import ru.art2000.androraider.model.analyzer.result.*
 import ru.art2000.androraider.utils.textRange
 import java.io.File
 
-object SmaliAnalyzer : Analyzer<SmaliProject, SmaliAnalyzerSettings> {
+object SmaliAnalyzer : SimplifiedAnalyzer<SmaliProject, SmaliAnalyzerSettings> {
 
     override fun analyzeText(project: SmaliProject, settings: SmaliAnalyzerSettings, text: String): TextAnalyzeResult {
         val lexer = SmaliLexer(CharStreams.fromString(text))
@@ -73,20 +71,8 @@ object SmaliAnalyzer : Analyzer<SmaliProject, SmaliAnalyzerSettings> {
         return SimpleFileAnalyzeResult(file, scanner.ranges, scanner.dependencies)
     }
 
-    override fun analyzeDirectory(project: SmaliProject, settings: SmaliAnalyzerSettings, directory: File): Observable<out FileAnalyzeResult> {
-        return Observable
-                .fromIterable(directory.walk().asIterable())
-                .subscribeOn(Schedulers.io())
-                .filter {
-                    !it.isDirectory && it.extension == "smali"
-                }.map { file ->
-                    analyzeFile(project, settings, file)
-                }
-    }
+    override fun isSuitableFile(file: File): Boolean = !file.isDirectory && file.extension == "smali"
 
-    override fun analyzeProject(project: SmaliProject, settings: SmaliAnalyzerSettings): Observable<out FileAnalyzeResult> {
-        return Observable.concat(project.smaliDirectories.map {
-            analyzeDirectory(project, settings, it)
-        })
-    }
+    override val SmaliProject.examinedDirectories: Iterable<File>
+        get() = smaliDirectories
 }

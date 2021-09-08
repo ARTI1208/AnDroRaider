@@ -1,8 +1,5 @@
 package ru.art2000.androraider.view.editor
 
-import io.reactivex.Observable
-import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
-import io.reactivex.schedulers.Schedulers
 import javafx.application.Platform
 import javafx.beans.property.Property
 import javafx.beans.property.SimpleObjectProperty
@@ -16,16 +13,16 @@ import javafx.scene.layout.HBox
 import javafx.scene.paint.Color
 import javafx.stage.Stage
 import javafx.stage.WindowEvent
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.javafx.JavaFx
 import org.reactfx.Subscription
-import org.reactfx.value.Var
 import ru.art2000.androraider.model.App
 import ru.art2000.androraider.model.analyzer.result.FileLink
 import ru.art2000.androraider.model.analyzer.result.Link
 import ru.art2000.androraider.model.analyzer.result.SimpleFileLink
 import ru.art2000.androraider.model.apktool.ApkToolUtils
-import ru.art2000.androraider.model.editor.CodeDataProvider
 import ru.art2000.androraider.model.editor.CodeEditorStatusBarDataProvider
-import ru.art2000.androraider.model.editor.FileDataProvider
 import ru.art2000.androraider.model.editor.file.FileEditData
 import ru.art2000.androraider.model.io.StreamOutput
 import ru.art2000.androraider.model.io.println
@@ -55,9 +52,9 @@ import kotlin.system.measureTimeMillis
 @Suppress("ReactiveStreamsUnusedPublisher")
 class Editor @Throws(IOException::class)
 constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOutput>) :
-        Stage(),
-        IEditorView,
-        IEditorController by EditorController() {
+    Stage(),
+    IEditorView,
+    IEditorController by EditorController() {
 
     private val onLoadRunnables = mutableListOf(*runnables)
 
@@ -151,22 +148,35 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
     private fun runIndexing() {
         statusBar.setStatus("Indexing project...")
 //        loadingLabel.text = "Indexing project..."
-        presenter.setupProject()
-                .observeOn(JavaFxScheduler.platform())
-                .doOnSubscribe {
-                    println(this, "ProjectAnalyzer", "Analyze started at ${Date()}")
-                }
-                .doOnComplete {
-                    println(this, "ProjectAnalyzer", "Analyze ended at ${Date()}")
-                    statusBar.setStatus("Project indexing finished at ${Date()}")
-//                    loadingDialog.close()
-                    presenter.startFileObserver()
-                }.subscribe({
-//                    loadingLabel.text = "Indexing $it..."
-                }, {
-                    println("Error1: ")
-//                    it.printStackTrace()
-                })
+
+        presenter.setupProject().onStart {
+            println(this@Editor, "ProjectAnalyzer", "Analyze started at ${Date()}")
+        }.onCompletion {
+            println(this@Editor, "ProjectAnalyzer", "Analyze ended at ${Date()}")
+            statusBar.setStatus("Project indexing finished at ${Date()}")
+            presenter.startFileObserver()
+        }.catch {
+            println("Error indexing")
+//            it.printStackTrace()
+        }.launchIn(CoroutineScope(Dispatchers.IO))
+
+
+//        presenter.setupProject()
+//                .observeOn(JavaFxScheduler.platform())
+//                .doOnSubscribe {
+//                    println(this, "ProjectAnalyzer", "Analyze started at ${Date()}")
+//                }
+//                .doOnComplete {
+//                    println(this, "ProjectAnalyzer", "Analyze ended at ${Date()}")
+//                    statusBar.setStatus("Project indexing finished at ${Date()}")
+////                    loadingDialog.close()
+//                    presenter.startFileObserver()
+//                }.subscribe({
+////                    loadingLabel.text = "Indexing $it..."
+//                }, {
+//                    println("Error1: ")
+////                    it.printStackTrace()
+//                })
     }
 
     private fun onLoad() {
@@ -188,13 +198,26 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
     private fun loadProject() {
         loadingLabel.text = "Loading1 project..."
-        Observable
-                .fromIterable(onLoadRunnables)
-                .subscribeOn(Schedulers.io())
-                .doOnNext { it.accept(console) }
-                .observeOn(JavaFxScheduler.platform())
-                .doOnComplete { onLoad() }
-                .subscribe()
+
+        GlobalScope.launch {
+            onLoadRunnables.asFlow()
+                .onEach { it.accept(console) }
+                .onCompletion {
+                    launch(Dispatchers.JavaFx) {
+                        onLoad()
+                    }
+                }
+                .catch { it.printStackTrace() }
+                .collect()
+        }
+
+//        Observable
+//                .fromIterable(onLoadRunnables)
+//                .subscribeOn(Schedulers.io())
+//                .doOnNext { it.accept(console) }
+//                .observeOn(JavaFxScheduler.platform())
+//                .doOnComplete { onLoad() }
+//                .subscribe()
     }
 
     @Suppress("RedundantLambdaArrow")
@@ -262,7 +285,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                         val file = (link as? FileLink)?.file
 
                         val statusBarDataProvider =
-                                CodeEditorStatusBarDataProvider(codeEditorArea, file, presenter.project)
+                            CodeEditorStatusBarDataProvider(codeEditorArea, file, presenter.project)
 
                         statusBar.addDataProvider(statusBarDataProvider)
                     }
@@ -285,9 +308,12 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
     }
 
     private fun setupFileExplorerView() {
+        println("setupFileExplorerView0: (${fileManagerView.onFileSelectedListeners.size})")
         fileManagerView.onFileSelectedListeners.add { newFile ->
             openLink(SimpleFileLink(newFile))
         }
+
+        println("setupFileExplorerView1: (${fileManagerView.onFileSelectedListeners.size})")
 
         presenter.addFileListener { file, kind ->
             when (kind) {
@@ -300,8 +326,8 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
     private fun onSettingsUpdate(settings: PreferenceManager): Boolean {
         val frameworkFolder = settings.getStringArray(ProjectSettingsDialog.KEY_DECOMPILED_FRAMEWORK_PATH)
-                .map { File(it) }
-                .filter { it.isDirectory && it.exists() }
+            .map { File(it) }
+            .filter { it.isDirectory && it.exists() }
 
         frameworkFolder.forEach {
             presenter.project.addDependencyFolder(it)
@@ -340,12 +366,12 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
                     val settings = presenter.project.projectSettings
 
                     ApkToolUtils.recompile(settings, projectFolder, *selectedOptions.toTypedArray(), output = console)
-                            ?: Platform.runLater {
-                                showErrorMessage(
-                                        "Recompile error",
-                                        "An error occurred while recompiling",
-                                        this)
-                            }
+                        ?: Platform.runLater {
+                            showErrorMessage(
+                                "Recompile error",
+                                "An error occurred while recompiling",
+                                this)
+                        }
                 }
             }
         }
@@ -359,7 +385,7 @@ constructor(private val projectFolder: File, vararg runnables: Consumer<StreamOu
 
     private fun createFileInfoDialog() {
         val file = (editorTabPane.selectionModel.selectedItem?.userData as? FileEditData)
-                ?.file
+            ?.file
 
         val typeLabelTitle = Label("Type:")
         val typeLabelValue = Label(file?.extension ?: "No file or extension")

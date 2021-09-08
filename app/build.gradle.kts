@@ -26,13 +26,17 @@ application {
 
 val flowlessVersion = "0.6.5"
 val reactfxVersion = "2.0-M5"
+val coroutinesVersion = "1.5.2"
 
 dependencies {
 
     antlr("org.antlr", "antlr4", "4.9.2")
 
-    implementation("io.reactivex.rxjava2", "rxjava", "2.2.20")
-    implementation("io.reactivex.rxjava2", "rxjavafx", "2.11.0-RC34")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:$coroutinesVersion")
+
+//    implementation("io.reactivex.rxjava2", "rxjava", "2.2.20")
+//    implementation("io.reactivex.rxjava2", "rxjavafx", "2.11.0-RC34")
 
     implementation("commons-io", "commons-io", "2.11.0")
 
@@ -203,4 +207,6 @@ extraJavaModuleInfo {
 
     automaticModule("flowless-$flowlessVersion.jar", "org.fxmisc.flowless")
     automaticModule("reactfx-$reactfxVersion.jar", "reactfx")
+    automaticModule("kotlinx-coroutines-core-jvm-$coroutinesVersion.jar", "kotlinx.coroutines.core.jvm")
+    automaticModule("kotlinx-coroutines-javafx-$coroutinesVersion.jar", "kotlinx.coroutines.javafx")
 }

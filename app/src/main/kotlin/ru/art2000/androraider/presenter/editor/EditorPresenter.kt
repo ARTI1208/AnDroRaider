@@ -1,8 +1,7 @@
 package ru.art2000.androraider.presenter.editor
 
-import io.reactivex.Observable
-import io.reactivex.disposables.Disposable
 import javafx.stage.Window
+import kotlinx.coroutines.flow.Flow
 import ru.art2000.androraider.model.analyzer.android.AndroidAppProject
 import ru.art2000.androraider.model.editor.getOrInitProject
 import ru.art2000.androraider.model.editor.removeProject
@@ -11,7 +10,7 @@ import ru.art2000.androraider.arch.IPresenter
 import java.io.File
 import java.nio.file.WatchEvent
 
-class EditorPresenter(private val window: Window, private val baseFolder: File) : IPresenter, Disposable {
+class EditorPresenter(private val window: Window, private val baseFolder: File) : IPresenter {
 
     val openedFilesOrder = mutableListOf<Int>()
 
@@ -28,8 +27,6 @@ class EditorPresenter(private val window: Window, private val baseFolder: File) 
             }
         }
     }
-
-    var disposed = false
 
     var projectObserver = DirectoryObserver(baseFolder)
 
@@ -57,19 +54,14 @@ class EditorPresenter(private val window: Window, private val baseFolder: File) 
         projectObserver.stop()
     }
 
-    fun setupProject() : Observable<*> {
+    fun setupProject() : Flow<*> {
         return project.setupProject()
     }
 
     val project: AndroidAppProject = getOrInitProject(window, baseFolder)
 
-    override fun isDisposed() = disposed
-
-    override fun dispose() {
-        if (!disposed) {
-            stopFileObserver()
-            removeProject(window)
-            disposed = true
-        }
+    fun dispose() {
+        stopFileObserver()
+        removeProject(window)
     }
 }
