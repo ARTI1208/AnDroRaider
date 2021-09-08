@@ -24,7 +24,7 @@ application {
     mainClass.set("ru.art2000.androraider.view.AnDroRaider")
 }
 
-val flowlessVersion = "0.6.3"
+val flowlessVersion = "0.6.5"
 val reactfxVersion = "2.0-M5"
 
 dependencies {
@@ -34,7 +34,7 @@ dependencies {
     implementation("io.reactivex.rxjava2", "rxjava", "2.2.20")
     implementation("io.reactivex.rxjava2", "rxjavafx", "2.11.0-RC34")
 
-    implementation("commons-io", "commons-io", "2.8.0")
+    implementation("commons-io", "commons-io", "2.11.0")
 
     // Explicit implementation of ReactFX, Flowless and UndoFX for using concrete versions
     implementation("org.fxmisc.richtext", "richtextfx", "0.10.6")
