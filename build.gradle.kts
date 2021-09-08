@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "1.5.10" apply false
+    kotlin("jvm") version "1.5.30" apply false
 }
 
 allprojects {
@@ -11,5 +11,5 @@ allprojects {
 
 tasks.named<Wrapper>("wrapper") {
     distributionType = Wrapper.DistributionType.ALL
-    gradleVersion = "7.0"
+    gradleVersion = "7.2"
 }
