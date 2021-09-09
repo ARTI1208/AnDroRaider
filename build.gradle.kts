@@ -5,7 +5,6 @@ plugins {
 allprojects {
     repositories {
         mavenCentral()
-        maven("https://dl.bintray.com/reactivex/RxJava/")
     }
 }
 
