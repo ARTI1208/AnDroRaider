@@ -10,8 +10,8 @@ plugins {
 
     kotlin("jvm")
 
-    id("org.beryx.jlink") version "2.24.0"
-    id("de.jjohannes.extra-java-module-info") version "0.8"
+    id("org.beryx.jlink") version "2.24.1"
+    id("de.jjohannes.extra-java-module-info") version "0.9"
 }
 
 val baseAppProperties = PropertiesHelper.loadBaseProperties(project)
