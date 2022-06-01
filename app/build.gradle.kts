@@ -26,7 +26,7 @@ application {
 
 val flowlessVersion = "0.6.5"
 val reactfxVersion = "2.0-M5"
-val coroutinesVersion = "1.5.2"
+val coroutinesVersion = "1.6.2"
 
 dependencies {
 
