@@ -10,7 +10,7 @@ plugins {
 
     kotlin("jvm")
 
-    id("org.beryx.jlink") version "2.24.1"
+    id("org.beryx.jlink") version "2.26.0"
     id("de.jjohannes.extra-java-module-info") version "0.9"
 }
 
